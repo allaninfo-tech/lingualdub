@@ -206,6 +206,8 @@ lingualdub/
 │   ├── voice_retention_eval/
 │   └── av_sync/
 ├── configs/             # Pipeline configuration templates
+├── notebooks/           # Jupyter notebooks for testing, profiling, and pipelines
+├── website/             # Source code for lingualdub.pages.dev (React + Tailwind)
 └── tests/               # Test suite mirroring the package structure
 ```
 
