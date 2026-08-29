@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.backends.legacy:build"
+
+[project]
+name = "lingualdub"
+version = "0.1.0-dev"
+description = "A composable, registry-based framework for building, adapting, composing, and evaluating speech-AI systems for low-resource languages."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "TBD" }
+keywords = ["speech", "low-resource", "nlp", "asr", "tts", "dubbing", "translation"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+[project.urls]
+Repository = "https://github.com/allaninfo-tech/lingualdub"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["lingualdub*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
