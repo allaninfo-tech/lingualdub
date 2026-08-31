@@ -1,1 +1,1 @@
-"""Tests for lingualdub.pipeline."""
+"""Pipeline tests."""

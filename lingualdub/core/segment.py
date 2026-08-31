@@ -52,8 +52,38 @@ class Segment:
         """Duration of this segment in seconds."""
         return self.end - self.start
 
+    def to_dict(self) -> dict:
+        """Serialize this Segment to a JSON-compatible dictionary."""
+        return {
+            "start": self.start,
+            "end": self.end,
+            "text": self.text,
+            "language": self.language,
+            "speaker": self.speaker,
+            "confidence": self.confidence,
+            "source_language": self.source_language,
+            "provenance": dict(self.provenance),
+            "metadata": dict(self.metadata),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Segment":
+        """Deserialize a Segment from a dictionary produced by to_dict()."""
+        return cls(
+            start=data["start"],
+            end=data["end"],
+            text=data["text"],
+            language=data["language"],
+            speaker=data.get("speaker"),
+            confidence=data.get("confidence"),
+            source_language=data.get("source_language"),
+            provenance=data.get("provenance", {}),
+            metadata=data.get("metadata", {}),
+        )
+
     def __repr__(self) -> str:
         return (
             f"Segment(start={self.start}, end={self.end}, "
             f"language={self.language!r}, speaker={self.speaker!r})"
         )
+

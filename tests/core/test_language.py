@@ -23,3 +23,26 @@ def test_language_requires_code():
 def test_language_requires_name():
     with pytest.raises(ValueError):
         Language(code="lug", name="", family="Bantu", resource_profile="sparse")
+
+
+def test_language_defaults():
+    lang = Language(code="lug", name="Luganda", family="Bantu", resource_profile="sparse")
+    assert lang.supported_tasks == []
+    assert lang.related_languages == []
+    assert lang.resources == []
+    assert lang.compatible_components == []
+
+
+def test_language_metadata():
+    lang = Language(
+        code="lug", name="Luganda", family="Bantu", resource_profile="sparse",
+        metadata={"region": "Uganda"},
+    )
+    assert lang.metadata["region"] == "Uganda"
+
+
+def test_language_repr():
+    lang = Language(code="lug", name="Luganda", family="Bantu", resource_profile="sparse")
+    r = repr(lang)
+    assert "lug" in r
+    assert "Luganda" in r

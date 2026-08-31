@@ -40,6 +40,14 @@ class PipelineExecutor:
         """
         Execute all pipeline stages in order.
 
+        Provenance strategy (Option A — merge):
+        The executor initialises a base provenance dict before the stage loop.
+        After each stage returns a Result, the executor's base provenance keys
+        are merged into that Result's provenance (stage-set keys take precedence
+        for conflicts). This ensures that executor-level provenance — pipeline
+        name, run metadata — is never silently discarded when a stage returns
+        its own Result object.
+
         Args:
             input: A Resource or a Result from a previous pipeline to process.
 
@@ -50,10 +58,11 @@ class PipelineExecutor:
             PipelineExecutionError: If a stage fails under ABORT mode.
         """
         current: Union[Resource, Result] = input
+        base_provenance = {"pipeline": repr(self.pipeline)}
         result = Result(
             source_language=self.pipeline.source_language,
             target_language=self.pipeline.target_language,
-            provenance={"pipeline": repr(self.pipeline)},
+            provenance=dict(base_provenance),
         )
 
         for stage in self.pipeline.stages:
@@ -63,6 +72,10 @@ class PipelineExecutor:
             try:
                 current = stage.run(current)
                 if isinstance(current, Result):
+                    # Merge base provenance into stage result; stage keys win on conflict.
+                    merged = dict(base_provenance)
+                    merged.update(current.provenance)
+                    current.provenance = merged
                     result = current
             except Exception as exc:
                 logger.warning("Stage %r failed: %s", stage.name, exc)
@@ -81,6 +94,9 @@ class PipelineExecutor:
                     try:
                         current = stage.degrade(current)
                         if isinstance(current, Result):
+                            merged = dict(base_provenance)
+                            merged.update(current.provenance)
+                            current.provenance = merged
                             result = current
                         result.mark_degraded(f"Stage {stage.name!r} ran degraded: {exc}")
                     except NotImplementedError:

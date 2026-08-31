@@ -1,1 +1,1 @@
-"""Tests for lingualdub.registry."""
+"""Registry tests."""

@@ -71,5 +71,35 @@ class Resource:
         """
         return bool(self.provenance.get("consent_basis"))
 
+    def to_dict(self) -> dict:
+        """Serialize this Resource to a JSON-compatible dictionary."""
+        return {
+            "id": self.id,
+            "kind": self.kind.value,
+            "language": self.language,
+            "version": self.version,
+            "provenance": dict(self.provenance),
+            "quality_flags": list(self.quality_flags),
+            "compatible_components": list(self.compatible_components),
+            "path": self.path,
+            "metadata": dict(self.metadata),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Resource":
+        """Deserialize a Resource from a dictionary produced by to_dict()."""
+        return cls(
+            id=data["id"],
+            kind=ResourceKind(data["kind"]),
+            language=data["language"],
+            version=data["version"],
+            provenance=data.get("provenance", {}),
+            quality_flags=data.get("quality_flags", []),
+            compatible_components=data.get("compatible_components", []),
+            path=data.get("path"),
+            metadata=data.get("metadata", {}),
+        )
+
     def __repr__(self) -> str:
         return f"Resource(id={self.id!r}, kind={self.kind.value!r}, language={self.language!r}, version={self.version!r})"
+
