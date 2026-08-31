@@ -34,9 +34,11 @@ Thumbs.db
 
 # Experiment artifacts and data (not tracked in source)
 artifacts/
-data/
+data/*
+!data/samples/
 checkpoints/
 *.wav
+!data/samples/*.wav
 *.mp3
 *.mp4
 *.pt
