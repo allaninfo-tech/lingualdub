@@ -11,13 +11,13 @@ stages:
     key: "sunbird_asr"
     version: "1.0.0"
     params:
-      model_name_or_path: "Sunbird/salt-asr-luganda"
+      model_name_or_path: "Sunbird/asr-whisper-51-african-languages"
       language: "lug"
   - kind: "component"
     key: "sunbird_translator"
     version: "1.0.0"
     params:
-      model_name_or_path: "Sunbird/sunbird-mul-en"
+      model_name_or_path: "facebook/nllb-200-distilled-600M"
       source_language: "lug"
       target_language: "eng"
   - kind: "component"

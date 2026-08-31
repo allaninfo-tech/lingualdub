@@ -80,9 +80,19 @@ class SunbirdTranslationComponent(TranslationComponent):
             if device is None:
                 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-            logger.info("Loading Sunbird translation model %r on device %s", self.model_name_or_path, device)
-            self._tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
-            self._model = AutoModelForSeq2SeqLM.from_pretrained(self.model_name_or_path).to(device)
+            logger.info("Loading translation model %r on device %s", self.model_name_or_path, device)
+            try:
+                self._tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
+                self._model = AutoModelForSeq2SeqLM.from_pretrained(self.model_name_or_path).to(device)
+            except Exception as exc:
+                fallback_model = "facebook/nllb-200-distilled-600M"
+                logger.warning(
+                    "Failed to load %r (%s). Falling back to public model %r.",
+                    self.model_name_or_path, exc, fallback_model,
+                )
+                self.model_name_or_path = fallback_model
+                self._tokenizer = AutoTokenizer.from_pretrained(fallback_model)
+                self._model = AutoModelForSeq2SeqLM.from_pretrained(fallback_model).to(device)
 
     def _translate_api(self, texts: List[str]) -> List[str]:
         """Translate via Sunbird AI cloud API."""

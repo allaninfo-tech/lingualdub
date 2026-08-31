@@ -13,14 +13,14 @@ stages:
     key: "sunbird_asr"      # or "whisper_asr", "dummy_asr", or custom registered ASR
     version: "1.0.0"
     params:
-      model_name_or_path: "Sunbird/salt-asr-luganda" # Or any HuggingFace ASR checkpoint
+      model_name_or_path: "Sunbird/asr-whisper-51-african-languages" # Or "openai/whisper-small"
       language: "lug"
 
   - kind: "component"
     key: "sunbird_translator" # or "hf_translator", "dummy_translator", or custom MT
     version: "1.0.0"
     params:
-      model_name_or_path: "Sunbird/sunbird-mul-en"   # Or "facebook/nllb-200-distilled-600M"
+      model_name_or_path: "facebook/nllb-200-distilled-600M"
       source_language: "lug"
       target_language: "eng"
 

@@ -42,7 +42,7 @@ class SunbirdASRComponent(ASRComponent):
 
     def __init__(
         self,
-        model_name_or_path: str = "Sunbird/salt-asr-luganda",
+        model_name_or_path: str = "Sunbird/asr-whisper-51-african-languages",
         api_key: Optional[str] = None,
         language: str = "lug",
         use_api: bool = False,
@@ -74,12 +74,24 @@ class SunbirdASRComponent(ASRComponent):
                 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
             logger.info("Loading Sunbird ASR model %r on device %s", self.model_name_or_path, device)
-            self._pipeline = pipeline(
-                "automatic-speech-recognition",
-                model=self.model_name_or_path,
-                device=device,
-                return_timestamps="word",
-            )
+            try:
+                self._pipeline = pipeline(
+                    "automatic-speech-recognition",
+                    model=self.model_name_or_path,
+                    device=device,
+                    return_timestamps="word",
+                )
+            except Exception as exc:
+                logger.warning(
+                    "Failed to load %r (%s). Falling back to 'openai/whisper-small'.",
+                    self.model_name_or_path, exc,
+                )
+                self._pipeline = pipeline(
+                    "automatic-speech-recognition",
+                    model="openai/whisper-small",
+                    device=device,
+                    return_timestamps="word",
+                )
         return self._pipeline
 
     def _run_api(self, audio_path: str) -> Result:
