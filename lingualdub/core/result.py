@@ -83,9 +83,38 @@ class Result:
         """Returns True if the result can be passed to downstream consumers."""
         return self.status != ResultStatus.FAILED
 
+    def to_dict(self) -> dict:
+        """Serialize this Result to a JSON-compatible dictionary."""
+        return {
+            "segments": [s.to_dict() for s in self.segments],
+            "source_language": self.source_language,
+            "target_language": self.target_language,
+            "status": self.status.value,
+            "warnings": list(self.warnings),
+            "provenance": dict(self.provenance),
+            "artifacts": list(self.artifacts),
+            "metadata": dict(self.metadata),
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Result":
+        """Deserialize a Result from a dictionary produced by to_dict()."""
+        from lingualdub.core.segment import Segment  # avoid circular at module level
+        return cls(
+            segments=[Segment.from_dict(s) for s in data.get("segments", [])],
+            source_language=data.get("source_language"),
+            target_language=data.get("target_language"),
+            status=ResultStatus(data.get("status", ResultStatus.COMPLETE.value)),
+            warnings=data.get("warnings", []),
+            provenance=data.get("provenance", {}),
+            artifacts=data.get("artifacts", []),
+            metadata=data.get("metadata", {}),
+        )
+
     def __repr__(self) -> str:
         return (
             f"Result(status={self.status.value!r}, "
             f"segments={len(self.segments)}, "
             f"warnings={len(self.warnings)})"
         )
+
