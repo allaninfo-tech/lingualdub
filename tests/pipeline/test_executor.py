@@ -137,22 +137,27 @@ def test_executor_provenance_not_lost():
     pipeline = Pipeline(stages=[ProvenanceStage()], source_language="lug")
     executor = PipelineExecutor(pipeline)
     result = executor.run(Result())
-    # Must contain the executor-set key
-    assert "pipeline" in result.provenance
+    # Must contain the executor-set keys (pipeline_repr set by executor)
+    assert "pipeline_repr" in result.provenance
     # Must also contain the stage-set key
     assert "stage_key" in result.provenance
     assert result.provenance["stage_key"] == "stage_value"
+    # run_id must always be present (set by make_provenance in executor)
+    assert "run_id" in result.provenance
+    assert result.provenance["run_id"]  # Must be non-empty string
 
 
 def test_executor_result_source_language():
     pipeline = Pipeline(stages=[GoodStage()], source_language="lug")
     executor = PipelineExecutor(pipeline)
     result = executor.run(Result())
-    # The final result's source_language comes from the stage; check pipeline sets it initially
-    assert pipeline.source_language == "lug"
+    # The pipeline source_language should be preserved in the result
+    assert result.source_language == "lug"
 
 
 def test_executor_result_target_language():
     pipeline = Pipeline(stages=[GoodStage()], source_language="lug", target_language="eng")
     executor = PipelineExecutor(pipeline)
-    assert pipeline.target_language == "eng"
+    result = executor.run(Result())
+    # The pipeline target_language should be preserved in the result
+    assert result.target_language == "eng"

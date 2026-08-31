@@ -53,19 +53,25 @@ class Pipeline:
     def _validate_stage_compatibility(self) -> None:
         """
         Walk the stage list and verify that each stage's required capabilities
-        are provided by the previous stage. Raises ValueError on mismatch.
+        are provided by any upstream stage in the pipeline. Raises ValueError
+        on mismatch.
 
+        Capabilities accumulate across stages: if Stage 1 provides "transcription"
+        and Stage 2 provides "translation", Stage 3 can require either or both.
         This check runs at pipeline assembly time, not at execution time.
         """
-        provided: List[str] = []
+        accumulated_provides: List[str] = []
         for stage in self.stages:
-            missing = stage.check_compatibility(provided)
+            missing = stage.check_compatibility(accumulated_provides)
             if missing:
                 raise ValueError(
                     f"Pipeline compatibility error: stage {stage.name!r} "
-                    f"requires {missing!r} but upstream provides {provided!r}."
+                    f"requires {missing!r} but upstream provides {accumulated_provides!r}."
                 )
-            provided = stage.provides
+            # Accumulate this stage's capabilities for downstream stages.
+            for cap in stage.provides:
+                if cap not in accumulated_provides:
+                    accumulated_provides.append(cap)
 
     @property
     def stage_names(self) -> List[str]:

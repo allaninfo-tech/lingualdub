@@ -15,13 +15,18 @@ from lingualdub.core.result import Result
 
 logger = logging.getLogger(__name__)
 
-# ISO 639-3 to MMS-TTS model checkpoint mapping
+# ISO 639-3 to MMS-TTS model checkpoint mapping.
+# Note: not all languages have dedicated MMS-TTS checkpoints.
+# facebook/mms-tts-eng is used as a safe fallback.
 MMS_TTS_MODELS = {
     "eng": "facebook/mms-tts-eng",
     "lug": "facebook/mms-tts-lug",
-    "nyn": "facebook/mms-tts-nyn",
     "swa": "facebook/mms-tts-swh",
+    # nyn (Runyankole) does not have a dedicated MMS-TTS checkpoint yet.
+    # Components using nyn as TTS target should use "eng" or another model.
 }
+
+MMS_TTS_FALLBACK = "facebook/mms-tts-eng"
 
 
 class MMSTTSComponent(TTSComponent):
@@ -32,7 +37,7 @@ class MMSTTSComponent(TTSComponent):
     name: str = "mms_tts"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.TTS
-    supported_languages: List[str] = ["eng", "lug", "nyn", "swa"]
+    supported_languages: List[str] = ["eng", "lug", "swa"]
     requires: List[str] = ["translation"]
     provides: List[str] = ["synthesised_audio"]
     on_failure: FailureMode = FailureMode.DEGRADE
@@ -46,7 +51,17 @@ class MMSTTSComponent(TTSComponent):
         version: str = "1.0.0",
     ) -> None:
         self.language = language
-        self.model_name_or_path = model_name_or_path or MMS_TTS_MODELS.get(language, "facebook/mms-tts-eng")
+        # Resolve checkpoint: use explicit path, then language map, then fallback.
+        if model_name_or_path:
+            self.model_name_or_path = model_name_or_path
+        elif language in MMS_TTS_MODELS:
+            self.model_name_or_path = MMS_TTS_MODELS[language]
+        else:
+            logger.warning(
+                "MMS-TTS: no checkpoint for language %r; falling back to %r.",
+                language, MMS_TTS_FALLBACK,
+            )
+            self.model_name_or_path = MMS_TTS_FALLBACK
         self.output_dir = Path(output_dir) if output_dir else Path(tempfile.gettempdir()) / "lingualdub_mms_tts"
         self.device = device
         self.version = version

@@ -175,11 +175,16 @@ class ManifestScanner:
 
         paths = search_paths or [Path(p) for p in sys.path if p]
         total = 0
+        seen: set = set()  # Deduplicate resolved manifest paths
 
         for base in paths:
             if not base.is_dir():
                 continue
             for manifest_path in base.rglob(MANIFEST_FILENAME):
+                resolved = manifest_path.resolve()
+                if resolved in seen:
+                    continue
+                seen.add(resolved)
                 try:
                     total += self.load(manifest_path)
                 except ManifestError as exc:

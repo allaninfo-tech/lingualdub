@@ -85,3 +85,22 @@ def test_pipeline_repr():
     r = repr(p)
     assert "lug" in r
     assert "mock_asr" in r
+
+
+def test_pipeline_accumulates_capabilities_across_stages():
+    """Verify that Stage 3 can access capabilities provided by Stage 1 even if Stage 2 does not re-emit them."""
+    class Stage3(Component):
+        name: str = "stage_3"
+        version: str = "1.0.0"
+        task: ComponentTask = ComponentTask.TTS
+        requires = ["transcription", "translation"]
+        provides = ["speech"]
+        on_failure = FailureMode.ABORT
+        def run(self, input):
+            return Result()
+
+    # MockASR provides ["transcription", "word_timestamps"]
+    # MockTranslation requires ["transcription"] and provides ["translation"]
+    # Stage3 requires ["transcription", "translation"]
+    p = Pipeline(stages=[MockASR(), MockTranslation(), Stage3()], source_language="lug")
+    assert len(p.stages) == 3
