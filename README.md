@@ -26,17 +26,18 @@
 
 ## Overview
 
-**LingualDub** is an open, modular speech-AI framework designed as reusable research and production infrastructure for low-resource language contexts. It standardises how language metadata, speech/text data resources, model components, execution pipelines, and evaluation metrics interoperate — so that existing models and tools can be wired together, adapted, and replaced without rewriting framework internals.
+**LingualDub** is an open, modular speech-AI framework designed as reusable research and production infrastructure for **all low-resource language contexts**. It standardises how language metadata, speech/text data resources, model components, execution pipelines, and evaluation metrics interoperate — so that any low-resource language, model adapter, and evaluator can be wired together, adapted, and replaced without rewriting framework internals.
 
-Primary validation languages:
-- **Luganda (`lug`)**: Bantu (Great Lakes) — speech-moderate / text-moderate baseline.
+Initial reference validation languages:
+- **Luganda (`lug`)**: Bantu (Great Lakes) — initial speech-moderate / text-moderate reference baseline.
 - **Runyankole (`nyn`)**: Bantu (Great Lakes) — speech-sparse / text-sparse language-family generalisation test.
+- **Expandable to any language**: Simply define a `Language` profile, attach resources, and compose your pipeline.
 
 ---
 
 ## Key Features
 
-- **Composable Architecture**: Five foundational abstractions (`Language`, `Resource`, `Component`, `Pipeline`, `Result`) forming a closed, provenance-tracked loop.
+- **Language-Agnostic & Composable**: Five foundational abstractions (`Language`, `Resource`, `Component`, `Pipeline`, `Result`) forming a closed, provenance-tracked loop.
 - **Registry & Dynamic Discovery**: Decoupled component registration supporting multiple conflict policies (`NAMESPACED`, `HIGHEST_VERSION`, `EXPLICIT`) and automatic `lingualdub.manifest.json` scanning.
 - **Assembly-Time Capability Checking**: Validates stage input/output contracts (`requires` vs `provides`) at assembly time before any heavy model loads or runs.
 - **Graceful Failure Handling**: Multi-tier fault tolerance (`ABORT`, `SKIP`, `DEGRADE`) with built-in degraded fallback paths and warning propagation.
@@ -51,6 +52,7 @@ Primary validation languages:
 ```
                  ┌─────────────────────────────┐
                  │    Language + Resources     │
+                 │   (Any ISO 639 Language)    │
                  └──────────────┬──────────────┘
                                 │
                                 ▼
@@ -106,8 +108,8 @@ LingualDub uses **GitHub as the bridge** between local development and cloud GPU
        YOUR MACHINE                     GITHUB                     COLAB / GPU SERVER
    ┌───────────────────┐        ┌───────────────────┐        ┌───────────────────┐
    │ Fast Unit Tests   │  push  │ Versioned Code,   │ clone  │ Real Heavy Models │
-   │ Deterministic     │ ─────► │ Configs & Result  │ ─────► │ Sunbird, Whisper, │
-   │ Local Integration │        │ Envelopes (JSON)  │        │ NLLB, MMS-TTS     │
+   │ Deterministic     │ ─────► │ Configs & Result  │ ─────► │ Multi-Lingual /   │
+   │ Local Integration │        │ Envelopes (JSON)  │        │ Fine-Tuned Models │
    └───────────────────┘        └─────────┬─────────┘        └─────────┬─────────┘
              ▲                            │                            │
              │            pull            │         push results       │
@@ -126,12 +128,12 @@ LingualDub uses **GitHub as the bridge** between local development and cloud GPU
 # 1. Inspect registered components and languages
 lingualdub registry list
 
-# 2. Run a local pipeline test
+# 2. Run a local pipeline test (generic to any text/language)
 lingualdub experiment run configs/local_mock_pipeline.yaml \
   --sample-text "Oli otya nnyabo" \
   --output-dir experiments/local_test
 
-# 3. Run a real Sunbird GPU experiment on Colab
+# 3. Run a real GPU experiment on Colab (e.g. reference baseline)
 lingualdub experiment run configs/luganda_english_baseline.yaml \
   --input-audio data/samples/sample_lug.wav \
   --output-dir experiments/luganda_dubbing/baseline_v1
@@ -149,7 +151,16 @@ lingualdub compare \
 ```python
 import lingualdub as ld
 
-# 1. Initialize registry and load declarative pipeline config
+# 1. Define any language profile (e.g. Yoruba, Swahili, Luganda, Runyankole)
+yoruba = ld.Language(
+    code="yor",
+    name="Yoruba",
+    family="Niger-Congo (Defoid)",
+    resource_profile="speech-sparse / text-moderate",
+    supported_tasks=["asr", "translation", "tts"],
+)
+
+# 2. Initialize registry and load declarative pipeline config
 registry = ld.Registry(conflict_policy=ld.ConflictPolicy.HIGHEST_VERSION)
 scanner = ld.ManifestScanner(registry)
 scanner.scan()
@@ -157,10 +168,10 @@ scanner.scan()
 loader = ld.ConfigLoader(registry)
 pipeline = loader.load_file("configs/luganda_english_baseline.yaml")
 
-# 2. Execute pipeline with automatic capability validation & fault tolerance
+# 3. Execute pipeline with automatic capability validation & fault tolerance
 executor = ld.PipelineExecutor(pipeline)
 audio_resource = ld.Resource(
-    id="lug_test_sample",
+    id="sample_audio_01",
     kind=ld.ResourceKind.SPEECH,
     language="lug",
     version="1.0.0",
@@ -170,7 +181,7 @@ audio_resource = ld.Resource(
 
 result = executor.run(audio_resource)
 
-# 3. Inspect structured results and provenance
+# 4. Inspect structured results and provenance
 print(f"Status: {result.status.value.upper()}")
 for seg in result.segments:
     print(f"[{seg.start:.2f}s -> {seg.end:.2f}s] ({seg.language}): {seg.text}")
