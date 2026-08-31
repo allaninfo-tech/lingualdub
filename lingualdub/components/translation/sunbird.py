@@ -137,14 +137,36 @@ class SunbirdTranslationComponent(TranslationComponent):
             decoded = self._translate_api(texts)
         else:
             self._load_model()
-            import torch
+            # Target language mapping for NLLB / multilingual Seq2Seq
+            nllb_map = {
+                "lug": "lug_Latn",
+                "nyn": "nyn_Latn",
+                "eng": "eng_Latn",
+                "swa": "swh_Latn",
+                "ach": "ach_Latn",
+            }
+            src_code = nllb_map.get(self.source_language, self.source_language)
+            tgt_code = nllb_map.get(self.target_language, self.target_language)
 
-            # Sunbird Hugging Face translation tokenization
+            if hasattr(self._tokenizer, "src_lang"):
+                self._tokenizer.src_lang = src_code
+
             inputs = self._tokenizer(texts, return_tensors="pt", padding=True, truncation=True)
             inputs = {k: v.to(self._model.device) for k, v in inputs.items()}
 
+            forced_bos = None
+            if hasattr(self._tokenizer, "lang_code_to_id") and tgt_code in self._tokenizer.lang_code_to_id:
+                forced_bos = self._tokenizer.lang_code_to_id[tgt_code]
+            elif hasattr(self._tokenizer, "convert_tokens_to_ids"):
+                tid = self._tokenizer.convert_tokens_to_ids(tgt_code)
+                if tid and tid != self._tokenizer.unk_token_id:
+                    forced_bos = tid
+
             with torch.no_grad():
-                generated = self._model.generate(**inputs, max_length=512)
+                if forced_bos is not None:
+                    generated = self._model.generate(**inputs, forced_bos_token_id=forced_bos, max_length=512)
+                else:
+                    generated = self._model.generate(**inputs, max_length=512)
 
             decoded = self._tokenizer.batch_decode(generated, skip_special_tokens=True)
 
