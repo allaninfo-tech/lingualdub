@@ -1,0 +1,29 @@
+name: Feature Request / Architecture Proposal
+description: Propose a new framework feature, core abstraction, or pipeline capability.
+labels: ["enhancement", "proposal"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Propose a new feature, architecture improvement, or tool for LingualDub.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem & Motivation
+      description: What problem are you trying to solve or what use case is currently unsupported?
+      placeholder: Currently, when trying to do X, the framework lacks ...
+    validations:
+      required: true
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the design, interface, or mechanism you propose.
+      placeholder: Introduce a new abstraction or extension point in ...
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered any alternative approaches or workarounds?

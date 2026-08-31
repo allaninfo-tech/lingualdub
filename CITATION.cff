@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use LingualDub in your research, please cite it as below."
+title: "LingualDub: A Composable, Registry-Based Speech-AI Framework for Low-Resource Languages"
+authors:
+  - name: "LingualDub Authors and Contributors"
+url: "https://github.com/allaninfo-tech/lingualdub"
+repository-code: "https://github.com/allaninfo-tech/lingualdub"
+abstract: >
+  LingualDub is an open, modular speech-AI framework designed for low-resource languages.
+  It standardises language metadata, resource management, capability-checked pipeline composition,
+  provenance-tracked execution, and reproducible cross-lingual evaluation.
+keywords:
+  - speech-ai
+  - low-resource-languages
+  - speech-to-speech
+  - dubbing
+  - asr
+  - tts
+  - machine-translation
+  - luganda
+  - runyankole
+license: "Apache-2.0"
+version: "0.1.0-dev"
+date-released: "2026-08-31"

@@ -5,37 +5,139 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "lingualdub"
 version = "0.1.0-dev"
-description = "A composable, registry-based framework for building, adapting, composing, and evaluating speech-AI systems for low-resource languages."
+description = "A composable, registry-based speech-AI framework for low-resource languages."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "TBD" }
-keywords = ["speech", "low-resource", "nlp", "asr", "tts", "dubbing", "translation"]
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "LingualDub Authors and Contributors" }
+]
+maintainers = [
+    { name = "LingualDub Core Team" }
+]
+keywords = [
+    "speech-ai",
+    "low-resource-languages",
+    "speech-to-speech",
+    "dubbing",
+    "voice-cloning",
+    "asr",
+    "tts",
+    "machine-translation",
+    "luganda",
+    "runyankole",
+    "nlp",
+]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Topic :: Text Processing :: Linguistic",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
 ]
 
 [project.urls]
+Homepage = "https://lingualdub.pages.dev"
+Documentation = "https://lingualdub.pages.dev/docs"
 Repository = "https://github.com/allaninfo-tech/lingualdub"
+Issues = "https://github.com/allaninfo-tech/lingualdub/issues"
+Changelog = "https://github.com/allaninfo-tech/lingualdub/blob/main/CHANGELOG.md"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+]
+lint = [
+    "ruff>=0.6.0",
+    "mypy>=1.10.0",
+]
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.25.0",
+]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.6.0",
+    "mypy>=1.10.0",
+    "pre-commit>=3.7.0",
+    "build>=1.1.0",
+    "twine>=5.0.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["lingualdub*"]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.4",
-    "pytest-cov>=4.1",
-]
+[tool.setuptools.package-data]
+lingualdub = ["py.typed", "lingualdub.manifest.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["lingualdub"]
+branch = true
+omit = [
+    "tests/*",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 75
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "\\.\\.\\.",
+]
 
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # Pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "UP",   # pyupgrade
+    "SIM",  # flake8-simplify
+]
+ignore = [
+    "E501", # line length handled by formatter
+    "B008", # do not perform function calls in argument defaults
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["lingualdub"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+show_error_codes = true
