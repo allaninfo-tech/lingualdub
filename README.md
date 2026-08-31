@@ -1,4 +1,6 @@
-<div align="center">
+<a href="https://lingualdub.pages.dev">
+  <img src="docs/assets/logo.png" alt="LingualDub Logo" align="right" width="130" />
+</a>
 
 # LingualDub
 
@@ -12,9 +14,7 @@
 [![Checked with mypy](https://img.shields.io/badge/type_checker-mypy-blue.svg)](http://mypy-lang.org/)
 [![Website](https://img.shields.io/badge/website-lingualdub.pages.dev-indigo)](https://lingualdub.pages.dev)
 
-[Documentation](https://lingualdub.pages.dev/docs) | [Milestones & Roadmap](docs/milestones.md) | [Contributing](CONTRIBUTING.md) | [Architecture](docs/architecture.md)
-
-</div>
+[Documentation](https://lingualdub.pages.dev/docs) • [Milestones & Roadmap](docs/milestones.md) • [Contributing](CONTRIBUTING.md) • [Architecture](docs/architecture.md)
 
 ---
 
