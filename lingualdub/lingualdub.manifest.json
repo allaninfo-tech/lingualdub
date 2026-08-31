@@ -1,0 +1,148 @@
+{
+  "name": "lingualdub-core",
+  "version": "0.1.0",
+  "entries": [
+    {
+      "kind": "language",
+      "key": "lug",
+      "module": "lingualdub.languages.luganda",
+      "attr": "LUGANDA",
+      "version": "1.0.0",
+      "metadata": {
+        "family": "Bantu (Great Lakes)",
+        "profile": "speech-moderate / text-moderate"
+      }
+    },
+    {
+      "kind": "language",
+      "key": "nyn",
+      "module": "lingualdub.languages.runyankole",
+      "attr": "RUNYANKOLE",
+      "version": "1.0.0",
+      "metadata": {
+        "family": "Bantu (Great Lakes)",
+        "profile": "speech-sparse / text-sparse"
+      }
+    },
+    {
+      "kind": "component",
+      "key": "dummy_asr",
+      "module": "lingualdub.components.asr.dummy",
+      "attr": "DummyASRComponent",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "asr",
+        "type": "mock"
+      }
+    },
+    {
+      "kind": "component",
+      "key": "sunbird_asr",
+      "module": "lingualdub.components.asr.sunbird",
+      "attr": "SunbirdASRComponent",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "asr",
+        "provider": "sunbird",
+        "type": "neural"
+      }
+    },
+    {
+      "kind": "component",
+      "key": "whisper_asr",
+      "module": "lingualdub.components.asr.whisper",
+      "attr": "WhisperASRComponent",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "asr",
+        "type": "neural"
+      }
+    },
+    {
+      "kind": "component",
+      "key": "dummy_translator",
+      "module": "lingualdub.components.translation.dummy",
+      "attr": "DummyTranslationComponent",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "translation",
+        "type": "mock"
+      }
+    },
+    {
+      "kind": "component",
+      "key": "sunbird_translator",
+      "module": "lingualdub.components.translation.sunbird",
+      "attr": "SunbirdTranslationComponent",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "translation",
+        "provider": "sunbird",
+        "type": "neural"
+      }
+    },
+    {
+      "kind": "component",
+      "key": "hf_translator",
+      "module": "lingualdub.components.translation.hf_translator",
+      "attr": "HuggingFaceTranslationComponent",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "translation",
+        "type": "neural"
+      }
+    },
+    {
+      "kind": "component",
+      "key": "dummy_tts",
+      "module": "lingualdub.components.tts.dummy",
+      "attr": "DummyTTSComponent",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "tts",
+        "type": "mock"
+      }
+    },
+    {
+      "kind": "component",
+      "key": "mms_tts",
+      "module": "lingualdub.components.tts.mms_tts",
+      "attr": "MMSTTSComponent",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "tts",
+        "type": "neural"
+      }
+    },
+    {
+      "kind": "component",
+      "key": "wer_evaluator",
+      "module": "lingualdub.components.eval.metrics",
+      "attr": "WEREvaluator",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "eval"
+      }
+    },
+    {
+      "kind": "component",
+      "key": "translation_evaluator",
+      "module": "lingualdub.components.eval.metrics",
+      "attr": "TranslationEvaluator",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "eval"
+      }
+    },
+    {
+      "kind": "component",
+      "key": "temporal_alignment_evaluator",
+      "module": "lingualdub.components.eval.metrics",
+      "attr": "TemporalAlignmentEvaluator",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "eval"
+      }
+    }
+  ]
+}

@@ -11,9 +11,11 @@ from lingualdub.core.pipeline import Pipeline
 from lingualdub.core.resource import Resource, ResourceKind
 from lingualdub.core.result import Result, ResultStatus
 from lingualdub.core.segment import Segment
+from lingualdub.pipeline.config_loader import ConfigLoader
 from lingualdub.pipeline.executor import PipelineExecutionError, PipelineExecutor
 from lingualdub.registry.manifest import ManifestError, ManifestScanner
 from lingualdub.registry.registry import ConflictPolicy, Registry, RegistryError
+from lingualdub.utils.comparison import compare_runs, ProvenanceMismatchError
 from lingualdub.utils.provenance import make_provenance, make_run_id
 from lingualdub.utils.resource_manager import (
     ChecksumError,
@@ -39,6 +41,7 @@ __all__ = [
     # Pipeline & Execution
     "PipelineExecutor",
     "PipelineExecutionError",
+    "ConfigLoader",
     # Registry & Discovery
     "Registry",
     "RegistryError",
@@ -51,4 +54,6 @@ __all__ = [
     "ResourceNotFoundError",
     "make_run_id",
     "make_provenance",
+    "compare_runs",
+    "ProvenanceMismatchError",
 ]

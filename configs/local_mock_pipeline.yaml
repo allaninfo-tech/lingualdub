@@ -1,0 +1,22 @@
+# Declarative pipeline for fast offline local testing (Level 2)
+name: "local_dummy_dubbing_pipeline"
+description: "Zero-dependency local integration pipeline using deterministic adapters."
+source_language: "lug"
+target_language: "eng"
+per_segment_language: false
+on_stage_failure: "abort"
+
+stages:
+  - kind: "component"
+    key: "dummy_asr"
+    version: "1.0.0"
+  - kind: "component"
+    key: "dummy_translator"
+    version: "1.0.0"
+  - kind: "component"
+    key: "dummy_tts"
+    version: "1.0.0"
+
+metadata:
+  environment: "local"
+  tier: "level_2_integration"

@@ -51,6 +51,9 @@ Repository = "https://github.com/allaninfo-tech/lingualdub"
 Issues = "https://github.com/allaninfo-tech/lingualdub/issues"
 Changelog = "https://github.com/allaninfo-tech/lingualdub/blob/main/CHANGELOG.md"
 
+[project.scripts]
+lingualdub = "lingualdub.cli:main"
+
 [project.optional-dependencies]
 test = [
     "pytest>=7.4",
@@ -65,6 +68,17 @@ docs = [
     "mkdocs-material>=9.5.0",
     "mkdocstrings[python]>=0.25.0",
 ]
+models = [
+    "torch>=2.0.0",
+    "transformers>=4.38.0",
+    "torchaudio>=2.0.0",
+    "scipy>=1.10.0",
+    "soundfile>=0.12.0",
+]
+eval = [
+    "jiwer>=3.0.0",
+    "sacrebleu>=2.4.0",
+]
 dev = [
     "pytest>=7.4",
     "pytest-cov>=4.1",
@@ -73,6 +87,17 @@ dev = [
     "pre-commit>=3.7.0",
     "build>=1.1.0",
     "twine>=5.0.0",
+    "pyyaml>=6.0",
+]
+all = [
+    "torch>=2.0.0",
+    "transformers>=4.38.0",
+    "torchaudio>=2.0.0",
+    "scipy>=1.10.0",
+    "soundfile>=0.12.0",
+    "jiwer>=3.0.0",
+    "sacrebleu>=2.4.0",
+    "pyyaml>=6.0",
 ]
 
 [tool.setuptools.packages.find]

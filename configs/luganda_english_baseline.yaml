@@ -1,0 +1,36 @@
+# LingualDub Milestone 1 & 2 Baseline Pipeline (Level 3 - Remote / Colab GPU)
+name: "luganda_english_baseline_sunbird_v1"
+description: "End-to-end Luganda to English dubbing pipeline using Sunbird ASR, Sunbird Translation, and Meta MMS-TTS."
+source_language: "lug"
+target_language: "eng"
+per_segment_language: false
+on_stage_failure: "degrade"
+
+stages:
+  - kind: "component"
+    key: "sunbird_asr"
+    version: "1.0.0"
+    params:
+      model_name_or_path: "Sunbird/salt-asr-luganda"
+      language: "lug"
+  - kind: "component"
+    key: "sunbird_translator"
+    version: "1.0.0"
+    params:
+      model_name_or_path: "Sunbird/sunbird-mul-en"
+      source_language: "lug"
+      target_language: "eng"
+  - kind: "component"
+    key: "mms_tts"
+    version: "1.0.0"
+    params:
+      language: "eng"
+      model_name_or_path: "facebook/mms-tts-eng"
+
+metadata:
+  environment: "colab_gpu"
+  milestone: "M1"
+  asr_provider: "sunbird_ai"
+  translation_provider: "sunbird_ai"
+  tts_provider: "meta_mms"
+  tier: "level_3_research_experiment"
