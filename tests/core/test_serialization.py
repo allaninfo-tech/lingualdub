@@ -95,3 +95,63 @@ def test_result_status_preserved():
         r = Result(status=status)
         restored = Result.from_dict(r.to_dict())
         assert restored.status == status
+
+
+def test_pipeline_to_dict():
+    from lingualdub.core.component import Component, ComponentTask, FailureMode
+    from lingualdub.core.pipeline import Pipeline
+    from lingualdub.core.resource import Resource
+    from lingualdub.core.result import Result
+    from typing import Union
+
+    class MockStage(Component):
+        name: str = "mock_asr"
+        version: str = "1.0.0"
+        task: ComponentTask = ComponentTask.ASR
+        supported_languages = []
+        requires = []
+        provides = ["transcription"]
+        on_failure = FailureMode.ABORT
+        def run(self, input: Union[Result, Resource]) -> Result:
+            return Result()
+
+    p = Pipeline(
+        stages=[MockStage()],
+        source_language="lug",
+        target_language="eng",
+        name="test_pipeline",
+        description="A test pipeline",
+        metadata={"env": "test"},
+    )
+    d = p.to_dict()
+    assert d["source_language"] == "lug"
+    assert d["target_language"] == "eng"
+    assert d["name"] == "test_pipeline"
+    assert d["stages"] == [{"name": "mock_asr", "version": "1.0.0"}]
+    assert d["metadata"] == {"env": "test"}
+
+
+def test_pipeline_from_dict():
+    from lingualdub.core.component import Component, ComponentTask, FailureMode
+    from lingualdub.core.pipeline import Pipeline
+    from lingualdub.core.resource import Resource
+    from lingualdub.core.result import Result
+    from typing import Union
+
+    class MockStage(Component):
+        name: str = "mock_asr"
+        version: str = "1.0.0"
+        task: ComponentTask = ComponentTask.ASR
+        supported_languages = []
+        requires = []
+        provides = ["transcription"]
+        on_failure = FailureMode.ABORT
+        def run(self, input: Union[Result, Resource]) -> Result:
+            return Result()
+
+    original = Pipeline(stages=[MockStage()], source_language="lug", target_language="eng")
+    d = original.to_dict()
+    restored = Pipeline.from_dict(d, resolved_stages=[MockStage()])
+    assert restored.source_language == "lug"
+    assert restored.target_language == "eng"
+    assert restored.stage_names == ["mock_asr"]

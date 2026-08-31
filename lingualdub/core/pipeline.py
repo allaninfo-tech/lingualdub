@@ -72,6 +72,53 @@ class Pipeline:
         """Returns the names of all stages in order."""
         return [s.name for s in self.stages]
 
+    def to_dict(self) -> dict:
+        """
+        Serialize this Pipeline to a JSON-compatible dictionary.
+
+        Note: stages are serialized as (name, version) pairs only. Full
+        round-trip deserialization requires resolving component names through
+        a Registry (see Pipeline.from_dict). No component logic is serialized.
+        """
+        return {
+            "source_language": self.source_language,
+            "target_language": self.target_language,
+            "per_segment_language": self.per_segment_language,
+            "on_stage_failure": self.on_stage_failure.value,
+            "name": self.name,
+            "description": self.description,
+            "metadata": dict(self.metadata),
+            "stages": [
+                {"name": s.name, "version": s.version}
+                for s in self.stages
+            ],
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict, resolved_stages: List["Component"]) -> "Pipeline":
+        """
+        Deserialize a Pipeline from a dictionary produced by to_dict().
+
+        Args:
+            data: Dictionary from to_dict().
+            resolved_stages: Pre-resolved Component instances corresponding
+                to the stage entries in data["stages"], in order. The caller
+                is responsible for resolving stage names through the Registry.
+
+        Returns:
+            A live Pipeline object.
+        """
+        return cls(
+            stages=resolved_stages,
+            source_language=data["source_language"],
+            target_language=data.get("target_language"),
+            per_segment_language=data.get("per_segment_language", False),
+            on_stage_failure=FailureMode(data.get("on_stage_failure", FailureMode.ABORT.value)),
+            name=data.get("name"),
+            description=data.get("description"),
+            metadata=data.get("metadata", {}),
+        )
+
     def __repr__(self) -> str:
         return (
             f"Pipeline(source={self.source_language!r}, "
