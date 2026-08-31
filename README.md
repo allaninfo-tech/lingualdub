@@ -1,5 +1,5 @@
 <a href="https://lingualdub.pages.dev">
-  <img src="docs/assets/logo.png" alt="LingualDub Logo" align="right" width="130" />
+  <img src="docs/assets/logo.svg" alt="LingualDub Logo" align="right" width="125" />
 </a>
 
 # LingualDub
