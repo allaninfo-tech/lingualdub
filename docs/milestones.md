@@ -54,102 +54,102 @@ has been designed must be tested. Every system that has been described must exis
 
 ### 0.1 — Test suite for core abstractions
 
-- [ ] Tests for the Language object: required field validation, edge cases
-- [ ] Tests for the Resource object: field validation, consent enforcement logic, all resource kind values
-- [ ] Tests for the Segment object: timing guards (start ≥ 0, end ≥ start), duration calculation
-- [ ] Tests for the Result object: all status transitions (mark_partial, mark_degraded, mark_failed), is_usable, warning accumulation
-- [ ] Tests for the Component base: capability compatibility checking, language support checking, default degrade raises NotImplementedError
-- [ ] Tests for the Pipeline: empty stage guard, empty source language guard, assembly-time capability mismatch detection, stage names property
-- [ ] Mock components (return hardcoded Results, no ML) created as shared test fixtures
-- [ ] All tests pass
+- [x] Tests for the Language object: required field validation, edge cases
+- [x] Tests for the Resource object: field validation, consent enforcement logic, all resource kind values
+- [x] Tests for the Segment object: timing guards (start ≥ 0, end ≥ start), duration calculation
+- [x] Tests for the Result object: all status transitions (mark_partial, mark_degraded, mark_failed), is_usable, warning accumulation
+- [x] Tests for the Component base: capability compatibility checking, language support checking, default degrade raises NotImplementedError
+- [x] Tests for the Pipeline: empty stage guard, empty source language guard, assembly-time capability mismatch detection, stage names property
+- [x] Mock components (return hardcoded Results, no ML) created as shared test fixtures
+- [x] All tests pass
 
 ---
 
 ### 0.2 — Test suite for the registry
 
-- [ ] Register and resolve a single entry round-trip
-- [ ] Resolve by exact version
-- [ ] Resolve with no match raises a clear registry error
-- [ ] NAMESPACED conflict policy: both registrations are kept
-- [ ] HIGHEST_VERSION conflict policy: the higher version wins
-- [ ] EXPLICIT conflict policy: raises an error on collision
-- [ ] List returns sorted results
+- [x] Register and resolve a single entry round-trip
+- [x] Resolve by exact version
+- [x] Resolve with no match raises a clear registry error
+- [x] NAMESPACED conflict policy: both registrations are kept
+- [x] HIGHEST_VERSION conflict policy: the higher version wins
+- [x] EXPLICIT conflict policy: raises an error on collision
+- [x] List returns sorted results
 - [ ] All tests pass
 
 ---
 
 ### 0.3 — Test suite for the pipeline executor
 
-- [ ] ABORT failure mode: executor raises a pipeline execution error and marks result FAILED
-- [ ] SKIP failure mode: result is marked PARTIAL and execution continues with remaining stages
-- [ ] DEGRADE failure mode (component has a degrade path): result is marked DEGRADED
-- [ ] DEGRADE failure mode (no degrade path defined): falls back to PARTIAL behaviour
-- [ ] Multi-stage pipeline where only one stage fails: other stages still run
-- [ ] Provenance set by the executor is not lost when a stage returns its own Result — provenance merging is explicitly tested
+- [x] ABORT failure mode: executor raises a pipeline execution error and marks result FAILED
+- [x] SKIP failure mode: result is marked PARTIAL and execution continues with remaining stages
+- [x] DEGRADE failure mode (component has a degrade path): result is marked DEGRADED
+- [x] DEGRADE failure mode (no degrade path defined): falls back to PARTIAL behaviour
+- [x] Multi-stage pipeline where only one stage fails: other stages still run
+- [x] Provenance set by the executor is not lost when a stage returns its own Result — provenance merging is explicitly tested
 - [ ] All tests pass
 
 ---
 
 ### 0.4 — Fix the executor provenance-merge bug
 
-- [ ] The current behaviour is identified: the executor creates an initial Result with provenance, but the first stage that returns its own Result silently replaces it, discarding the executor's provenance
-- [ ] A provenance-merging strategy is chosen and documented
-- [ ] The fix is implemented
-- [ ] A test proves provenance set before the stage loop is still present in the final Result
+- [x] The current behaviour is identified: the executor creates an initial Result with provenance, but the first stage that returns its own Result silently replaces it, discarding the executor's provenance
+- [x] A provenance-merging strategy is chosen and documented
+- [x] The fix is implemented
+- [x] A test proves provenance set before the stage loop is still present in the final Result
 
 ---
 
 ### 0.5 — Extension manifest system
 
-- [ ] A manifest format is designed and documented (JSON file, Python entry points, or equivalent)
-- [ ] A manifest scanner is implemented: discovers installed extensions, parses manifests, calls register() for each declared entry
-- [ ] A malformed or invalid manifest raises a clear error identifying the problem
-- [ ] Built-in languages and components are registered through the manifest path rather than by hardcoded imports
-- [ ] Manifest format is documented so external contributors know how to ship extensions
-- [ ] Scanner tests pass: valid manifest registers correctly; invalid manifest raises a clear error
+- [x] A manifest format is designed and documented (JSON file, Python entry points, or equivalent)
+- [x] A manifest scanner is implemented: discovers installed extensions, parses manifests, calls register() for each declared entry
+- [x] A malformed or invalid manifest raises a clear error identifying the problem
+- [x] Built-in languages and components are registered through the manifest path rather than by hardcoded imports
+- [x] Manifest format is documented so external contributors know how to ship extensions
+- [x] Scanner tests pass: valid manifest registers correctly; invalid manifest raises a clear error
 
 ---
 
 ### 0.6 — Serialization for all core objects
 
-- [ ] A serialization strategy is chosen (Pydantic, dataclasses with to_dict/from_dict, or equivalent)
-- [ ] Every core object (Language, Resource, Segment, Result, Pipeline) can serialize to a JSON-compatible representation
-- [ ] Every core object can deserialize from that same representation back to an equal object
-- [ ] Round-trip tests pass for every core type: object → serialize → deserialize → assert equal
-- [ ] A pipeline configuration can be saved to disk and reloaded into a live Pipeline object
+- [x] A serialization strategy is chosen (Pydantic, dataclasses with to_dict/from_dict, or equivalent)
+- [x] Every core object (Language, Resource, Segment, Result, Pipeline) can serialize to a JSON-compatible representation
+- [x] Every core object can deserialize from that same representation back to an equal object
+- [x] Round-trip tests pass for every core type: object → serialize → deserialize → assert equal
+- [x] A pipeline configuration can be saved to disk and reloaded into a live Pipeline object
 
 ---
 
 ### 0.7 — Resource manager
 
-- [ ] A ResourceManager utility is implemented
-- [ ] Given a resource identifier and URL, it downloads the resource to a local cache
-- [ ] Default cache location is predictable and follows platform conventions
-- [ ] The cache location can be overridden via an environment variable
-- [ ] On a cache hit (file already exists and checksum matches), no download is performed
-- [ ] SHA256 checksum is verified after every download; a mismatch raises a clear checksum error
-- [ ] If a required resource is missing, a clear error is raised naming the resource and its expected location
-- [ ] Tests pass without real network calls (use mocking in CI)
+- [x] A ResourceManager utility is implemented
+- [x] Given a resource identifier and URL, it downloads the resource to a local cache
+- [x] Default cache location is predictable and follows platform conventions
+- [x] The cache location can be overridden via an environment variable
+- [x] On a cache hit (file already exists and checksum matches), no download is performed
+- [x] SHA256 checksum is verified after every download; a mismatch raises a clear checksum error
+- [x] If a required resource is missing, a clear error is raised naming the resource and its expected location
+- [x] Tests pass without real network calls (use mocking in CI)
 
 ---
 
 ### 0.8 — Continuous integration
 
-- [ ] A CI workflow runs on every push and every pull request to the main branch
-- [ ] The workflow installs dependencies from a clean environment and runs the full test suite
-- [ ] The workflow reports test coverage
-- [ ] Coverage on the core package is ≥ 80 %
-- [ ] A failing test causes the CI run to fail and blocks merging
+- [x] A CI workflow runs on every push and every pull request to the main branch
+- [x] The workflow installs dependencies from a clean environment and runs the full test suite
+- [x] The workflow reports test coverage
+- [x] Coverage on the core package is ≥ 80 %
+- [x] A failing test causes the CI run to fail and blocks merging
 
 ---
 
 ### M0 — Done When
 
-- [ ] All sub-tasks 0.1 through 0.8 are complete
-- [ ] `pytest` passes with ≥ 80 % coverage on the core package
-- [ ] CI passes on every push
-- [ ] All core objects round-trip through serialization without data loss
-- [ ] Extension manifests are discovered and loaded without hardcoded imports
+- [x] All sub-tasks 0.1 through 0.8 are complete
+- [x] `pytest` passes with ≥ 80 % coverage on the core package
+- [x] CI passes on every push
+- [x] All core objects round-trip through serialization without data loss
+- [x] Extension manifests are discovered and loaded without hardcoded imports
 
 ---
 

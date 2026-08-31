@@ -86,3 +86,19 @@ def test_registry_repr():
     r = repr(reg)
     assert "namespaced" in r
     assert "asr" in r
+
+
+def test_registry_conflict_highest_version_wins():
+    reg = Registry(conflict_policy=ConflictPolicy.HIGHEST_VERSION)
+    reg.register("component", "asr", str, version="1.0.0")
+    reg.register("component", "asr", int, version="2.0.0")
+    # int (2.0.0) is higher, should be returned
+    assert reg.resolve("component", "asr") is int
+
+
+def test_registry_conflict_highest_version_lower_ignored():
+    reg = Registry(conflict_policy=ConflictPolicy.HIGHEST_VERSION)
+    reg.register("component", "asr", int, version="2.0.0")
+    reg.register("component", "asr", str, version="1.0.0")
+    # str (1.0.0) is lower; int (2.0.0) must stay
+    assert reg.resolve("component", "asr") is int

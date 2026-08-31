@@ -13,6 +13,14 @@ from enum import Enum
 from typing import Any, Dict, List, Optional, Tuple
 
 
+def _version_tuple(version_str: str) -> tuple:
+    """Convert a version string like '1.2.3' to a comparable tuple of ints."""
+    try:
+        return tuple(int(x) for x in version_str.split("."))
+    except ValueError:
+        return (0,)
+
+
 class ConflictPolicy(str, Enum):
     """
     Policy governing resolution when two extensions register the same (kind, key).
@@ -80,6 +88,15 @@ class Registry:
                 f"Conflict: ({kind!r}, {key!r}) is already registered and "
                 f"conflict_policy is EXPLICIT. Use an override to replace it."
             )
+
+        if entries and self.conflict_policy == ConflictPolicy.HIGHEST_VERSION:
+            # Keep only the highest version; replace existing only if new version is strictly higher.
+            existing_version = entries[-1][0]
+            if _version_tuple(version) > _version_tuple(existing_version):
+                entries.clear()
+            else:
+                # New version is not higher — discard it, keep existing.
+                return
 
         entries.append((version, impl, metadata))
 

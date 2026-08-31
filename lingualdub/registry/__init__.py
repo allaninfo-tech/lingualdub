@@ -12,5 +12,6 @@ rather than implicit precedence.
 """
 
 from lingualdub.registry.registry import Registry
+from lingualdub.registry.manifest import ManifestScanner, ManifestError
 
-__all__ = ["Registry"]
+__all__ = ["Registry", "ManifestScanner", "ManifestError"]
