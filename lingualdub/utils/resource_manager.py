@@ -15,6 +15,10 @@ from pathlib import Path
 from typing import Optional
 
 
+import threading
+import uuid
+
+
 DEFAULT_CACHE_DIR = Path.home() / ".cache" / "lingualdub"
 ENV_CACHE_DIR = "LINGUALDUB_CACHE_DIR"
 
@@ -34,19 +38,14 @@ class ResourceManager:
     The cache directory defaults to ~/.cache/lingualdub/ and can be overridden
     by setting the LINGUALDUB_CACHE_DIR environment variable.
 
-    Usage:
-        manager = ResourceManager()
-        path = manager.get(
-            resource_id="whisper-small",
-            version="1.0.0",
-            url="https://example.com/model.bin",
-            checksum="abc123...",
-        )
+    Thread-safe: uses atomic file operations and internal locking to prevent
+    race conditions during concurrent downloads.
     """
 
     def __init__(self, cache_dir: Optional[Path] = None) -> None:
         env_dir = os.environ.get(ENV_CACHE_DIR)
         self.cache_dir: Path = Path(env_dir) if env_dir else (cache_dir or DEFAULT_CACHE_DIR)
+        self._lock = threading.Lock()
 
     def get(
         self,
@@ -76,20 +75,37 @@ class ResourceManager:
         filename = filename or url.split("/")[-1]
         local_path = self.cache_dir / resource_id / version / filename
 
+        # Fast path: already cached and verified
         if local_path.exists():
             self._verify(local_path, checksum)
             return local_path
 
-        local_path.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            urllib.request.urlretrieve(url, local_path)
-        except Exception as exc:
-            raise ResourceNotFoundError(
-                f"Could not download resource {resource_id!r} from {url!r}: {exc}"
-            ) from exc
+        with self._lock:
+            # Double-check inside lock
+            if local_path.exists():
+                self._verify(local_path, checksum)
+                return local_path
 
-        self._verify(local_path, checksum)
+            local_path.parent.mkdir(parents=True, exist_ok=True)
+            temp_path = local_path.parent / f".tmp_{uuid.uuid4().hex}_{filename}"
+
+            try:
+                urllib.request.urlretrieve(url, temp_path)
+                self._verify(temp_path, checksum)
+                os.replace(temp_path, local_path)
+            except ChecksumError:
+                if temp_path.exists():
+                    temp_path.unlink()
+                raise
+            except Exception as exc:
+                if temp_path.exists():
+                    temp_path.unlink()
+                raise ResourceNotFoundError(
+                    f"Could not download resource {resource_id!r} from {url!r}: {exc}"
+                ) from exc
+
         return local_path
+
 
     def _verify(self, path: Path, expected: str) -> None:
         """Verify the SHA256 checksum of a local file."""
