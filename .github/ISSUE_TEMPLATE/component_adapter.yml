@@ -1,0 +1,39 @@
+name: Component or Language Adapter Proposal
+description: Propose or contribute a new model adapter (ASR/TTS/MT), dataset resource, or language profile.
+labels: ["component", "ecosystem"]
+body:
+  - type: input
+    id: target_language
+    attributes:
+      label: Target Language(s) / ISO Code(s)
+      placeholder: "Luganda (lug), Runyankole (nyn), Swahili (swh)"
+    validations:
+      required: true
+  - type: dropdown
+    id: component_type
+    attributes:
+      label: Component Task Type
+      options:
+        - ASR (Speech Recognition)
+        - TTS (Speech Synthesis)
+        - Translation (Machine Translation)
+        - Alignment / Temporal Duration
+        - Speaker / Voice Transfer
+        - Code-Switch Detection
+        - Evaluation Metric / Dataset
+        - Language Profile Audit
+    validations:
+      required: true
+  - type: textarea
+    id: underlying_model_data
+    attributes:
+      label: Underlying Model / Dataset Source & License
+      description: Where is the model or data hosted (e.g. HuggingFace, Common Voice, OpenSLR) and under what license?
+      placeholder: "Model: MMS-1B (CC-BY-NC 4.0), Dataset: Common Voice Luganda v17.0"
+    validations:
+      required: true
+  - type: textarea
+    id: integration_plan
+    attributes:
+      label: Integration & Manifest Plan
+      description: How will this component declare required/provided capability tokens in `lingualdub.manifest.json`?

@@ -1,0 +1,50 @@
+name: Bug Report
+description: Report a bug, crash, or unexpected behavior in LingualDub.
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please ensure you have searched existing issues before creating a new one.
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: When running PipelineExecutor with ..., the following error occurs ...
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction Code / Steps
+      description: Provide a minimal, reproducible code example or exact command steps.
+      placeholder: |
+        import lingualdub as ld
+        ...
+      render: python
+    validations:
+      required: true
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Error Traceback / Logs
+      description: Paste the full traceback or error logs if available.
+      render: shell
+  - type: input
+    id: environment
+    attributes:
+      label: Environment Info
+      description: OS version, Python version, PyTorch/CUDA if applicable.
+      placeholder: "Ubuntu 22.04, Python 3.11.8, LingualDub 0.1.0-dev"
+    validations:
+      required: true
+  - type: checkboxes
+    id: checkboxes
+    attributes:
+      label: Confirmation
+      options:
+        - label: I have verified that this issue has not already been reported.
+          required: true
+        - label: I have tested with the latest commit on `main`.
+          required: false

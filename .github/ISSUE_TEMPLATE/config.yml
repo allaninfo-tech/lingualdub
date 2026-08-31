@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "Ask a Question / Community Discussions"
+    url: "https://github.com/allaninfo-tech/lingualdub/discussions"
+    about: "Please ask questions, discuss research directions, or get support in GitHub Discussions."
+  - name: "Security Issue"
+    url: "https://github.com/allaninfo-tech/lingualdub/security/advisories/new"
+    about: "Please report security vulnerabilities privately."
