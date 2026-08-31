@@ -91,40 +91,90 @@ cd lingualdub
 pip install -e ".[dev]"
 ```
 
+For GPU models (Whisper, Sunbird, NLLB, MMS-TTS, metrics):
+```bash
+pip install -e ".[all]"
+```
+
+---
+
+## The 3-Tier Workflow
+
+LingualDub uses **GitHub as the bridge** between local development and cloud GPU execution (e.g. Google Colab):
+
+```text
+       YOUR MACHINE                     GITHUB                     COLAB / GPU SERVER
+   ┌───────────────────┐        ┌───────────────────┐        ┌───────────────────┐
+   │ Fast Unit Tests   │  push  │ Versioned Code,   │ clone  │ Real Heavy Models │
+   │ Deterministic     │ ─────► │ Configs & Result  │ ─────► │ Sunbird, Whisper, │
+   │ Local Integration │        │ Envelopes (JSON)  │        │ NLLB, MMS-TTS     │
+   └───────────────────┘        └─────────┬─────────┘        └─────────┬─────────┘
+             ▲                            │                            │
+             │            pull            │         push results       │
+             └────────────────────────────┴────────────────────────────┘
+```
+
+1. **Level 1 (Local Unit Tests)**: Test core objects (`Language`, `Resource`, `Pipeline`, `Registry`) without GPUs or heavy downloads (`pytest`).
+2. **Level 2 (Local Integration)**: Run full end-to-end pipelines locally with zero-dependency dummy adapters (`dummy_asr`, `dummy_translator`, `dummy_tts`) in under 0.1s.
+3. **Level 3 (Remote Research Experiments)**: Execute real neural models (Sunbird AI, Whisper Large v3, NLLB, Meta MMS-TTS) on Colab GPUs via declarative configs and evaluate with WER, CER, and chrF.
+
+---
+
+### Running via CLI
+
+```bash
+# 1. Inspect registered components and languages
+lingualdub registry list
+
+# 2. Run a local pipeline test
+lingualdub experiment run configs/local_mock_pipeline.yaml \
+  --sample-text "Oli otya nnyabo" \
+  --output-dir experiments/local_test
+
+# 3. Run a real Sunbird GPU experiment on Colab
+lingualdub experiment run configs/luganda_english_baseline.yaml \
+  --input-audio data/samples/sample_lug.wav \
+  --output-dir experiments/luganda_dubbing/baseline_v1
+
+# 4. Compare metric deltas across two runs
+lingualdub compare \
+  --baseline experiments/luganda_dubbing/baseline_v1/results.json \
+  --candidate experiments/luganda_dubbing/run_v2/results.json
+```
+
+---
+
 ### Python API Example
 
 ```python
 import lingualdub as ld
 
-# 1. Access or define a language profile
-luganda = ld.Language(
-    code="lug",
-    name="Luganda",
-    family="Bantu (Great Lakes)",
-    resource_profile="speech-moderate / text-moderate",
-    supported_tasks=["asr", "translation", "tts"],
-)
-
-# 2. Register components in the registry
+# 1. Initialize registry and load declarative pipeline config
 registry = ld.Registry(conflict_policy=ld.ConflictPolicy.HIGHEST_VERSION)
+scanner = ld.ManifestScanner(registry)
+scanner.scan()
 
-# 3. Define or load a pipeline (e.g. ASR -> Translation -> TTS)
-# Pipelines perform assembly-time compatibility checks automatically:
-pipeline = ld.Pipeline(
-    stages=[asr_component, translation_component, tts_component],
-    source_language="lug",
-    target_language="eng",
-    per_segment_language=True,
+loader = ld.ConfigLoader(registry)
+pipeline = loader.load_file("configs/luganda_english_baseline.yaml")
+
+# 2. Execute pipeline with automatic capability validation & fault tolerance
+executor = ld.PipelineExecutor(pipeline)
+audio_resource = ld.Resource(
+    id="lug_test_sample",
+    kind=ld.ResourceKind.SPEECH,
+    language="lug",
+    version="1.0.0",
+    path="data/samples/sample_lug.wav",
+    provenance={"consent_basis": "research_evaluation"},
 )
 
-# 4. Execute the pipeline with graceful failure handling
-executor = ld.PipelineExecutor(pipeline)
 result = executor.run(audio_resource)
 
-# 5. Inspect structured results and provenance
-print(f"Status: {result.status}")
-print(f"Segments: {len(result.segments)}")
-print(f"Provenance Run ID: {result.provenance.get('run_id')}")
+# 3. Inspect structured results and provenance
+print(f"Status: {result.status.value.upper()}")
+for seg in result.segments:
+    print(f"[{seg.start:.2f}s -> {seg.end:.2f}s] ({seg.language}): {seg.text}")
+print(f"Synthesised Audio Artifacts: {result.artifacts}")
 ```
 
 ---
