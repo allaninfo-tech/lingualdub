@@ -156,13 +156,11 @@ class SunbirdASRComponent(ASRComponent):
             return self._run_api(audio_path)
 
         pipe = self._get_hf_pipeline()
-        # Pass language and task explicitly via generate_kwargs to avoid deprecated
-        # generation_config warning in newer transformers versions.
-        generate_kwargs = {}
-        if self.language:
-            generate_kwargs["language"] = self.language
-        generate_kwargs["task"] = "transcribe"
-        out = pipe(audio_path, generate_kwargs=generate_kwargs)
+        # Do NOT pass language= here for Sunbird fine-tuned models — they have
+        # language already baked into their generation config. Passing "lug" would
+        # hit the base Whisper tokenizer which only knows full language names like
+        # "english", "swahili" etc. Let the model's own config handle language.
+        out = pipe(audio_path, generate_kwargs={"task": "transcribe"})
 
         segments: List[Segment] = []
         chunks = out.get("chunks", [])
