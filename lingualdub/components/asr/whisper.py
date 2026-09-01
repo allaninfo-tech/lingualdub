@@ -66,12 +66,14 @@ class WhisperASRComponent(ASRComponent):
             if device is None:
                 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-            logger.info("Loading ASR model %r on device %s", self.model_name_or_path, device)
+            logger.info("Loading ASR model %r on device %r", self.model_name_or_path, device)
             self._pipeline = pipeline(
                 "automatic-speech-recognition",
                 model=self.model_name_or_path,
                 device=device,
-                return_timestamps=self.return_timestamps,
+                # NOTE: return_timestamps="word" causes TypeError with newer transformers/Python 3.13.
+                # Using True (chunk-level) which is stable across all versions.
+                return_timestamps=True,
             )
         return self._pipeline
 

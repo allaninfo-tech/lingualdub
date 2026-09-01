@@ -75,11 +75,13 @@ class SunbirdASRComponent(ASRComponent):
 
             logger.info("Loading Sunbird ASR model %r on device %s", self.model_name_or_path, device)
             try:
+                # NOTE: return_timestamps="word" causes TypeError with newer transformers/Python.
+                # Use True (chunk-level timestamps) which is stable across all versions.
                 self._pipeline = pipeline(
                     "automatic-speech-recognition",
                     model=self.model_name_or_path,
                     device=device,
-                    return_timestamps="word",
+                    return_timestamps=True,
                 )
             except Exception as exc:
                 logger.warning(
@@ -90,7 +92,7 @@ class SunbirdASRComponent(ASRComponent):
                     "automatic-speech-recognition",
                     model="openai/whisper-small",
                     device=device,
-                    return_timestamps="word",
+                    return_timestamps=True,
                 )
         return self._pipeline
 
@@ -154,7 +156,13 @@ class SunbirdASRComponent(ASRComponent):
             return self._run_api(audio_path)
 
         pipe = self._get_hf_pipeline()
-        out = pipe(audio_path)
+        # Pass language and task explicitly via generate_kwargs to avoid deprecated
+        # generation_config warning in newer transformers versions.
+        generate_kwargs = {}
+        if self.language:
+            generate_kwargs["language"] = self.language
+        generate_kwargs["task"] = "transcribe"
+        out = pipe(audio_path, generate_kwargs=generate_kwargs)
 
         segments: List[Segment] = []
         chunks = out.get("chunks", [])
