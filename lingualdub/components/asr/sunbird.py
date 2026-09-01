@@ -83,6 +83,15 @@ class SunbirdASRComponent(ASRComponent):
                     device=device,
                     return_timestamps=True,
                 )
+                
+                # FIX: Sunbird fine-tuned whisper models often have eos_token_id as a list
+                # in their generation_config.json, which breaks WhisperTimeStampLogitsProcessor 
+                # (TypeError: slice indices must be integers). 
+                gen_config = getattr(self._pipeline.model, "generation_config", None)
+                if gen_config is not None and isinstance(gen_config.eos_token_id, list):
+                    if len(gen_config.eos_token_id) > 0:
+                        gen_config.eos_token_id = gen_config.eos_token_id[0]
+                        
             except Exception as exc:
                 logger.warning(
                     "Failed to load %r (%s). Falling back to 'openai/whisper-small'.",

@@ -75,6 +75,14 @@ class WhisperASRComponent(ASRComponent):
                 # Using True (chunk-level) which is stable across all versions.
                 return_timestamps=True,
             )
+            
+            # FIX: Some fine-tuned whisper models have eos_token_id as a list
+            # which breaks WhisperTimeStampLogitsProcessor (TypeError: slice indices must be integers)
+            gen_config = getattr(self._pipeline.model, "generation_config", None)
+            if gen_config is not None and isinstance(gen_config.eos_token_id, list):
+                if len(gen_config.eos_token_id) > 0:
+                    gen_config.eos_token_id = gen_config.eos_token_id[0]
+                    
         return self._pipeline
 
     def run(self, input: Union[Result, Resource]) -> Result:
