@@ -100,11 +100,28 @@ class MMSTTSComponent(TTSComponent):
             )
 
         self._load_model()
-        import scipy.io.wavfile
-        import torch
+        try:
+            import torch
+        except ImportError:
+            torch = None
+
+        def _write_wav(dest: Path, rate: int, data: Any) -> None:
+            try:
+                import scipy.io.wavfile
+                scipy.io.wavfile.write(str(dest), rate=rate, data=data)
+            except ImportError:
+                import struct
+                import wave
+                with wave.open(str(dest), "wb") as wf:
+                    wf.setnchannels(1)
+                    wf.setsampwidth(2)
+                    wf.setframerate(rate)
+                    int16_data = [int(max(-1.0, min(1.0, float(x))) * 32767.0) for x in data]
+                    wf.writeframes(struct.pack(f"<{len(int16_data)}h", *int16_data))
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
         artifacts = list(input.artifacts)
+        warnings = list(input.warnings)
 
         for idx, seg in enumerate(input.segments):
             text = (seg.text or "").strip()
@@ -118,22 +135,26 @@ class MMSTTSComponent(TTSComponent):
 
                 inputs = {k: v.to(self._model.device) for k, v in inputs.items()}
 
-                with torch.no_grad():
+                if torch is not None:
+                    with torch.no_grad():
+                        output = self._model(**inputs).waveform
+                else:
                     output = self._model(**inputs).waveform
 
                 waveform = output.squeeze().cpu().numpy()
                 sample_rate = self._model.config.sampling_rate
                 out_file = self.output_dir / f"mms_{self.language}_seg_{idx}_{self.version}.wav"
-                scipy.io.wavfile.write(str(out_file), rate=sample_rate, data=waveform)
+                _write_wav(out_file, sample_rate, waveform)
                 artifacts.append(str(out_file))
             except Exception as exc:
                 logger.warning("MMS-TTS synthesis failed on segment #%d (%r): %s", idx, text, exc)
+                warnings.append(f"MMS-TTS synthesis failed on segment #{idx}: {exc}")
 
         return Result(
             segments=list(input.segments),
             source_language=input.source_language,
             target_language=input.target_language,
-            warnings=list(input.warnings),
+            warnings=warnings,
             provenance=dict(input.provenance),
             artifacts=artifacts,
             metadata={

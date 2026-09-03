@@ -162,7 +162,18 @@ class SunbirdTranslationComponent(TranslationComponent):
                 if tid and tid != self._tokenizer.unk_token_id:
                     forced_bos = tid
 
-            with torch.no_grad():
+            try:
+                import torch
+            except ImportError:
+                torch = None
+
+            if torch is not None:
+                with torch.no_grad():
+                    if forced_bos is not None:
+                        generated = self._model.generate(**inputs, forced_bos_token_id=forced_bos, max_length=512)
+                    else:
+                        generated = self._model.generate(**inputs, max_length=512)
+            else:
                 if forced_bos is not None:
                     generated = self._model.generate(**inputs, forced_bos_token_id=forced_bos, max_length=512)
                 else:

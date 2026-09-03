@@ -33,6 +33,7 @@ def test_full_local_dubbing_pipeline_e2e(tmp_path):
         kind=ResourceKind.SPEECH,
         language="lug",
         version="1.0.0",
+        path="data/samples/sample_lug.wav",
         provenance={"consent_basis": "test_consent"},
     )
 

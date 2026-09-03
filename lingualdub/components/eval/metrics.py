@@ -97,6 +97,60 @@ def compute_chrf(hypothesis: str, reference: str, n: int = 6, beta: float = 2.0)
     return (sum(f_scores) / len(f_scores) * 100.0) if f_scores else 0.0
 
 
+def compute_bleu(hypothesis: str, reference: str, max_n: int = 4) -> float:
+    """Compute sentence-level BLEU score (0.0 to 100.0)."""
+    try:
+        import sacrebleu
+        score = sacrebleu.sentence_bleu(hypothesis.strip(), [reference.strip()]).score
+        return round(float(score), 2)
+    except Exception:
+        pass
+
+    # Pure-Python BLEU implementation
+    hyp_tokens = hypothesis.strip().lower().split()
+    ref_tokens = reference.strip().lower().split()
+
+    if not hyp_tokens or not ref_tokens:
+        return 100.0 if not hyp_tokens and not ref_tokens else 0.0
+
+    # Brevity penalty
+    c = len(hyp_tokens)
+    r = len(ref_tokens)
+    bp = math.exp(min(0, 1 - r / c)) if c > 0 else 0.0
+
+    precisions = []
+    for n in range(1, max_n + 1):
+        if len(hyp_tokens) < n or len(ref_tokens) < n:
+            break
+        hyp_ngrams: Dict[Tuple[str, ...], int] = {}
+        for i in range(len(hyp_tokens) - n + 1):
+            gram = tuple(hyp_tokens[i : i + n])
+            hyp_ngrams[gram] = hyp_ngrams.get(gram, 0) + 1
+
+        ref_ngrams: Dict[Tuple[str, ...], int] = {}
+        for i in range(len(ref_tokens) - n + 1):
+            gram = tuple(ref_tokens[i : i + n])
+            ref_ngrams[gram] = ref_ngrams.get(gram, 0) + 1
+
+        overlap = sum(min(count, ref_ngrams.get(gram, 0)) for gram, count in hyp_ngrams.items())
+        total = sum(hyp_ngrams.values())
+        if total > 0 and overlap > 0:
+            precisions.append(overlap / total)
+        else:
+            precisions.append(0.0)
+
+    if not precisions or min(precisions) == 0:
+        smoothed = [max(p, 1e-4) for p in precisions] if any(p > 0 for p in precisions) else []
+        if not smoothed:
+            return 0.0
+        log_prec = sum((1.0 / len(smoothed)) * math.log(p) for p in smoothed)
+    else:
+        log_prec = sum((1.0 / len(precisions)) * math.log(p) for p in precisions)
+
+    bleu = bp * math.exp(log_prec) * 100.0
+    return round(min(100.0, max(0.0, bleu)), 2)
+
+
 class WEREvaluator(EvaluatorComponent):
     """Evaluates Word Error Rate and Character Error Rate on ASR transcription results."""
 
@@ -109,18 +163,19 @@ class WEREvaluator(EvaluatorComponent):
     on_failure: FailureMode = FailureMode.SKIP
 
     def run(self, input: Union[Result, Resource]) -> Result:
-        # If running stand-alone without reference, return input
         if isinstance(input, Result):
             return input
         return Result()
 
-    def evaluate_pair(self, hypothesis: Result, reference: Union[Result, str]) -> Result:
+    def evaluate_pair(self, hypothesis: Result, reference: Union[Result, Resource, str]) -> Result:
         hyp_text = " ".join(s.text for s in hypothesis.segments if s.text).strip()
-        ref_text = (
-            " ".join(s.text for s in reference.segments if s.text).strip()
-            if isinstance(reference, Result)
-            else str(reference).strip()
-        )
+        if isinstance(reference, Result):
+            ref_text = " ".join(s.text for s in reference.segments if s.text).strip()
+        elif isinstance(reference, Resource):
+            samples = reference.metadata.get("samples", [])
+            ref_text = samples[0]["reference_text"] if samples else ""
+        else:
+            ref_text = str(reference).strip()
 
         wer = compute_wer(hyp_text, ref_text)
         cer = compute_cer(hyp_text, ref_text)
@@ -132,19 +187,25 @@ class WEREvaluator(EvaluatorComponent):
             "hypothesis_text": hyp_text,
         }
 
-        res = Result(
+        prov = dict(hypothesis.provenance)
+        prov["evaluator"] = f"{self.name}@{self.version}"
+        if isinstance(reference, (Result, Resource)):
+            if "dataset_version" in reference.provenance:
+                prov["dataset_version"] = reference.provenance["dataset_version"]
+            elif hasattr(reference, "version"):
+                prov["dataset_version"] = reference.version
+            if "evaluation_protocol" in reference.provenance:
+                prov["evaluation_protocol"] = reference.provenance["evaluation_protocol"]
+
+        return Result(
             segments=list(hypothesis.segments),
             source_language=hypothesis.source_language,
             target_language=hypothesis.target_language,
             warnings=list(hypothesis.warnings),
-            provenance={
-                **hypothesis.provenance,
-                "evaluator": f"{self.name}@{self.version}",
-            },
+            provenance=prov,
             artifacts=list(hypothesis.artifacts),
             metadata={**hypothesis.metadata, "metrics": metrics},
         )
-        return res
 
 
 class TranslationEvaluator(EvaluatorComponent):
@@ -161,35 +222,45 @@ class TranslationEvaluator(EvaluatorComponent):
     def run(self, input: Union[Result, Resource]) -> Result:
         return input if isinstance(input, Result) else Result()
 
-    def evaluate_pair(self, hypothesis: Result, reference: Union[Result, str]) -> Result:
+    def evaluate_pair(self, hypothesis: Result, reference: Union[Result, Resource, str]) -> Result:
         hyp_text = " ".join(s.text for s in hypothesis.segments if s.text).strip()
-        ref_text = (
-            " ".join(s.text for s in reference.segments if s.text).strip()
-            if isinstance(reference, Result)
-            else str(reference).strip()
-        )
+        if isinstance(reference, Result):
+            ref_text = " ".join(s.text for s in reference.segments if s.text).strip()
+        elif isinstance(reference, Resource):
+            pairs = reference.metadata.get("pairs", [])
+            ref_text = pairs[0]["reference_eng"] if pairs else ""
+        else:
+            ref_text = str(reference).strip()
 
         chrf_score = compute_chrf(hyp_text, ref_text)
+        bleu_score = compute_bleu(hyp_text, ref_text)
 
         metrics = {
             "chrf": round(chrf_score, 2),
+            "bleu": round(bleu_score, 2),
             "reference_translation": ref_text,
             "hypothesis_translation": hyp_text,
         }
 
-        res = Result(
+        prov = dict(hypothesis.provenance)
+        prov["evaluator"] = f"{self.name}@{self.version}"
+        if isinstance(reference, (Result, Resource)):
+            if "dataset_version" in reference.provenance:
+                prov["dataset_version"] = reference.provenance["dataset_version"]
+            elif hasattr(reference, "version"):
+                prov["dataset_version"] = reference.version
+            if "evaluation_protocol" in reference.provenance:
+                prov["evaluation_protocol"] = reference.provenance["evaluation_protocol"]
+
+        return Result(
             segments=list(hypothesis.segments),
             source_language=hypothesis.source_language,
             target_language=hypothesis.target_language,
             warnings=list(hypothesis.warnings),
-            provenance={
-                **hypothesis.provenance,
-                "evaluator": f"{self.name}@{self.version}",
-            },
+            provenance=prov,
             artifacts=list(hypothesis.artifacts),
             metadata={**hypothesis.metadata, "metrics": metrics},
         )
-        return res
 
 
 class TemporalAlignmentEvaluator(EvaluatorComponent):

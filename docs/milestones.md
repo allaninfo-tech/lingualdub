@@ -74,7 +74,7 @@ has been designed must be tested. Every system that has been described must exis
 - [x] HIGHEST_VERSION conflict policy: the higher version wins
 - [x] EXPLICIT conflict policy: raises an error on collision
 - [x] List returns sorted results
-- [ ] All tests pass
+- [x] All tests pass
 
 ---
 
@@ -86,7 +86,7 @@ has been designed must be tested. Every system that has been described must exis
 - [x] DEGRADE failure mode (no degrade path defined): falls back to PARTIAL behaviour
 - [x] Multi-stage pipeline where only one stage fails: other stages still run
 - [x] Provenance set by the executor is not lost when a stage returns its own Result — provenance merging is explicitly tested
-- [ ] All tests pass
+- [x] All tests pass
 
 ---
 

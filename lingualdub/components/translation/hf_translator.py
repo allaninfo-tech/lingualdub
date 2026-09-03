@@ -89,7 +89,10 @@ class HuggingFaceTranslationComponent(TranslationComponent):
             )
 
         self._load_model()
-        import torch
+        try:
+            import torch
+        except ImportError:
+            torch = None
 
         src_lang_code = NLLB_CODE_MAP.get(self.source_language, self.source_language)
         tgt_lang_code = NLLB_CODE_MAP.get(self.target_language, self.target_language)
@@ -108,7 +111,17 @@ class HuggingFaceTranslationComponent(TranslationComponent):
         if hasattr(self._tokenizer, "lang_code_to_id") and tgt_lang_code in self._tokenizer.lang_code_to_id:
             forced_bos_token_id = self._tokenizer.lang_code_to_id[tgt_lang_code]
 
-        with torch.no_grad():
+        if torch is not None:
+            with torch.no_grad():
+                if forced_bos_token_id is not None:
+                    generated = self._model.generate(
+                        **inputs,
+                        forced_bos_token_id=forced_bos_token_id,
+                        max_length=self.max_length,
+                    )
+                else:
+                    generated = self._model.generate(**inputs, max_length=self.max_length)
+        else:
             if forced_bos_token_id is not None:
                 generated = self._model.generate(
                     **inputs,

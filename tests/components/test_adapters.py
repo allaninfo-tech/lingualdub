@@ -13,6 +13,7 @@ from lingualdub.components.eval.metrics import (
     compute_wer,
     compute_cer,
     compute_chrf,
+    compute_bleu,
 )
 from lingualdub.core.resource import Resource, ResourceKind
 from lingualdub.core.result import Result, ResultStatus
@@ -107,3 +108,45 @@ def test_evaluators_with_results():
     timing_eval = TemporalAlignmentEvaluator(tolerance_ms=200.0)
     timing_res = timing_eval.run(hyp)
     assert "timing_metrics" in timing_res.metadata
+    assert trans_res.metadata["metrics"]["bleu"] == 100.0
+    assert compute_bleu("hello world", "hello world") == 100.0
+
+
+def test_neural_adapters_contracts_and_fallback(tmp_path):
+    from lingualdub.components.asr.sunbird import SunbirdASRComponent
+    from lingualdub.components.asr.whisper import WhisperASRComponent
+    from lingualdub.components.translation.sunbird import SunbirdTranslationComponent
+    from lingualdub.components.translation.hf_translator import HuggingFaceTranslationComponent
+    from lingualdub.components.tts.mms_tts import MMSTTSComponent
+    from lingualdub.core.component import ComponentTask
+    import pytest
+
+    # Sunbird ASR contract
+    sunbird_asr = SunbirdASRComponent()
+    assert sunbird_asr.task == ComponentTask.ASR
+    assert "lug" in sunbird_asr.supported_languages
+    with pytest.raises(FileNotFoundError):
+        sunbird_asr.run(Resource(id="missing", kind=ResourceKind.SPEECH, language="lug", version="1.0"))
+
+    # Whisper ASR contract
+    whisper_asr = WhisperASRComponent()
+    assert whisper_asr.task == ComponentTask.ASR
+    with pytest.raises(FileNotFoundError):
+        whisper_asr.run(Resource(id="missing", kind=ResourceKind.SPEECH, language="lug", version="1.0"))
+
+    # Sunbird Translator contract
+    sunbird_trans = SunbirdTranslationComponent()
+    assert sunbird_trans.task == ComponentTask.TRANSLATION
+    assert "lug" in sunbird_trans.supported_languages
+
+    # HF Translator contract
+    hf_trans = HuggingFaceTranslationComponent()
+    assert hf_trans.task == ComponentTask.TRANSLATION
+
+    # MMS-TTS contract and degrade path
+    mms_tts = MMSTTSComponent(output_dir=str(tmp_path))
+    assert mms_tts.task == ComponentTask.TTS
+    degraded = mms_tts.degrade(Result(segments=[], source_language="lug", target_language="eng"))
+    assert degraded.status == ResultStatus.DEGRADED
+    assert len(degraded.artifacts) >= 1
+    assert Path(degraded.artifacts[0]).exists()

@@ -139,3 +139,16 @@ def test_scan_empty_directory(tmp_path):
     scanner = ManifestScanner(registry)
     count = scanner.scan(search_paths=[tmp_path])
     assert count == 0
+
+
+def test_scan_discovers_with_empty_string_in_sys_path(monkeypatch, tmp_path):
+    """Ensure scanner finds manifests in current directory when sys.path has ''."""
+    _write_manifest(tmp_path, VALID_MANIFEST)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("sys.path", ["", "/nonexistent/dir"])
+    registry = Registry()
+    scanner = ManifestScanner(registry)
+    count = scanner.scan()
+    assert count == 1
+    assert registry.resolve("component", "pathlib_path") is Path
+

@@ -57,6 +57,14 @@ def compare_runs(
             f"Cannot compare runs: baseline dataset is {base_ds!r} but candidate dataset is {cand_ds!r}."
         )
 
+    base_proto = res_base.provenance.get("evaluation_protocol")
+    cand_proto = res_cand.provenance.get("evaluation_protocol")
+    if base_proto and cand_proto and base_proto != cand_proto:
+        raise ProvenanceMismatchError(
+            f"Cannot compare runs: baseline evaluation protocol is {base_proto!r} "
+            f"but candidate protocol is {cand_proto!r}."
+        )
+
     base_metrics = res_base.metadata.get("metrics", {})
     cand_metrics = res_cand.metadata.get("metrics", {})
 
@@ -80,6 +88,12 @@ def compare_runs(
         b_chrf = float(base_metrics["chrf"])
         c_chrf = float(cand_metrics["chrf"])
         deltas["chrf_delta"] = round(c_chrf - b_chrf, 2)
+
+    # BLEU: higher is better -> candidate - baseline
+    if "bleu" in base_metrics and "bleu" in cand_metrics:
+        b_bleu = float(base_metrics["bleu"])
+        c_bleu = float(cand_metrics["bleu"])
+        deltas["bleu_delta"] = round(c_bleu - b_bleu, 2)
 
     # Timing metrics
     base_timing = res_base.metadata.get("timing_metrics", {})

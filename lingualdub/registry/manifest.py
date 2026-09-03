@@ -173,7 +173,7 @@ class ManifestScanner:
         """
         import sys
 
-        paths = search_paths or [Path(p) for p in sys.path if p]
+        paths = search_paths or [Path(p or ".").resolve() for p in sys.path]
         total = 0
         seen: set = set()  # Deduplicate resolved manifest paths
 
