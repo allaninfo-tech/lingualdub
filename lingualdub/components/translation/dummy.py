@@ -44,16 +44,26 @@ class DummyTranslationComponent(TranslationComponent):
         source_language: str = "lug",
         target_language: str = "eng",
         prefix: str = "[EN] ",
+        custom_dictionary: Optional[Dict[str, str]] = None,
+        default_translation: Optional[str] = None,
         version: str = "1.0.0",
     ) -> None:
         self.source_language = source_language
         self.target_language = target_language
         self.prefix = prefix
+        self.custom_dictionary = custom_dictionary or {}
+        self.default_translation = default_translation
         self.version = version
 
     def _translate_text(self, text: str) -> str:
+        if self.default_translation is not None:
+            return self.default_translation
         clean = text.strip().lower().rstrip(".,!?")
-        # Check longest matching phrases first
+        # Check custom dictionary first
+        for key in sorted(self.custom_dictionary.keys(), key=len, reverse=True):
+            if key in clean:
+                return text.lower().replace(key, self.custom_dictionary[key])
+        # Check longest matching phrases from sample dictionary
         for key in sorted(SAMPLE_DICTIONARY.keys(), key=len, reverse=True):
             if key in clean:
                 return text.lower().replace(key, SAMPLE_DICTIONARY[key])

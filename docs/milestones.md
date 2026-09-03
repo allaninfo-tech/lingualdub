@@ -288,9 +288,9 @@ component versions are directly comparable with a single function call.
 
 ### 2.4 — Evaluation sets registered as resources
 
-- [ ] A Luganda ASR evaluation set is identified and registered as a Resource with version, source, and license recorded in provenance
-- [ ] A Luganda → English parallel evaluation set is identified and registered as a Resource with version, source, and license
-- [ ] Data sources and licenses are documented
+- [x] A Luganda ASR evaluation set is identified and registered as a Resource with version, source, and license recorded in provenance
+- [x] A Luganda → English parallel evaluation set is identified and registered as a Resource with version, source, and license
+- [x] Data sources and licenses are documented
 
 ---
 
@@ -304,19 +304,19 @@ component versions are directly comparable with a single function call.
 
 ### 2.6 — Runyankole resource audit (begin now, do not wait for M8)
 
-- [ ] Available Runyankole speech corpora are surveyed and catalogued
-- [ ] Available Runyankole text data is surveyed and catalogued
-- [ ] The Runyankole language profile is updated to reflect confirmed resources
-- [ ] Confirmed resources are registered with version, source, and license
+- [x] Available Runyankole speech corpora are surveyed and catalogued
+- [x] Available Runyankole text data is surveyed and catalogued
+- [x] The Runyankole language profile is updated to reflect confirmed resources
+- [x] Confirmed resources are registered with version, source, and license
 
 ---
 
 ### M2 — Done When
 
-- [ ] Running the M1 pipeline on the Luganda ASR evaluation set produces a Result with WER and CER in its metadata
-- [ ] Running it twice with different component versions and calling compare_runs() returns a metric delta dict
-- [ ] Both evaluation sets are registered with full provenance
-- [ ] All evaluator tests pass
+- [x] Running the M1 pipeline on the Luganda ASR evaluation set produces a Result with WER and CER in its metadata
+- [x] Running it twice with different component versions and calling compare_runs() returns a metric delta dict
+- [x] Both evaluation sets are registered with full provenance
+- [x] All evaluator tests pass
 
 ---
 
@@ -331,48 +331,48 @@ segment, not inherited from the file or utterance level. Routing is automatic.
 
 ### 3.1 — Language identification at the segment level
 
-- [ ] A component is implemented that takes ASR output with word-level timestamps and assigns a language code to each Segment
-- [ ] A language identification model or signal (from ASR output, fastText LID, or equivalent) is used
-- [ ] The component requires word timestamp capability
-- [ ] The component provides language label capability
-- [ ] The component is registered via manifest
-- [ ] Unit tests confirm: given input with spans in two languages, each output Segment has the correct language code
+- [x] A component is implemented that takes ASR output with word-level timestamps and assigns a language code to each Segment (`DummyCodeSwitchComponent` & `HeuristicLIDComponent`)
+- [x] A language identification model or signal (from ASR output, fastText LID, or equivalent) is used
+- [x] The component requires word timestamp capability
+- [x] The component provides language label capability
+- [x] The component is registered via manifest
+- [x] Unit tests confirm: given input with spans in two languages, each output Segment has the correct language code
 
 ---
 
 ### 3.2 — Per-segment language routing in the executor
 
-- [ ] The executor implements the per_segment_language pipeline flag
-- [ ] When the flag is enabled, each stage is invoked only for segments whose language it declares support for
-- [ ] When a segment's language is not supported by any component in a stage, the failure mode is applied: SKIP marks the segment, ABORT raises a clear error naming the unsupported language
-- [ ] All routing paths are covered by tests
+- [x] The executor implements the per_segment_language pipeline flag
+- [x] When the flag is enabled, each stage is invoked only for segments whose language it declares support for
+- [x] When a segment's language is not supported by any component in a stage, the failure mode is applied: SKIP marks the segment, ABORT raises a clear error naming the unsupported language
+- [x] All routing paths are covered by tests
 
 ---
 
 ### 3.3 — Code-switch evaluation set
 
-- [ ] A collection of utterances containing both Luganda and English spans is assembled
-- [ ] Ground-truth per-segment language labels are recorded
-- [ ] Consent basis is recorded for all voice recordings
-- [ ] The collection is registered as a Resource with version and provenance
+- [x] A collection of utterances containing both Luganda and English spans is assembled (`LUGANDA_ENG_CODESWITCH_EVAL_SET`)
+- [x] Ground-truth per-segment language labels are recorded
+- [x] Consent basis is recorded for all voice recordings
+- [x] The collection is registered as a Resource with version and provenance
 
 ---
 
 ### 3.4 — End-to-end code-switch integration test
 
-- [ ] The full pipeline runs on mixed-language audio: ASR → code-switch detection → per-segment routing → translation → TTS
-- [ ] Luganda segments are translated; English segments are passed through without re-translation
-- [ ] Segment.language matches ground truth on ≥ 80 % of segments
-- [ ] The test passes in CI
+- [x] The full pipeline runs on mixed-language audio: ASR → code-switch detection → per-segment routing → translation → TTS
+- [x] Luganda segments are translated; English segments are passed through without re-translation
+- [x] Segment.language matches ground truth on ≥ 80 % of segments
+- [x] The test passes in CI
 
 ---
 
 ### M3 — Done When
 
-- [ ] A mixed-language audio file produces a Result where every Segment has a language code set correctly
-- [ ] Per-segment routing is tested end-to-end
-- [ ] The integration test passes
-- [ ] No file in the core package was changed to make this work
+- [x] A mixed-language audio file produces a Result where every Segment has a language code set correctly
+- [x] Per-segment routing is tested end-to-end
+- [x] The integration test passes
+- [x] No file in the core package was changed to make this work
 
 ---
 

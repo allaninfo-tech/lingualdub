@@ -1,0 +1,26 @@
+# Declarative pipeline for code-switching dubbing (Milestone 3)
+name: "codeswitch_dubbing_pipeline"
+description: "End-to-end code-switching pipeline routing Luganda to translation and passing English through."
+source_language: "lug"
+target_language: "eng"
+per_segment_language: true
+on_stage_failure: "skip"
+
+stages:
+  - kind: "component"
+    key: "dummy_asr"
+    version: "1.0.0"
+  - kind: "component"
+    key: "heuristic_lid"
+    version: "1.0.0"
+  - kind: "component"
+    key: "dummy_translator"
+    version: "1.0.0"
+  - kind: "component"
+    key: "dummy_tts"
+    version: "1.0.0"
+
+metadata:
+  environment: "local"
+  tier: "level_2_integration"
+  milestone: "M3"

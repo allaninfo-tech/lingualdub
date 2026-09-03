@@ -11,12 +11,13 @@ initial implementation. Non-linear DAG execution is a planned extension.
 
 from __future__ import annotations
 import logging
-from typing import Union
+from typing import List, Optional, Tuple, Union
 
-from lingualdub.core.component import FailureMode
+from lingualdub.core.component import Component, FailureMode
 from lingualdub.core.pipeline import Pipeline
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result, ResultStatus
+from lingualdub.core.segment import Segment
 from lingualdub.utils.provenance import make_provenance
 
 logger = logging.getLogger(__name__)
@@ -87,7 +88,15 @@ class PipelineExecutor:
             logger.info("Running stage: %s (failure_mode=%s)", stage.name, failure_mode.value)
 
             try:
-                current = stage.run(current)
+                if (
+                    self.pipeline.per_segment_language
+                    and isinstance(current, Result)
+                    and current.segments
+                ):
+                    current = self._run_per_segment_stage(stage, current, failure_mode)
+                else:
+                    current = stage.run(current)
+
                 if isinstance(current, Result):
                     # Merge base provenance into stage result; stage keys win on conflict.
                     merged = dict(base_provenance)
@@ -138,3 +147,102 @@ class PipelineExecutor:
                         ) from degrade_exc
 
         return result
+
+    def _run_per_segment_stage(
+        self,
+        stage: Component,
+        current: Result,
+        failure_mode: FailureMode,
+    ) -> Result:
+        """
+        Execute a stage specifically for segments matching its supported languages.
+
+        When per_segment_language is enabled, this selectively routes each segment
+        to the stage if the segment's language is supported by that stage.
+        Unsupported segments are skipped, degraded, or cause an abort based on failure_mode.
+        """
+        stage_langs = getattr(stage, "supported_languages", [])
+        if not stage_langs or "*" in stage_langs:
+            return stage.run(current)
+
+        supported: List[Tuple[int, Segment]] = []
+        unsupported: List[Tuple[int, Segment]] = []
+
+        for idx, seg in enumerate(current.segments):
+            seg_lang = seg.language or current.source_language or self.pipeline.source_language
+            if seg_lang in stage_langs:
+                supported.append((idx, seg))
+            else:
+                unsupported.append((idx, seg))
+
+        if not unsupported:
+            return stage.run(current)
+
+        unsupported_langs = sorted(list(set(
+            (s.language or current.source_language or self.pipeline.source_language)
+            for _, s in unsupported
+        )))
+
+        if failure_mode == FailureMode.ABORT:
+            raise PipelineExecutionError(
+                f"Stage {stage.name!r} does not support segment language(s): {unsupported_langs}"
+            )
+
+        # Mark unsupported segments as skipped
+        for _, seg in unsupported:
+            seg.metadata["skipped_by"] = stage.name
+
+        if not supported:
+            logger.info(
+                "Stage %r skipped all segments (supported=%s, segment_languages=%s)",
+                stage.name,
+                stage_langs,
+                unsupported_langs,
+            )
+            current.mark_partial(
+                f"Stage {stage.name!r} skipped all segments with unsupported language(s): {unsupported_langs}"
+            )
+            return current
+
+        # Create sub-result with only supported segments
+        sub_result = Result(
+            segments=[s for _, s in supported],
+            source_language=current.source_language,
+            target_language=current.target_language,
+            warnings=list(current.warnings),
+            provenance=dict(current.provenance),
+            artifacts=list(current.artifacts),
+            metadata=dict(current.metadata),
+        )
+
+        stage_out = stage.run(sub_result)
+        if not isinstance(stage_out, Result):
+            return current
+
+        # Recombine processed segments and skipped segments
+        combined_segments: List[Segment] = []
+        if len(stage_out.segments) == len(supported):
+            new_segments_map = {orig_idx: stage_out.segments[i] for i, (orig_idx, _) in enumerate(supported)}
+            unsupported_map = {orig_idx: seg for orig_idx, seg in unsupported}
+            for i in range(len(current.segments)):
+                if i in new_segments_map:
+                    combined_segments.append(new_segments_map[i])
+                elif i in unsupported_map:
+                    combined_segments.append(unsupported_map[i])
+        else:
+            combined_segments = sorted(
+                list(stage_out.segments) + [s for _, s in unsupported],
+                key=lambda s: (s.start, s.end),
+            )
+
+        stage_out.segments = combined_segments
+        if failure_mode == FailureMode.DEGRADE:
+            stage_out.mark_degraded(
+                f"Stage {stage.name!r} routed {len(supported)} segments; {len(unsupported)} unsupported segments degraded."
+            )
+        else:
+            stage_out.mark_partial(
+                f"Stage {stage.name!r} routed {len(supported)} segments; skipped {len(unsupported)} segments."
+            )
+        return stage_out
+

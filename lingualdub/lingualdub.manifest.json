@@ -143,6 +143,56 @@
       "metadata": {
         "task": "eval"
       }
+    },
+    {
+      "kind": "component",
+      "key": "dummy_code_switch",
+      "module": "lingualdub.components.code_switch.dummy",
+      "attr": "DummyCodeSwitchComponent",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "code_switch"
+      }
+    },
+    {
+      "kind": "component",
+      "key": "heuristic_lid",
+      "module": "lingualdub.components.code_switch.heuristic",
+      "attr": "HeuristicLIDComponent",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "code_switch"
+      }
+    },
+    {
+      "kind": "resource",
+      "key": "lug_asr_eval_salt_v1",
+      "module": "lingualdub.resources.eval_sets",
+      "attr": "LUGANDA_ASR_EVAL_SET",
+      "version": "1.0.0",
+      "metadata": {
+        "kind": "eval_set"
+      }
+    },
+    {
+      "kind": "resource",
+      "key": "lug_eng_parallel_eval_salt_v1",
+      "module": "lingualdub.resources.eval_sets",
+      "attr": "LUGANDA_ENG_PARALLEL_EVAL_SET",
+      "version": "1.0.0",
+      "metadata": {
+        "kind": "parallel_text"
+      }
+    },
+    {
+      "kind": "resource",
+      "key": "lug_eng_codeswitch_eval_v1",
+      "module": "lingualdub.resources.eval_sets",
+      "attr": "LUGANDA_ENG_CODESWITCH_EVAL_SET",
+      "version": "1.0.0",
+      "metadata": {
+        "kind": "eval_set"
+      }
     }
   ]
 }

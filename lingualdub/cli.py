@@ -73,6 +73,12 @@ def get_default_registry() -> ld.Registry:
     except Exception:
         pass
 
+    # Register code-switch components
+    from lingualdub.components.code_switch.dummy import DummyCodeSwitchComponent
+    from lingualdub.components.code_switch.heuristic import HeuristicLIDComponent
+    registry.register("component", "dummy_code_switch", DummyCodeSwitchComponent, version="1.0.0")
+    registry.register("component", "heuristic_lid", HeuristicLIDComponent, version="1.0.0")
+
     # Register evaluators
     registry.register("component", "wer_evaluator", WEREvaluator, version="1.0.0")
     registry.register("component", "translation_evaluator", TranslationEvaluator, version="1.0.0")
