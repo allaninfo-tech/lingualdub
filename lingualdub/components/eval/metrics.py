@@ -313,3 +313,66 @@ class TemporalAlignmentEvaluator(EvaluatorComponent):
             metadata={**input.metadata, "timing_metrics": metrics},
         )
         return res
+
+    def evaluate_pair(
+        self,
+        hypothesis: Result,
+        reference: Union[Result, "Resource"],
+    ) -> Result:
+        """
+        Compare dubbed segment end times against source segment end times.
+
+        For each paired (dubbed, source) segment by index, computes:
+          abs(dubbed_end - source_end) in milliseconds.
+
+        Returns a Result with:
+          metadata["timing_metrics"]["pct_within_200ms"] — M4 Done When target >= 80.0
+          metadata["timing_metrics"]["mean_duration_error_ms"]
+          provenance["evaluator"] — evaluator version for full provenance tracking
+        """
+        source_segs = reference.segments if isinstance(reference, Result) else []
+        hyp_segs = hypothesis.segments
+
+        paired_count = min(len(hyp_segs), len(source_segs))
+        errors_ms: List[float] = []
+        within_count = 0
+
+        for i in range(paired_count):
+            hyp_end = hyp_segs[i].end
+            src_end = source_segs[i].end
+            err_ms = abs(hyp_end - src_end) * 1000.0
+            errors_ms.append(err_ms)
+            if err_ms <= self.tolerance_ms:
+                within_count += 1
+
+        # Un-paired segments (hypothesis longer than source) count as misses
+        for i in range(paired_count, len(hyp_segs)):
+            errors_ms.append(self.tolerance_ms + 1.0)
+
+        total = len(hyp_segs) if hyp_segs else 1
+        pct_within = (within_count / total) * 100.0 if hyp_segs else 100.0
+        mean_err = sum(errors_ms) / len(errors_ms) if errors_ms else 0.0
+
+        metrics = {
+            "pct_within_200ms": round(pct_within, 2),
+            "mean_duration_error_ms": round(mean_err, 2),
+            "tolerance_ms": self.tolerance_ms,
+            "segments_evaluated": paired_count,
+            "total_dubbed_segments": len(hyp_segs),
+            "total_source_segments": len(source_segs),
+        }
+
+        prov = dict(hypothesis.provenance)
+        prov["evaluator"] = f"{self.name}@{self.version}"
+        if isinstance(reference, Result) and "evaluation_protocol" in reference.provenance:
+            prov["evaluation_protocol"] = reference.provenance["evaluation_protocol"]
+
+        return Result(
+            segments=list(hypothesis.segments),
+            source_language=hypothesis.source_language,
+            target_language=hypothesis.target_language,
+            warnings=list(hypothesis.warnings),
+            provenance=prov,
+            artifacts=list(hypothesis.artifacts),
+            metadata={**hypothesis.metadata, "timing_metrics": metrics},
+        )

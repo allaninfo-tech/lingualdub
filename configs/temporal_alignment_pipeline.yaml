@@ -1,0 +1,30 @@
+# Temporal alignment pipeline for Milestone 4 integration testing.
+# Runs: ASR → ForcedAlignment → Translation → DurationModelling → TTS (with rate control)
+name: "temporal_alignment_pipeline"
+description: "M4 Luganda→English dubbing pipeline with forced alignment and TTS speech-rate control."
+source_language: "lug"
+target_language: "eng"
+per_segment_language: false
+on_stage_failure: "degrade"
+
+stages:
+  - kind: "component"
+    key: "dummy_asr"
+    version: "1.0.0"
+  - kind: "component"
+    key: "dummy_forced_aligner"
+    version: "1.0.0"
+  - kind: "component"
+    key: "dummy_translator"
+    version: "1.0.0"
+  - kind: "component"
+    key: "duration_modeller"
+    version: "1.0.0"
+  - kind: "component"
+    key: "dummy_tts"
+    version: "1.0.0"
+
+metadata:
+  environment: "local"
+  tier: "m4_temporal_alignment"
+  milestone: "4"

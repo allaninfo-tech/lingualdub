@@ -181,3 +181,35 @@ EVAL_RESOURCES: Dict[str, Resource] = {
 def get_evaluation_resource(resource_id: str) -> Optional[Resource]:
     """Retrieve an evaluation resource by its unique identifier."""
     return EVAL_RESOURCES.get(resource_id)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. Dummy Timing Resource (M4.1)
+#    Used by DummyForcedAlignmentComponent to satisfy the ResourceManager
+#    dependency for pronunciation dictionaries / acoustic model resolution.
+#    In production, replace with a real pronunciation dictionary Resource.
+# ─────────────────────────────────────────────────────────────────────────────
+DUMMY_TIMING_RESOURCE = Resource(
+    id="dummy_timing_resource",
+    kind=ResourceKind.CHECKPOINT,
+    language="lug",
+    version="1.0.0",
+    provenance={
+        "source": "LingualDub Offline Dummy Resources",
+        "license": "Apache-2.0",
+        "evaluation_protocol": "DUMMY_ALIGNMENT_PROTOCOL_V1",
+        "dataset_version": "1.0.0",
+        "consent_basis": "synthetic_offline_resource",
+    },
+    quality_flags=["offline_safe", "no_ml_dependency"],
+    compatible_components=["dummy_forced_aligner"],
+    metadata={
+        "description": (
+            "Placeholder timing/pronunciation resource for offline forced alignment. "
+            "Provides character-count-based duration weights for Luganda and English."
+        ),
+        "words_per_second": {"eng": 2.5, "lug": 2.2, "nyn": 2.2, "swa": 2.3},
+    },
+)
+
+EVAL_RESOURCES["dummy_timing_resource"] = DUMMY_TIMING_RESOURCE

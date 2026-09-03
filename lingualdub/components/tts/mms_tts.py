@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, List, Optional, Union
 
-from lingualdub.components.tts.base import TTSComponent
+from lingualdub.components.tts.base import FittingStrategy, TTSComponent
 from lingualdub.core.component import ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result
@@ -38,9 +38,10 @@ class MMSTTSComponent(TTSComponent):
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.TTS
     supported_languages: List[str] = ["eng", "lug", "swa"]
-    requires: List[str] = ["translation"]
+    requires: List[str] = ["translation", "duration_target"]
     provides: List[str] = ["synthesised_audio"]
     on_failure: FailureMode = FailureMode.DEGRADE
+
 
     def __init__(
         self,
@@ -128,6 +129,16 @@ class MMSTTSComponent(TTSComponent):
             if not text:
                 continue
 
+            # Annotate fitting strategy from duration modelling metadata
+            ratio = seg.metadata.get("duration_ratio", 1.0)
+            target_dur = seg.metadata.get("target_duration", seg.duration)
+            if ratio <= 1.35:
+                strategy = FittingStrategy.COMPRESS
+            elif ratio <= 1.75:
+                strategy = FittingStrategy.SPLIT
+            else:
+                strategy = FittingStrategy.SKIP
+
             try:
                 inputs = self._tokenizer(text, return_tensors="pt")
                 if inputs["input_ids"].shape[-1] == 0:
@@ -146,9 +157,13 @@ class MMSTTSComponent(TTSComponent):
                 out_file = self.output_dir / f"mms_{self.language}_seg_{idx}_{self.version}.wav"
                 _write_wav(out_file, sample_rate, waveform)
                 artifacts.append(str(out_file))
+                # Update segment metadata with fitting strategy
+                seg.metadata["fitting_strategy"] = strategy.value
+                seg.metadata["target_duration"] = round(float(target_dur), 4)
             except Exception as exc:
                 logger.warning("MMS-TTS synthesis failed on segment #%d (%r): %s", idx, text, exc)
                 warnings.append(f"MMS-TTS synthesis failed on segment #{idx}: {exc}")
+
 
         return Result(
             segments=list(input.segments),

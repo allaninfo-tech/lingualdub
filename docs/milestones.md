@@ -387,47 +387,48 @@ audiovisual content without constant timing drift.
 
 ### 4.1 — Forced alignment
 
-- [ ] A forced alignment component is implemented using an established aligner
-- [ ] It produces word-level timestamps within each Segment
-- [ ] It requires a transcription capability and emits an aligned timestamps capability
-- [ ] It acquires pronunciation dictionaries and acoustic models via the ResourceManager
-- [ ] It is registered via manifest
-- [ ] Unit tests confirm: word-level timestamps fall within the parent Segment boundaries
+- [x] A forced alignment component is implemented using an established aligner
+- [x] It produces word-level timestamps within each Segment
+- [x] It requires a transcription capability and emits an aligned timestamps capability
+- [x] It acquires pronunciation dictionaries and acoustic models via the ResourceManager
+- [x] It is registered via manifest
+- [x] Unit tests confirm: word-level timestamps fall within the parent Segment boundaries
 
 ---
 
 ### 4.2 — Duration modelling
 
-- [ ] A duration modelling component computes the target duration for each synthesised segment based on source timing and translated character count
-- [ ] Target duration is stored in Segment metadata
-- [ ] It requires translation and aligned timestamp capabilities and provides duration target capability
-- [ ] Unit tests confirm: duration ratios are computed correctly for known inputs
+- [x] A duration modelling component computes the target duration for each synthesised segment based on source timing and translated character count
+- [x] Target duration is stored in Segment metadata
+- [x] It requires translation and aligned timestamp capabilities and provides duration target capability
+- [x] Unit tests confirm: duration ratios are computed correctly for known inputs
 
 ---
 
 ### 4.3 — TTS speech-rate control
 
-- [ ] The TTS component is extended to accept target duration metadata per Segment
-- [ ] Three fitting strategies are implemented: COMPRESS (faster speech rate), SPLIT (break at sentence boundaries), SKIP (mark segment as unfit)
-- [ ] The strategy chosen for each segment is recorded in Segment metadata
-- [ ] The TTS component's required capability tokens are updated to include duration targets
+- [x] The TTS component is extended to accept target duration metadata per Segment
+- [x] Three fitting strategies are implemented: COMPRESS (faster speech rate), SPLIT (break at sentence boundaries), SKIP (mark segment as unfit)
+- [x] The strategy chosen for each segment is recorded in Segment metadata
+- [x] The TTS component's required capability tokens are updated to include duration targets
 
 ---
 
 ### 4.4 — Temporal alignment evaluator
 
-- [ ] An evaluator component computes the percentage of segments whose dubbed end time is within 200ms of the source end time
-- [ ] The score is returned as a float in result metadata
-- [ ] The evaluator is registered via manifest
-- [ ] Tests confirm correct scoring against known inputs
+- [x] An evaluator component computes the percentage of segments whose dubbed end time is within 200ms of the source end time
+- [x] The score is returned as a float in result metadata
+- [x] The evaluator is registered via manifest
+- [x] Tests confirm correct scoring against known inputs
 
 ---
 
 ### M4 — Done When
 
-- [ ] A Luganda → English pipeline produces dubbed audio where ≥ 80 % of segments are within 200ms of the source timing envelope
-- [ ] The timing score is measured by the evaluator and recorded with full provenance
-- [ ] All component and integration tests pass
+- [x] A Luganda → English pipeline produces dubbed audio where ≥ 80 % of segments are within 200ms of the source timing envelope
+- [x] The timing score is measured by the evaluator and recorded with full provenance
+- [x] All component and integration tests pass
+
 
 ---
 

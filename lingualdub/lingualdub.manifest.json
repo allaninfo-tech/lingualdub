@@ -193,6 +193,38 @@
       "metadata": {
         "kind": "eval_set"
       }
+    },
+    {
+      "kind": "component",
+      "key": "dummy_forced_aligner",
+      "module": "lingualdub.components.alignment.forced",
+      "attr": "DummyForcedAlignmentComponent",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "alignment",
+        "type": "mock"
+      }
+    },
+    {
+      "kind": "component",
+      "key": "duration_modeller",
+      "module": "lingualdub.components.alignment.duration",
+      "attr": "DurationModellingComponent",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "alignment",
+        "type": "heuristic"
+      }
+    },
+    {
+      "kind": "resource",
+      "key": "dummy_timing_resource",
+      "module": "lingualdub.resources.eval_sets",
+      "attr": "DUMMY_TIMING_RESOURCE",
+      "version": "1.0.0",
+      "metadata": {
+        "kind": "timing_resource"
+      }
     }
   ]
 }

@@ -79,10 +79,21 @@ def get_default_registry() -> ld.Registry:
     registry.register("component", "dummy_code_switch", DummyCodeSwitchComponent, version="1.0.0")
     registry.register("component", "heuristic_lid", HeuristicLIDComponent, version="1.0.0")
 
+    # Register alignment components (M4)
+    from lingualdub.components.alignment.forced import DummyForcedAlignmentComponent
+    from lingualdub.components.alignment.duration import DurationModellingComponent
+    registry.register("component", "dummy_forced_aligner", DummyForcedAlignmentComponent, version="1.0.0")
+    registry.register("component", "duration_modeller", DurationModellingComponent, version="1.0.0")
+
+    # Register timing resource for forced aligner (M4.1)
+    from lingualdub.resources.eval_sets import DUMMY_TIMING_RESOURCE
+    registry.register("resource", "dummy_timing_resource", DUMMY_TIMING_RESOURCE, version="1.0.0")
+
     # Register evaluators
     registry.register("component", "wer_evaluator", WEREvaluator, version="1.0.0")
     registry.register("component", "translation_evaluator", TranslationEvaluator, version="1.0.0")
     registry.register("component", "temporal_alignment_evaluator", TemporalAlignmentEvaluator, version="1.0.0")
+
 
     # Scan installed extension manifests
     scanner = ManifestScanner(registry)
