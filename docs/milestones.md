@@ -447,41 +447,41 @@ voice sounds to the original speaker. This is a prerequisite for voice transfer.
 
 ### 5.1 — Speaker embedding component
 
-- [ ] A speaker embedding component is implemented using an established speaker encoder model
-- [ ] It accepts an audio resource or a Result with audio artifacts as input
-- [ ] It outputs a speaker embedding vector in Result metadata
-- [ ] It refuses to process any resource that lacks a consent basis and raises a clear error
-- [ ] It acquires model weights via the ResourceManager
-- [ ] It is registered via manifest
-- [ ] Unit tests confirm: two calls with the same audio produce near-identical embeddings
+- [x] A speaker embedding component is implemented using an established speaker encoder model
+- [x] It accepts an audio resource or a Result with audio artifacts as input
+- [x] It outputs a speaker embedding vector in Result metadata
+- [x] It refuses to process any resource that lacks a consent basis and raises a clear error
+- [x] It acquires model weights via the ResourceManager
+- [x] It is registered via manifest
+- [x] Unit tests confirm: two calls with the same audio produce near-identical embeddings
 
 ---
 
 ### 5.2 — Speaker similarity evaluator
 
-- [ ] A speaker similarity evaluator accepts two Results, each with a speaker embedding in metadata
-- [ ] It computes cosine similarity between the two embeddings and returns a score in [0, 1]
-- [ ] The score is returned in result metadata with full provenance
-- [ ] It is registered via manifest
-- [ ] Unit tests confirm: identical embeddings → 1.0; orthogonal embeddings → 0.0
+- [x] A speaker similarity evaluator accepts two Results, each with a speaker embedding in metadata
+- [x] It computes cosine similarity between the two embeddings and returns a score in [0, 1]
+- [x] The score is returned in result metadata with full provenance
+- [x] It is registered via manifest
+- [x] Unit tests confirm: identical embeddings → 1.0; orthogonal embeddings → 0.0
 
 ---
 
 ### 5.3 — Human evaluation protocol
 
-- [ ] A formal human evaluation protocol is written and versioned
-- [ ] The protocol specifies: exact question wording, rating scale (1–5 MOS), minimum number of raters, audio presentation format (randomised, blind), scoring aggregation method, and inter-rater agreement measure
-- [ ] The protocol specifies the exact reporting format: mean, standard deviation, sample size, dataset version, system version
-- [ ] All voice-retention evaluations must cite the protocol version
+- [x] A formal human evaluation protocol is written and versioned
+- [x] The protocol specifies: exact question wording, rating scale (1–5 MOS), minimum number of raters, audio presentation format (randomised, blind), scoring aggregation method, and inter-rater agreement measure
+- [x] The protocol specifies the exact reporting format: mean, standard deviation, sample size, dataset version, system version
+- [x] All voice-retention evaluations must cite the protocol version
 
 ---
 
 ### M5 — Done When
 
-- [ ] Given a source audio file and a dubbed audio file, the pipeline extracts speaker embeddings from both and returns a cosine similarity score with full provenance
-- [ ] The human evaluation protocol document is written and versioned
-- [ ] All component and evaluator tests pass
-- [ ] No voice resource without consent can reach the speaker encoder under any execution path
+- [x] Given a source audio file and a dubbed audio file, the pipeline extracts speaker embeddings from both and returns a cosine similarity score with full provenance
+- [x] The human evaluation protocol document is written and versioned
+- [x] All component and evaluator tests pass
+- [x] No voice resource without consent can reach the speaker encoder under any execution path
 
 ---
 

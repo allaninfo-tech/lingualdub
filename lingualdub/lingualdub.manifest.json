@@ -225,6 +225,37 @@
       "metadata": {
         "kind": "timing_resource"
       }
+    },
+    {
+      "kind": "component",
+      "key": "speaker_embedding",
+      "module": "lingualdub.components.speaker.embedding",
+      "attr": "SpeakerEmbeddingComponent",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "speaker",
+        "type": "deterministic"
+      }
+    },
+    {
+      "kind": "component",
+      "key": "speaker_similarity_evaluator",
+      "module": "lingualdub.components.eval.speaker_similarity",
+      "attr": "SpeakerSimilarityEvaluator",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "eval"
+      }
+    },
+    {
+      "kind": "resource",
+      "key": "speaker_encoder_dummy_v1",
+      "module": "lingualdub.resources.eval_sets",
+      "attr": "SPEAKER_ENCODER_RESOURCE",
+      "version": "1.0.0",
+      "metadata": {
+        "kind": "checkpoint"
+      }
     }
   ]
 }

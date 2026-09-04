@@ -94,6 +94,18 @@ def get_default_registry() -> ld.Registry:
     registry.register("component", "translation_evaluator", TranslationEvaluator, version="1.0.0")
     registry.register("component", "temporal_alignment_evaluator", TemporalAlignmentEvaluator, version="1.0.0")
 
+    # Register speaker components (M5)
+    from lingualdub.components.speaker.embedding import SpeakerEmbeddingComponent
+    from lingualdub.components.eval.speaker_similarity import SpeakerSimilarityEvaluator
+
+    registry.register("component", "speaker_embedding", SpeakerEmbeddingComponent, version="1.0.0")
+    registry.register("component", "speaker_similarity_evaluator", SpeakerSimilarityEvaluator, version="1.0.0")
+
+    # Register speaker encoder resource
+    from lingualdub.resources.eval_sets import SPEAKER_ENCODER_RESOURCE
+
+    registry.register("resource", "speaker_encoder_dummy_v1", SPEAKER_ENCODER_RESOURCE, version="1.0.0")
+
 
     # Scan installed extension manifests
     scanner = ManifestScanner(registry)

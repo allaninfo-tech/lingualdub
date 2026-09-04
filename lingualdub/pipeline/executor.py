@@ -71,6 +71,12 @@ class PipelineExecutor:
             component_versions={s.name: s.version for s in self.pipeline.stages},
         )
         base_provenance["pipeline_repr"] = repr(self.pipeline)
+        # Propagate input provenance (e.g. consent_basis) into base provenance
+        # so voice consent is not lost after the first stage. Stage-specific keys
+        # (run_id, pipeline) win on conflict, but consent and dataset keys are preserved.
+        if isinstance(input, (Resource, Result)):
+            for k, v in getattr(input, "provenance", {}).items():
+                base_provenance.setdefault(k, v)
 
         result = Result(
             source_language=self.pipeline.source_language,

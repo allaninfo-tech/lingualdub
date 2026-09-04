@@ -103,6 +103,14 @@ def compare_runs(
         c_dur = float(cand_timing["mean_duration_error_ms"])
         deltas["duration_error_ms_delta"] = round(c_dur - b_dur, 2)
 
+    # Speaker similarity (M5): higher is better
+    if "speaker_similarity" in base_metrics and "speaker_similarity" in cand_metrics:
+        b_spk = float(base_metrics["speaker_similarity"])
+        c_spk = float(cand_metrics["speaker_similarity"])
+        deltas["speaker_similarity_delta"] = round(c_spk - b_spk, 4)
+        # Relative improvement
+        deltas["speaker_similarity_relative_pct"] = round(((c_spk - b_spk) / max(b_spk, 1e-9) * 100.0) if b_spk > 0 else (100.0 if c_spk > 0 else 0.0), 2)
+
     return {
         "baseline_run_id": res_base.provenance.get("run_id"),
         "candidate_run_id": res_cand.provenance.get("run_id"),

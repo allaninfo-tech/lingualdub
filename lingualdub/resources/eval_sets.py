@@ -213,3 +213,41 @@ DUMMY_TIMING_RESOURCE = Resource(
 )
 
 EVAL_RESOURCES["dummy_timing_resource"] = DUMMY_TIMING_RESOURCE
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 5. Dummy Speaker Encoder Resource (M5.1)
+#    Used by SpeakerEmbeddingComponent to satisfy ResourceManager dependency
+#    for speaker encoder model weights. Offline fallback uses deterministic
+#    hash-based embeddings; production should replace with
+#    speechbrain/spkrec-ecapa-voxceleb or pyannote/wespeaker.
+# ─────────────────────────────────────────────────────────────────────────────
+SPEAKER_ENCODER_RESOURCE = Resource(
+    id="speaker_encoder_dummy_v1",
+    kind=ResourceKind.CHECKPOINT,
+    language="eng",
+    version="1.0.0",
+    provenance={
+        "source": "LingualDub Offline Dummy Speaker Encoder",
+        "license": "Apache-2.0",
+        "model": "deterministic-hash-192d",
+        "reference_model": "speechbrain/spkrec-ecapa-voxceleb (VoxCeleb)",
+        "evaluation_protocol": "SPEAKER_EMBEDDING_PROTOCOL_V1",
+        "dataset_version": "1.0.0",
+        "consent_basis": "synthetic_offline_resource",
+    },
+    quality_flags=["offline_safe", "no_ml_dependency", "deterministic"],
+    compatible_components=["speaker_embedding", "speaker_similarity_evaluator"],
+    metadata={
+        "description": (
+            "Placeholder speaker encoder for offline voice-retention evaluation. "
+            "Deterministic SHA-256 hash expansion to 192-d unit vectors. "
+            "Production: replace with speechbrain/spkrec-ecapa-voxceleb (192-d) "
+            "or pyannote/embedding (512-d) via ResourceManager."
+        ),
+        "embedding_dim": 192,
+        "sample_rate_hz": 16000,
+        "model_reference": "speechbrain/spkrec-ecapa-voxceleb",
+    },
+)
+
+EVAL_RESOURCES["speaker_encoder_dummy_v1"] = SPEAKER_ENCODER_RESOURCE
