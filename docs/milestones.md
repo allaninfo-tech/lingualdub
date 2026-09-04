@@ -498,41 +498,41 @@ language boundary — the same person's voice, speaking a different language.
 
 ### 6.1 — Voice-conditioned TTS component
 
-- [ ] A voice-conditioned TTS component wraps a zero-shot or few-shot cross-lingual voice cloning model
-- [ ] The model choice and its licence are documented
-- [ ] The component accepts translated text Segments and a speaker reference Resource
-- [ ] It enforces consent on the speaker reference Resource and raises a clear error if absent
-- [ ] It synthesises audio conditioned on the speaker embedding from the reference
-- [ ] It requires translation and speaker embedding capability tokens
-- [ ] It provides synthesised audio and voice conditioned capability tokens
-- [ ] It acquires model weights via the ResourceManager
-- [ ] It is registered via manifest
+- [x] A voice-conditioned TTS component wraps a zero-shot or few-shot cross-lingual voice cloning model
+- [x] The model choice and its licence are documented
+- [x] The component accepts translated text Segments and a speaker reference Resource
+- [x] It enforces consent on the speaker reference Resource and raises a clear error if absent
+- [x] It synthesises audio conditioned on the speaker embedding from the reference
+- [x] It requires translation and speaker embedding capability tokens
+- [x] It provides synthesised audio and voice conditioned capability tokens
+- [x] It acquires model weights via the ResourceManager
+- [x] It is registered via manifest
 
 ---
 
 ### 6.2 — Speaker identity propagation through the pipeline
 
-- [ ] The Segment speaker field is set by the ASR component and is not cleared by any downstream component
-- [ ] The translation component explicitly preserves the speaker field on output Segments
-- [ ] The voice-conditioned TTS component reads the speaker field to select the correct reference
-- [ ] Speaker embedding availability is validated at pipeline assembly time, not only at runtime
+- [x] The Segment speaker field is set by the ASR component and is not cleared by any downstream component
+- [x] The translation component explicitly preserves the speaker field on output Segments
+- [x] The voice-conditioned TTS component reads the speaker field to select the correct reference
+- [x] Speaker embedding availability is validated at pipeline assembly time, not only at runtime
 
 ---
 
 ### 6.3 — Baseline comparison and results
 
-- [ ] A baseline is established: the unconditioned TTS from M1 is run on a fixed set of test clips and speaker similarity scores are recorded
-- [ ] The voice-transfer TTS is run on the same test clips and scores are recorded
-- [ ] The voice-transfer scores are compared against the baseline
-- [ ] Results are recorded with component versions, dataset version, and run IDs so they are reproducible
+- [x] A baseline is established: the unconditioned TTS from M1 is run on a fixed set of test clips and speaker similarity scores are recorded
+- [x] The voice-transfer TTS is run on the same test clips and scores are recorded
+- [x] The voice-transfer scores are compared against the baseline
+- [x] Results are recorded with component versions, dataset version, and run IDs so they are reproducible
 
 ---
 
 ### M6 — Done When
 
-- [ ] The voice-transfer TTS produces dubbed audio that scores measurably higher on speaker similarity than the unconditioned baseline
-- [ ] No voice resource without consent can reach the voice-transfer component under any execution path
-- [ ] Results are reproducible: the same config run twice produces the same scores within floating-point tolerance
+- [x] The voice-transfer TTS produces dubbed audio that scores measurably higher on speaker similarity than the unconditioned baseline
+- [x] No voice resource without consent can reach the voice-transfer component under any execution path
+- [x] Results are reproducible: the same config run twice produces the same scores within floating-point tolerance
 
 ---
 

@@ -106,6 +106,16 @@ def get_default_registry() -> ld.Registry:
 
     registry.register("resource", "speaker_encoder_dummy_v1", SPEAKER_ENCODER_RESOURCE, version="1.0.0")
 
+    # Register voice cloning components (M6)
+    from lingualdub.components.tts.voice_conditioned import VoiceConditionedTTSComponent
+
+    registry.register("component", "voice_conditioned_tts", VoiceConditionedTTSComponent, version="1.0.0")
+
+    # Register voice cloning resource
+    from lingualdub.resources.eval_sets import VOICE_CLONING_RESOURCE
+
+    registry.register("resource", "voice_cloning_dummy_v1", VOICE_CLONING_RESOURCE, version="1.0.0")
+
 
     # Scan installed extension manifests
     scanner = ManifestScanner(registry)

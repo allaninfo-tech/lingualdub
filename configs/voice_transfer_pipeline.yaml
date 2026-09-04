@@ -1,0 +1,34 @@
+# Voice-transfer pipeline for Milestone 6 (M6)
+# Runs: ASR -> Translation -> SpeakerEmbedding -> VoiceConditionedTTS
+# Demonstrates cross-lingual voice retention with consent enforcement.
+name: "voice_transfer_pipeline"
+description: "M6 Luganda->English dubbing with voice-conditioned TTS (Coqui XTTS-v2) and speaker embedding."
+source_language: "lug"
+target_language: "eng"
+per_segment_language: false
+on_stage_failure: "degrade"
+
+stages:
+  - kind: "component"
+    key: "dummy_asr"
+    version: "1.0.0"
+  - kind: "component"
+    key: "dummy_translator"
+    version: "1.0.0"
+  - kind: "component"
+    key: "speaker_embedding"
+    version: "1.0.0"
+  - kind: "component"
+    key: "voice_conditioned_tts"
+    version: "1.0.0"
+    params:
+      model_name_or_path: "coqui/XTTS-v2"
+      language: "eng"
+
+metadata:
+  environment: "local"
+  tier: "m6_voice_transfer"
+  milestone: "6"
+  tts_provider: "coqui_xtts_v2"
+  licence: "CPML"
+  reference_model: "speechbrain/spkrec-ecapa-voxceleb"

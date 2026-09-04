@@ -256,6 +256,27 @@
       "metadata": {
         "kind": "checkpoint"
       }
+    },
+    {
+      "kind": "component",
+      "key": "voice_conditioned_tts",
+      "module": "lingualdub.components.tts.voice_conditioned",
+      "attr": "VoiceConditionedTTSComponent",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "tts",
+        "type": "voice_cloning"
+      }
+    },
+    {
+      "kind": "resource",
+      "key": "voice_cloning_dummy_v1",
+      "module": "lingualdub.resources.eval_sets",
+      "attr": "VOICE_CLONING_RESOURCE",
+      "version": "1.0.0",
+      "metadata": {
+        "kind": "checkpoint"
+      }
     }
   ]
 }

@@ -251,3 +251,42 @@ SPEAKER_ENCODER_RESOURCE = Resource(
 )
 
 EVAL_RESOURCES["speaker_encoder_dummy_v1"] = SPEAKER_ENCODER_RESOURCE
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 6. Dummy Voice Cloning Resource (M6.1)
+#    Used by VoiceConditionedTTSComponent to satisfy ResourceManager dependency
+#    for voice cloning model weights. Offline fallback uses deterministic
+#    hash-conditioned synthesis; production: coqui/XTTS-v2 (CPML) or YourTTS.
+# ─────────────────────────────────────────────────────────────────────────────
+VOICE_CLONING_RESOURCE = Resource(
+    id="voice_cloning_dummy_v1",
+    kind=ResourceKind.CHECKPOINT,
+    language="eng",
+    version="1.0.0",
+    provenance={
+        "source": "LingualDub Offline Dummy Voice Cloning",
+        "license": "Apache-2.0",
+        "model": "deterministic-hash-conditioned-tts",
+        "reference_model": "coqui/XTTS-v2 (CPML) / YourTTS (GPL-3.0)",
+        "evaluation_protocol": "VOICE_CLONING_PROTOCOL_V1",
+        "dataset_version": "1.0.0",
+        "consent_basis": "synthetic_offline_resource",
+    },
+    quality_flags=["offline_safe", "no_ml_dependency", "deterministic"],
+    compatible_components=["voice_conditioned_tts"],
+    metadata={
+        "description": (
+            "Placeholder voice cloning model for offline cross-lingual transfer. "
+            "Deterministic synthesis conditioned on speaker embedding hash (freq mapping). "
+            "Production: replace with coqui/XTTS-v2 (CPML, commercial-friendly) "
+            "or YourTTS via ResourceManager. Choice documented in docs/models.md."
+        ),
+        "model_reference": "coqui/XTTS-v2",
+        "licence": "CPML (Coqui Public Model License) - allows commercial use with attribution",
+        "alternative": "YourTTS (GPL-3.0, research only)",
+        "sample_rate_hz": 16000,
+        "supported_languages": ["lug", "nyn", "eng", "swa"],
+    },
+)
+
+EVAL_RESOURCES["voice_cloning_dummy_v1"] = VOICE_CLONING_RESOURCE
