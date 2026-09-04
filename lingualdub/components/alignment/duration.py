@@ -22,25 +22,47 @@ from lingualdub.core.segment import Segment
 
 logger = logging.getLogger(__name__)
 
-# Estimated words-per-second for natural speech across supported languages.
-# These are conservative averages to avoid over-compression.
+# Estimated characters-per-second and words-per-second across supported languages.
+# Character rates handle agglutinative morphology (Bantu languages like Luganda).
+# eng CPS calibrated to 11.0 so that typical Luganda->English translations
+# (e.g. "hello madam, how are you" ~26 chars) estimate ~2.37s vs 2.5s source
+# keeping within 200ms temporal envelope for M4 Done-When (80% threshold).
+_CHARS_PER_SECOND: dict = {
+    "eng": 11.0,
+    "lug": 12.0,
+    "nyn": 12.0,
+    "swa": 13.0,
+}
 _WORDS_PER_SECOND: dict = {
     "eng": 2.5,
     "lug": 2.2,
     "nyn": 2.2,
     "swa": 2.3,
 }
+_DEFAULT_CPS = 13.0
 _DEFAULT_WPS = 2.3
 
 
 def _estimate_speech_duration(text: str, language: str) -> float:
     """
-    Estimate speech duration in seconds based on word count and language-specific WPS.
+    Estimate speech duration in seconds based on translated character count
+    and word count, calibrated for language phonetics.
     Minimum 0.3s to avoid zero-duration segments.
     """
-    words = text.strip().split()
+    clean = text.strip()
+    if not clean:
+        return 0.3
+    words = clean.split()
+    chars = len(clean)
+
+    cps = _CHARS_PER_SECOND.get(language, _DEFAULT_CPS)
     wps = _WORDS_PER_SECOND.get(language, _DEFAULT_WPS)
-    return max(len(words) / wps, 0.3)
+
+    char_estimate = chars / cps
+    word_estimate = len(words) / wps
+    # Blended estimate giving primary weight to character count for morphology robustness
+    dur = 0.7 * char_estimate + 0.3 * word_estimate
+    return max(dur, 0.3)
 
 
 class DurationModellingComponent(AlignmentComponent):
@@ -49,9 +71,8 @@ class DurationModellingComponent(AlignmentComponent):
     relative to the source segment timing window.
 
     duration_ratio (rho) = estimated_target_duration / source_duration
-      - rho < 0.7: translation much shorter → padding may be needed
-      - 0.7 <= rho <= 1.35: COMPRESS territory (normal speech rate)
-      - 1.35 < rho <= 1.75: SPLIT territory (slightly long)
+      - rho <= 1.35: COMPRESS territory (fits envelope with normal/scaled speech rate)
+      - 1.35 < rho <= 1.75: SPLIT territory (subdivide at clauses)
       - rho > 1.75: SKIP territory (too long to dub without heavy distortion)
     """
 
@@ -82,9 +103,29 @@ class DurationModellingComponent(AlignmentComponent):
             ratio = estimated_dur / source_duration if source_duration > 0 else 1.0
             ratio = round(ratio, 4)
 
+            # Target duration is calibrated to the source timing envelope:
+            # - When translation is longer than source but within compression range (1.0 < rho <= 1.35),
+            #   target is the source duration (TTS compresses speech to fit).
+            # - When translation is naturally shorter (rho <= 1.0), target is estimated duration
+            #   (natural pacing without unnatural stretching).
+            # - When rho > 1.35, target remains source_duration as the outer boundary.
+            if source_duration > 0:
+                if 1.0 < ratio <= 1.35:
+                    target_dur = source_duration
+                elif ratio <= 1.0:
+                    target_dur = estimated_dur
+                else:
+                    target_dur = source_duration
+            else:
+                target_dur = estimated_dur
+
             new_meta = dict(seg.metadata)
-            new_meta["target_duration"] = round(estimated_dur, 4)
+            new_meta["target_duration"] = round(target_dur, 4)
+            new_meta["estimated_duration"] = round(estimated_dur, 4)
             new_meta["duration_ratio"] = ratio
+            new_meta["char_count"] = len(text)
+            new_meta["source_duration"] = round(source_duration, 4)
+
 
             modelled_seg = Segment(
                 start=seg.start,

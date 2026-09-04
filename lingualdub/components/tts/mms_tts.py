@@ -139,6 +139,15 @@ class MMSTTSComponent(TTSComponent):
             else:
                 strategy = FittingStrategy.SKIP
 
+            seg.metadata["fitting_strategy"] = strategy.value
+            seg.metadata["target_duration"] = round(float(target_dur), 4)
+            seg.metadata["source_segment_index"] = idx
+
+            if strategy == FittingStrategy.SKIP:
+                seg.metadata["unfit"] = True
+                warnings.append(f"MMS-TTS segment #{idx} skipped (duration_ratio={ratio:.2f} exceeds threshold)")
+                continue
+
             try:
                 inputs = self._tokenizer(text, return_tensors="pt")
                 if inputs["input_ids"].shape[-1] == 0:
@@ -157,12 +166,10 @@ class MMSTTSComponent(TTSComponent):
                 out_file = self.output_dir / f"mms_{self.language}_seg_{idx}_{self.version}.wav"
                 _write_wav(out_file, sample_rate, waveform)
                 artifacts.append(str(out_file))
-                # Update segment metadata with fitting strategy
-                seg.metadata["fitting_strategy"] = strategy.value
-                seg.metadata["target_duration"] = round(float(target_dur), 4)
             except Exception as exc:
                 logger.warning("MMS-TTS synthesis failed on segment #%d (%r): %s", idx, text, exc)
                 warnings.append(f"MMS-TTS synthesis failed on segment #{idx}: {exc}")
+
 
 
         return Result(

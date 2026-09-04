@@ -97,6 +97,9 @@ class DummyTTSComponent(TTSComponent):
 
                 new_meta = dict(seg.metadata)
                 new_meta["fitting_strategy"] = strategy.value
+                new_meta["source_segment_index"] = idx
+                new_meta["source_start"] = seg.start
+                new_meta["source_end"] = seg.end
 
                 if strategy == FittingStrategy.COMPRESS:
                     # Synthesise at target_duration (compressed or normal rate)
@@ -130,6 +133,9 @@ class DummyTTSComponent(TTSComponent):
                         artifacts.append(str(audio_path))
                         sub_meta = dict(new_meta)
                         sub_meta["split_index"] = sub_idx
+                        sub_meta["split_count"] = len(parts)
+                        sub_meta["parent_end"] = seg.end
+                        sub_meta["parent_start"] = seg.start
                         out_segments.append(Segment(
                             start=round(sub_start, 6),
                             end=round(sub_end, 6),
@@ -145,7 +151,6 @@ class DummyTTSComponent(TTSComponent):
                 else:  # SKIP
                     new_meta["unfit"] = True
                     warnings.append(f"Segment #{idx} skipped (duration_ratio={ratio:.2f} exceeds threshold)")
-                    # Emit original segment as-is, marked unfit, no audio
                     out_segments.append(Segment(
                         start=seg.start,
                         end=seg.end,
@@ -157,6 +162,7 @@ class DummyTTSComponent(TTSComponent):
                         provenance=dict(seg.provenance),
                         metadata=new_meta,
                     ))
+
         else:
             # Utterance fallback (no segments)
             audio_path = self.output_dir / f"tts_output_{self.version}.wav"
