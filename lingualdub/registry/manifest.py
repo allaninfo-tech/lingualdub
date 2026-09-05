@@ -173,21 +173,63 @@ class ManifestScanner:
         """
         import sys
 
-        paths = search_paths or [Path(p or ".").resolve() for p in sys.path]
+        if search_paths is not None:
+            paths = [Path(p).resolve() for p in search_paths]
+        else:
+            # Build search paths from sys.path; empty string means cwd
+            paths = []
+            for p in sys.path:
+                if not p or p == ".":
+                    resolved = Path.cwd().resolve()
+                else:
+                    resolved = Path(p).resolve()
+                if resolved.is_dir() and resolved not in paths:
+                    paths.append(resolved)
         total = 0
         seen: set = set()  # Deduplicate resolved manifest paths
+        # Directories to prune during walk (heavy or irrelevant)
+        prune_dirs = {
+            ".git",
+            ".venv",
+            "venv",
+            "__pycache__",
+            ".mypy_cache",
+            ".pytest_cache",
+            "node_modules",
+            ".tox",
+            "build",
+            "dist",
+            "website",
+        }
 
         for base in paths:
             if not base.is_dir():
                 continue
-            for manifest_path in base.rglob(MANIFEST_FILENAME):
-                resolved = manifest_path.resolve()
-                if resolved in seen:
-                    continue
-                seen.add(resolved)
+            # Limit search depth to 3 levels to avoid crawling entire site-packages tree deeply
+            # Use os.walk with pruning instead of unbounded rglob
+            import os
+
+            for root, dirs, files in os.walk(base, topdown=True):
+                # Prune heavy dirs
+                dirs[:] = [d for d in dirs if d not in prune_dirs and not d.startswith(".")]
+                # Depth check: relative depth from base
                 try:
-                    total += self.load(manifest_path)
-                except ManifestError as exc:
-                    logger.warning("Skipping malformed manifest: %s", exc)
+                    rel = Path(root).relative_to(base)
+                    depth = len(rel.parts)
+                except ValueError:
+                    depth = 0
+                if depth > 3:
+                    dirs[:] = []
+                    continue
+                if MANIFEST_FILENAME in files:
+                    manifest_path = Path(root) / MANIFEST_FILENAME
+                    resolved = manifest_path.resolve()
+                    if resolved in seen:
+                        continue
+                    seen.add(resolved)
+                    try:
+                        total += self.load(manifest_path)
+                    except ManifestError as exc:
+                        logger.warning("Skipping malformed manifest: %s", exc)
 
         return total
