@@ -16,6 +16,7 @@ from lingualdub.core.component import ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result
 from lingualdub.core.segment import Segment
+from lingualdub.utils.consent import ensure_consent
 
 
 def _write_dummy_wav(filepath: Path, duration_sec: float = 1.0, freq_hz: float = 440.0, sample_rate: int = 16000) -> None:
@@ -81,6 +82,8 @@ class DummyTTSComponent(TTSComponent):
     def run(self, input: Union[Result, Resource]) -> Result:
         if not isinstance(input, Result):
             raise ValueError(f"DummyTTSComponent expects a Result input, got {type(input).__name__}")
+        # Enforce consent for voice synthesis (M5/M6)
+        ensure_consent(input, self.__class__.__name__)
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
         artifacts: List[str] = list(input.artifacts)

@@ -68,8 +68,10 @@ class Resource:
         """
         Returns True if this resource carries a recorded consent basis.
         Required for compatibility with voice-transfer and voice-retention components.
+        Whitespace-only values are not considered valid consent.
         """
-        return bool(self.provenance.get("consent_basis"))
+        val = self.provenance.get("consent_basis")
+        return isinstance(val, str) and bool(val.strip())
 
     def to_dict(self) -> dict:
         """Serialize this Resource to a JSON-compatible dictionary."""

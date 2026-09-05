@@ -12,6 +12,7 @@ from lingualdub.components.tts.base import FittingStrategy, TTSComponent
 from lingualdub.core.component import ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result
+from lingualdub.utils.consent import ensure_consent
 
 logger = logging.getLogger(__name__)
 
@@ -92,6 +93,7 @@ class MMSTTSComponent(TTSComponent):
     def run(self, input: Union[Result, Resource]) -> Result:
         if not isinstance(input, Result):
             raise ValueError(f"MMSTTSComponent expects a Result input, got {type(input).__name__}")
+        ensure_consent(input, self.__class__.__name__)
 
         if not input.segments:
             return Result(

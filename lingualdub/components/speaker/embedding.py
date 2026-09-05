@@ -27,6 +27,7 @@ from lingualdub.core.component import ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result
 from lingualdub.core.segment import Segment
+from lingualdub.utils.consent import ensure_consent as _ensure_consent_shared
 
 logger = logging.getLogger(__name__)
 
@@ -65,42 +66,8 @@ def _deterministic_embedding(key: str, dim: int = 192) -> List[float]:
 
 
 def _ensure_consent(input_obj: Union[Resource, Result]) -> None:
-    """
-    Enforce consent_basis for voice resources.
-
-    Raises ValueError with clear message if consent is missing.
-    """
-    if isinstance(input_obj, Resource):
-        if not input_obj.has_consent:
-            raise ValueError(
-                f"SpeakerEmbeddingComponent: Resource {input_obj.id!r} lacks 'consent_basis' in provenance. "
-                "Voice data must carry a recorded consent basis to be processed by speaker components. "
-                "Add provenance={'consent_basis': '...'} to the Resource."
-            )
-    elif isinstance(input_obj, Result):
-        # For Result inputs, check provenance for consent if present.
-        # If the Result carries no consent but has audio artifacts/segments,
-        # we treat it as a voice-bearing result and require consent.
-        # To avoid breaking legacy dummy pipelines that don't use speaker,
-        # we only enforce when the Result appears to be voice data:
-        # - has artifacts (audio files) OR has segments with speaker info
-        has_voice_signal = bool(input_obj.artifacts) or any(s.speaker for s in input_obj.segments)
-        # Also check if any segment provenance indicates voice
-        provenance = input_obj.provenance or {}
-        has_consent = bool(provenance.get("consent_basis")) or bool(input_obj.metadata.get("consent_basis"))
-        # Also check segment-level provenance
-        if not has_consent and has_voice_signal:
-            # Look for consent in segment provenance
-            for seg in input_obj.segments:
-                if seg.provenance.get("consent_basis"):
-                    has_consent = True
-                    break
-        if has_voice_signal and not has_consent:
-            raise ValueError(
-                "SpeakerEmbeddingComponent: Result lacks 'consent_basis' in provenance. "
-                "Voice-derived Results must carry provenance={'consent_basis': '...'} to be processed. "
-                "Ensure the source Resource had consent and that provenance was propagated."
-            )
+    """Backward-compatible wrapper around utils.consent.ensure_consent."""
+    _ensure_consent_shared(input_obj, "SpeakerEmbeddingComponent")
 
 
 class SpeakerEmbeddingComponent(SpeakerComponent):

@@ -25,6 +25,7 @@ from lingualdub.core.component import ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result
 from lingualdub.core.segment import Segment
+from lingualdub.utils.consent import ensure_consent, has_valid_consent
 
 logger = logging.getLogger(__name__)
 
@@ -122,12 +123,12 @@ def _ensure_consent_for_speaker(speaker_resource: Optional[Resource], speaker_em
     """
     Enforce consent on speaker reference.
     If a Resource is provided, it must have consent_basis. If only embedding is provided,
-    we assume the embedding was derived from a consented resource (provenance check elsewhere).
+    we check that the embedding provenance elsewhere had consent (handled at run()).
     """
     if speaker_resource is not None:
-        if not speaker_resource.has_consent:
+        if not has_valid_consent(speaker_resource.provenance):
             raise ValueError(
-                f"VoiceConditionedTTSComponent: speaker reference Resource {speaker_resource.id!r} lacks 'consent_basis'. "
+                f"VoiceConditionedTTSComponent: speaker reference Resource {speaker_resource.id!r} lacks valid 'consent_basis'. "
                 "Cross-lingual voice cloning requires explicit consent. "
                 "Add provenance={'consent_basis': '...'} to the speaker reference."
             )
@@ -284,8 +285,8 @@ class VoiceConditionedTTSComponent(TTSComponent):
     def run(self, input: Union[Result, Resource]) -> Result:
         if not isinstance(input, Result):
             raise ValueError(f"VoiceConditionedTTSComponent expects a Result input, got {type(input).__name__}")
-
-        # Enforce consent on stored speaker reference (if any)
+        # Enforce consent for voice synthesis — both input voice data and speaker reference
+        ensure_consent(input, self.__class__.__name__)
         if self.speaker_reference is not None:
             _ensure_consent_for_speaker(self.speaker_reference, None)
 

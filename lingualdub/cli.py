@@ -168,13 +168,13 @@ def cmd_experiment_run(args: argparse.Namespace) -> int:
             source_language=pipeline.source_language,
         )
     else:
-        # Default placeholder
+        # Default placeholder — include consent for offline voice pipeline testing
         input_obj = ld.Resource(
             id="default_sample",
             kind=ld.ResourceKind.SPEECH,
             language=pipeline.source_language,
             version="1.0.0",
-            provenance={"source": "cli_default"},
+            provenance={"source": "cli_default", "consent_basis": "research_evaluation"},
         )
 
     executor = ld.PipelineExecutor(pipeline)
