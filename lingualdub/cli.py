@@ -116,6 +116,18 @@ def get_default_registry() -> ld.Registry:
 
     registry.register("resource", "voice_cloning_dummy_v1", VOICE_CLONING_RESOURCE, version="1.0.0")
 
+    # Register AV-sync evaluator + resources (M7)
+    try:
+        from lingualdub.components.eval.av_sync import AVSyncEvaluator
+
+        registry.register("component", "av_sync_evaluator", AVSyncEvaluator, version="1.0.0")
+    except Exception:
+        pass
+
+    from lingualdub.resources.eval_sets import SYNCNET_RESOURCE
+
+    registry.register("resource", "syncnet_dummy_v1", SYNCNET_RESOURCE, version="1.0.0")
+
 
     # Scan installed extension manifests
     scanner = ManifestScanner(registry)

@@ -290,3 +290,38 @@ VOICE_CLONING_RESOURCE = Resource(
 )
 
 EVAL_RESOURCES["voice_cloning_dummy_v1"] = VOICE_CLONING_RESOURCE
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 7. Dummy SyncNet Resource (M7.1)
+#    Used by AVSyncEvaluator to satisfy ResourceManager dependency
+#    for AV synchrony model weights. Offline fallback uses deterministic
+#    timing offset (no ML dependency); production: SyncNet (Chung et al.).
+# ─────────────────────────────────────────────────────────────────────────────
+SYNCNET_RESOURCE = Resource(
+    id="syncnet_dummy_v1",
+    kind=ResourceKind.CHECKPOINT,
+    language="eng",
+    version="1.0.0",
+    provenance={
+        "source": "LingualDub Offline Dummy SyncNet",
+        "license": "Apache-2.0",
+        "model": "deterministic-timing-offset",
+        "reference_model": "SyncNet (Chung & Zisserman, 2016) / AV-HuBERT",
+        "evaluation_protocol": "AV_SYNC_PROTOCOL_V1",
+        "dataset_version": "1.0.0",
+        "consent_basis": "synthetic_offline_resource",
+    },
+    quality_flags=["offline_safe", "no_ml_dependency", "deterministic"],
+    compatible_components=["av_sync_evaluator"],
+    metadata={
+        "description": (
+            "Placeholder SyncNet model for offline AV-sync evaluation. "
+            "Deterministic |dubbed_end - source_end| offset in ms. "
+            "Production: replace with SyncNet or AV-HuBERT via ResourceManager."
+        ),
+        "model_reference": "SyncNet (Chung et al.)",
+        "tolerance_ms": 100.0,
+    },
+)
+
+EVAL_RESOURCES["syncnet_dummy_v1"] = SYNCNET_RESOURCE

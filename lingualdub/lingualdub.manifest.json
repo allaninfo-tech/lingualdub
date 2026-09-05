@@ -277,6 +277,26 @@
       "metadata": {
         "kind": "checkpoint"
       }
+    },
+    {
+      "kind": "component",
+      "key": "av_sync_evaluator",
+      "module": "lingualdub.components.eval.av_sync",
+      "attr": "AVSyncEvaluator",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "eval"
+      }
+    },
+    {
+      "kind": "resource",
+      "key": "syncnet_dummy_v1",
+      "module": "lingualdub.resources.eval_sets",
+      "attr": "SYNCNET_RESOURCE",
+      "version": "1.0.0",
+      "metadata": {
+        "kind": "checkpoint"
+      }
     }
   ]
 }
