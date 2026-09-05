@@ -178,16 +178,49 @@ def cmd_experiment_run(args: argparse.Namespace) -> int:
     logger.info("Loaded pipeline: %r (stages: %s)", pipeline.name or "unnamed", pipeline.stage_names)
 
     # Prepare input resource or text
-    if args.input_audio:
+    # --input-video is additive; it injects source_video provenance for M7 AV-sync
+    # pipelines. When both --input-audio and --input-video are given the audio
+    # resource is primary but provenance carries source_video for dialogue_timing /
+    # video_merger stages. When only --input-video is given a VIDEO resource is used.
+    input_video_path = getattr(args, "input_video", None)
+
+    if args.input_audio and input_video_path:
+        input_obj = ld.Resource(
+            id="cli_audio_video_input",
+            kind=ld.ResourceKind.SPEECH,
+            language=pipeline.source_language,
+            version="1.0.0",
+            path=str(args.input_audio),
+            provenance={
+                "consent_basis": "user_provided",
+                "source_video": str(input_video_path),
+            },
+        )
+    elif args.input_audio:
+        prov = {"consent_basis": "user_provided"}
+        if input_video_path:
+            prov["source_video"] = str(input_video_path)
         input_obj = ld.Resource(
             id="cli_audio_input",
             kind=ld.ResourceKind.SPEECH,
             language=pipeline.source_language,
             version="1.0.0",
             path=str(args.input_audio),
-            provenance={"consent_basis": "user_provided"},
+            provenance=prov,
+        )
+    elif input_video_path:
+        input_obj = ld.Resource(
+            id="cli_video_input",
+            kind=ld.ResourceKind.VIDEO,
+            language=pipeline.source_language,
+            version="1.0.0",
+            path=str(input_video_path),
+            provenance={"consent_basis": "user_provided", "source_video": str(input_video_path)},
         )
     elif args.sample_text:
+        prov = {}
+        if input_video_path:
+            prov["source_video"] = str(input_video_path)
         input_obj = ld.Result(
             segments=[
                 ld.Segment(
@@ -198,15 +231,22 @@ def cmd_experiment_run(args: argparse.Namespace) -> int:
                 )
             ],
             source_language=pipeline.source_language,
+            provenance=prov if prov else {},
         )
+        if prov:
+            input_obj.provenance.update(prov)
+            input_obj.metadata["source_video"] = str(input_video_path)
     else:
         # Default placeholder — include consent for offline voice pipeline testing
+        prov = {"source": "cli_default", "consent_basis": "research_evaluation"}
+        if input_video_path:
+            prov["source_video"] = str(input_video_path)
         input_obj = ld.Resource(
             id="default_sample",
             kind=ld.ResourceKind.SPEECH,
             language=pipeline.source_language,
             version="1.0.0",
-            provenance={"source": "cli_default", "consent_basis": "research_evaluation"},
+            provenance=prov,
         )
 
     executor = ld.PipelineExecutor(pipeline)
@@ -286,6 +326,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     run_parser = exp_sub.add_parser("run", help="Run a pipeline experiment from config")
     run_parser.add_argument("config", help="Path to pipeline configuration YAML/JSON")
     run_parser.add_argument("--input-audio", "-i", help="Path to input audio file")
+    run_parser.add_argument("--input-video", help="Path to input video file (source video for AV-sync, M7)")
     run_parser.add_argument("--sample-text", "-t", help="Sample text for direct text pipeline tests")
     run_parser.add_argument("--output-dir", "-o", help="Output directory to save results and artifacts")
 

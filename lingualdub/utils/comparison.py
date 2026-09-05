@@ -123,6 +123,19 @@ def compare_runs(
         # Relative improvement
         deltas["speaker_similarity_relative_pct"] = round(((c_spk - b_spk) / max(b_spk, 1e-9) * 100.0) if b_spk > 0 else (100.0 if c_spk > 0 else 0.0), 2)
 
+    # AV-sync metrics (M7): mean_av_offset_ms lower is better, pct_within_100ms higher is better
+    base_av = res_base.metadata.get("av_sync_metrics", {})
+    cand_av = res_cand.metadata.get("av_sync_metrics", {})
+    if "mean_av_offset_ms" in base_av and "mean_av_offset_ms" in cand_av:
+        b_av = float(base_av["mean_av_offset_ms"])
+        c_av = float(cand_av["mean_av_offset_ms"])
+        deltas["mean_av_offset_ms_delta"] = round(c_av - b_av, 2)
+        deltas["mean_av_offset_ms_relative_reduction_pct"] = round(((b_av - c_av) / b_av * 100.0) if b_av > 0 else 0.0, 2)
+    if "pct_within_100ms" in base_av and "pct_within_100ms" in cand_av:
+        b_pct = float(base_av["pct_within_100ms"])
+        c_pct = float(cand_av["pct_within_100ms"])
+        deltas["pct_within_100ms_delta"] = round(c_pct - b_pct, 2)
+
     return {
         "baseline_run_id": res_base.provenance.get("run_id"),
         "candidate_run_id": res_cand.provenance.get("run_id"),

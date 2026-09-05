@@ -548,36 +548,36 @@ language boundary — the same person's voice, speaking a different language.
 
 ### 7.1 — AV sync evaluator
 
-- [ ] An evaluator component measures the lip-sync offset between dubbed audio and source video using an established AV synchrony model
-- [ ] The metric is mean absolute AV offset in milliseconds across segments
-- [ ] The score is returned in result metadata
-- [ ] The evaluator is registered via manifest
-- [ ] Tests confirm correct behaviour on known inputs
+- [x] An evaluator component measures the lip-sync offset between dubbed audio and source video using an established AV synchrony model
+- [x] The metric is mean absolute AV offset in milliseconds across segments
+- [x] The score is returned in result metadata
+- [x] The evaluator is registered via manifest
+- [x] Tests confirm correct behaviour on known inputs
 
 ---
 
 ### 7.2 — Dialogue timing adapter
 
-- [ ] A dialogue timing component adjusts Segment boundaries to align with on-screen dialogue cues
-- [ ] It detects cue boundaries from the source video (scene cuts, mouth-open periods, or subtitle cues)
-- [ ] It produces updated Segment start and end times that snap to these boundaries
-- [ ] It builds on and is compatible with the temporal alignment stage from M4
+- [x] A dialogue timing component adjusts Segment boundaries to align with on-screen dialogue cues
+- [x] It detects cue boundaries from the source video (scene cuts, mouth-open periods, or subtitle cues)
+- [x] It produces updated Segment start and end times that snap to these boundaries
+- [x] It builds on and is compatible with the temporal alignment stage from M4
 
 ---
 
 ### 7.3 — Video output artifact
 
-- [ ] A pipeline stage merges dubbed audio with a source video file
-- [ ] The merged video is registered as a Resource artifact with full provenance: component versions, run ID, source video reference
-- [ ] The ResourceKind enumeration is extended if necessary to include a video type
+- [x] A pipeline stage merges dubbed audio with a source video file
+- [x] The merged video is registered as a Resource artifact with full provenance: component versions, run ID, source video reference
+- [x] The ResourceKind enumeration is extended if necessary to include a video type
 
 ---
 
 ### M7 — Done When
 
-- [ ] Given a source video with Luganda audio, the pipeline produces a dubbed video with English audio where mean AV sync offset is ≤ 100ms across segments
-- [ ] The video artifact is registered with full provenance
-- [ ] The AV sync evaluator test passes
+- [x] Given a source video with Luganda audio, the pipeline produces a dubbed video with English audio where mean AV sync offset is ≤ 100ms across segments
+- [x] The video artifact is registered with full provenance
+- [x] The AV sync evaluator test passes
 
 ---
 

@@ -1,0 +1,38 @@
+# AV-sync mock pipeline for Milestone 7 (M7) — Level 2 offline testing.
+# Runs: ASR -> ForcedAlignment -> Translation -> DurationModelling -> DialogueTiming -> TTS -> VideoMerger
+# Zero-dependency deterministic mocks; <0.2s end-to-end.
+name: "av_sync_mock_pipeline"
+description: "M7 offline AV-sync pipeline with deterministic dialogue timing and dummy video merger."
+source_language: "lug"
+target_language: "eng"
+per_segment_language: false
+on_stage_failure: "degrade"
+
+stages:
+  - kind: "component"
+    key: "dummy_asr"
+    version: "1.0.0"
+  - kind: "component"
+    key: "dummy_forced_aligner"
+    version: "1.0.0"
+  - kind: "component"
+    key: "dummy_translator"
+    version: "1.0.0"
+  - kind: "component"
+    key: "duration_modeller"
+    version: "1.0.0"
+  - kind: "component"
+    key: "dialogue_timing"
+    version: "1.0.0"
+  - kind: "component"
+    key: "dummy_tts"
+    version: "1.0.0"
+  - kind: "component"
+    key: "video_merger"
+    version: "1.0.0"
+
+metadata:
+  environment: "local"
+  tier: "m7_av_sync_mock"
+  milestone: "7"
+  description: "Deterministic AV-sync mock for CI — no ffmpeg/torch required"
