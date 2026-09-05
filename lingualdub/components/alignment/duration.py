@@ -100,8 +100,15 @@ class DurationModellingComponent(AlignmentComponent):
             source_duration = seg.duration  # seconds from source timestamps
             text = (seg.text or "").strip()
             estimated_dur = _estimate_speech_duration(text, target_language)
-            ratio = estimated_dur / source_duration if source_duration > 0 else 1.0
-            ratio = round(ratio, 4)
+            # Zero/near-zero duration segments are pathological (e.g. end==start).
+            # Previously ratio fallback 1.0 masked the issue and downstream TTS generated
+            # phantom audio. Now mark as unfit with a large ratio so TTS will SKIP.
+            if source_duration < 0.05:
+                ratio = 99.0
+                # Keep estimated_dur as target for reporting, but downstream will skip
+            else:
+                ratio = estimated_dur / source_duration
+                ratio = round(ratio, 4)
 
             # Target duration is calibrated to the source timing envelope:
             # - When translation is longer than source but within compression range (1.0 < rho <= 1.35),
@@ -109,15 +116,15 @@ class DurationModellingComponent(AlignmentComponent):
             # - When translation is naturally shorter (rho <= 1.0), target is estimated duration
             #   (natural pacing without unnatural stretching).
             # - When rho > 1.35, target remains source_duration as the outer boundary.
-            if source_duration > 0:
-                if 1.0 < ratio <= 1.35:
-                    target_dur = source_duration
-                elif ratio <= 1.0:
-                    target_dur = estimated_dur
-                else:
-                    target_dur = source_duration
-            else:
+            # Zero-duration handled above: target is estimated but flagged for SKIP downstream.
+            if source_duration < 0.05:
                 target_dur = estimated_dur
+            elif 1.0 < ratio <= 1.35:
+                target_dur = source_duration
+            elif ratio <= 1.0:
+                target_dur = estimated_dur
+            else:
+                target_dur = source_duration
 
             new_meta = dict(seg.metadata)
             new_meta["target_duration"] = round(target_dur, 4)
@@ -125,6 +132,9 @@ class DurationModellingComponent(AlignmentComponent):
             new_meta["duration_ratio"] = ratio
             new_meta["char_count"] = len(text)
             new_meta["source_duration"] = round(source_duration, 4)
+            if source_duration < 0.05:
+                new_meta["zero_duration_source"] = True
+                new_meta["unfit"] = True
 
 
             modelled_seg = Segment(

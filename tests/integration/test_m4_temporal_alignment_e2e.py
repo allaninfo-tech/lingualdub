@@ -172,7 +172,10 @@ class TestM4TemporalAlignmentE2E:
         evaluator = TemporalAlignmentEvaluator()
         result = evaluator.evaluate_pair(hypothesis, source)
         metrics = result.metadata["timing_metrics"]
-        assert metrics["pct_within_200ms"] == 100.0  # no segments, nothing to penalise
+        # Empty hypothesis with non-empty source means all segments dropped → 0% within tolerance
+        assert metrics["pct_within_200ms"] == 0.0
+        assert metrics["total_dubbed_segments"] == 0
+        assert metrics["total_source_segments"] == 3
 
     def test_evaluate_pair_with_no_source_segments(self, tmp_path):
         source = _make_source_result(n=5)

@@ -358,9 +358,10 @@ class TemporalAlignmentEvaluator(EvaluatorComponent):
                 },
             )
 
-        # Edge case: empty hypothesis but non-empty reference — vacuously within tolerance
-        # (no segments to penalise). Required for test_evaluate_pair_with_empty_hypothesis.
+        # Edge case: empty hypothesis but non-empty reference — all source segments dropped,
+        # penalised as out-of-tolerance (previously vacuously 100%, incentivised zero-output).
         if not hyp_segs:
+            penalised_error = self.tolerance_ms + 100.0
             return Result(
                 segments=[],
                 source_language=hypothesis.source_language,
@@ -369,11 +370,11 @@ class TemporalAlignmentEvaluator(EvaluatorComponent):
                 metadata={
                     **hypothesis.metadata,
                     "timing_metrics": {
-                        "pct_within_200ms": 100.0,
-                        "pct_within_tolerance": 100.0,
-                        "mean_duration_error_ms": 0.0,
+                        "pct_within_200ms": 0.0,
+                        "pct_within_tolerance": 0.0,
+                        "mean_duration_error_ms": round(penalised_error, 2),
                         "tolerance_ms": self.tolerance_ms,
-                        "segments_evaluated": 0,
+                        "segments_evaluated": len(source_segs),
                         "total_dubbed_segments": 0,
                         "total_source_segments": len(source_segs),
                     },
