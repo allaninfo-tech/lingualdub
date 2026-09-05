@@ -33,7 +33,7 @@ def _load_result(result_or_path: Union[Result, dict, str, Path]) -> Result:
 def compare_runs(
     baseline: Union[Result, dict, str, Path],
     candidate: Union[Result, dict, str, Path],
-    require_matching_dataset: bool = False,
+    require_matching_dataset: bool = True,
 ) -> Dict[str, Any]:
     """
     Compare two execution results and return a structured dictionary of metric deltas.
@@ -41,7 +41,9 @@ def compare_runs(
     Args:
         baseline: The reference or baseline Result (or path to results.json).
         candidate: The new or candidate Result (or path to results.json).
-        require_matching_dataset: If True, raises ProvenanceMismatchError if dataset_version differs.
+        require_matching_dataset: If True (default), raises ProvenanceMismatchError
+            if dataset_version differs. Set to False to allow cross-dataset comparison
+            with a warning (not recommended for evaluation).
 
     Returns:
         Dict with metric differences, status changes, and comparison summary.
@@ -49,13 +51,23 @@ def compare_runs(
     res_base = _load_result(baseline)
     res_cand = _load_result(candidate)
 
-    # Validate provenance if strict matching is requested
+    # Validate provenance — dataset_version and protocol must match for comparable evaluation
     base_ds = res_base.provenance.get("dataset_version")
     cand_ds = res_cand.provenance.get("dataset_version")
-    if require_matching_dataset and base_ds and cand_ds and base_ds != cand_ds:
-        raise ProvenanceMismatchError(
-            f"Cannot compare runs: baseline dataset is {base_ds!r} but candidate dataset is {cand_ds!r}."
-        )
+    if base_ds and cand_ds and base_ds != cand_ds:
+        if require_matching_dataset:
+            raise ProvenanceMismatchError(
+                f"Cannot compare runs: baseline dataset is {base_ds!r} but candidate dataset is {cand_ds!r}."
+            )
+        else:
+            import warnings
+
+            warnings.warn(
+                f"Comparing runs across different datasets: baseline {base_ds!r} vs candidate {cand_ds!r}. "
+                "Metric deltas may not be meaningful.",
+                UserWarning,
+                stacklevel=2,
+            )
 
     base_proto = res_base.provenance.get("evaluation_protocol")
     cand_proto = res_cand.provenance.get("evaluation_protocol")
