@@ -24,6 +24,7 @@ class ResourceKind(str, Enum):
     EVAL_SET = "eval_set"
     SYNTHETIC = "synthetic"
     ALIGNMENT = "alignment"
+    VIDEO = "video"
     OTHER = "other"
 
 
