@@ -73,7 +73,7 @@ class Component(ABC):
     supported_languages: List[str] = []
     requires: List[str] = []
     provides: List[str] = []
-    on_failure: FailureMode = FailureMode.ABORT
+    on_failure: Optional[FailureMode] = None
 
     @abstractmethod
     def run(self, input: Union[Result, Resource]) -> Result:
