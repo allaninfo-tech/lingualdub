@@ -128,6 +128,14 @@ def get_default_registry() -> ld.Registry:
 
     registry.register("resource", "syncnet_dummy_v1", SYNCNET_RESOURCE, version="1.0.0")
 
+    # Register dialogue timing component (M7.2)
+    try:
+        from lingualdub.components.av_sync.dialogue_timing import DialogueTimingComponent
+
+        registry.register("component", "dialogue_timing", DialogueTimingComponent, version="1.0.0")
+    except Exception:
+        pass
+
 
     # Scan installed extension manifests
     scanner = ManifestScanner(registry)

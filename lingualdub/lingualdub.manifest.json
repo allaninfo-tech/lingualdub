@@ -297,6 +297,17 @@
       "metadata": {
         "kind": "checkpoint"
       }
+    },
+    {
+      "kind": "component",
+      "key": "dialogue_timing",
+      "module": "lingualdub.components.av_sync.dialogue_timing",
+      "attr": "DialogueTimingComponent",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "alignment",
+        "type": "heuristic"
+      }
     }
   ]
 }
