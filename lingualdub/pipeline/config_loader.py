@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Union
 
 from lingualdub.core.component import Component, FailureMode
 from lingualdub.core.pipeline import Pipeline
@@ -18,78 +18,27 @@ from lingualdub.registry.registry import Registry
 logger = logging.getLogger(__name__)
 
 
-def _parse_simple_yaml(text: str) -> Dict[str, Any]:
-    """Fallback simple YAML-like parser if PyYAML is not installed."""
+def _parse_yaml(text: str, filepath: Path) -> Dict[str, Any]:
+    """Parse YAML content, requiring PyYAML for non-JSON files."""
     try:
-        import yaml
-        return yaml.safe_load(text) or {}
-    except ImportError:
-        # Fallback: try json
-        try:
-            return json.loads(text)
-        except json.JSONDecodeError:
-            pass
+        import yaml  # type: ignore
 
-    # Basic YAML parser for simple key-value structures
-    result: Dict[str, Any] = {}
-    current_list: Optional[str] = None
-    current_item: Optional[Dict[str, Any]] = None
-
-    for raw_line in text.splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith("#"):
-            continue
-
-        if line.startswith("- "):
-            # List item
-            if current_list:
-                item_content = line[2:].strip()
-                if ":" in item_content:
-                    k, v = item_content.split(":", 1)
-                    current_item = {k.strip(): _parse_val(v.strip())}
-                    result.setdefault(current_list, []).append(current_item)
-                else:
-                    result.setdefault(current_list, []).append(_parse_val(item_content))
-            continue
-
-        if raw_line.startswith("    ") and current_item is not None:
-            # Sub-property of current list item
-            sub = line.strip()
-            if ":" in sub:
-                k, v = sub.split(":", 1)
-                current_item[k.strip()] = _parse_val(v.strip())
-            continue
-
-        if ":" in line:
-            k, v = line.split(":", 1)
-            k = k.strip()
-            v = v.strip()
-            if not v:
-                current_list = k
-                result[k] = []
-                current_item = None
-            else:
-                current_list = None
-                current_item = None
-                result[k] = _parse_val(v)
-
-    return result
-
-
-def _parse_val(val: str) -> Any:
-    val = val.strip().strip("'\"")
-    if val.lower() == "true":
-        return True
-    if val.lower() == "false":
-        return False
-    if val.lower() == "null" or val.lower() == "none":
-        return None
-    try:
-        if "." in val:
-            return float(val)
-        return int(val)
-    except ValueError:
-        return val
+        data = yaml.safe_load(text)
+        if data is None:
+            return {}
+        if not isinstance(data, dict):
+            raise ValueError(
+                f"Configuration file {filepath} must contain a top-level mapping, got {type(data).__name__}."
+            )
+        return data
+    except ImportError as exc:
+        raise ImportError(
+            f"PyYAML is required to load YAML config {filepath}. Install with `pip install pyyaml` "
+            f"or `pip install lingualdub[dev]`. (Original error: {exc})"
+        ) from exc
+    except Exception as exc:
+        # yaml.YAMLError or ValueError from above
+        raise ValueError(f"Failed to parse YAML configuration {filepath}: {exc}") from exc
 
 
 class ConfigLoader:
@@ -109,12 +58,25 @@ class ConfigLoader:
 
         Returns:
             Assembled and compatibility-checked Pipeline object.
+
+        Raises:
+            ValueError: If config is malformed or stage definitions are invalid.
+            TypeError: If resolved objects are not Components.
         """
+        if not isinstance(config, dict):
+            raise ValueError(f"Pipeline configuration must be a mapping, got {type(config).__name__}.")
         source_lang = config.get("source_language", "lug")
+        if not isinstance(source_lang, str) or not source_lang:
+            raise ValueError("Pipeline configuration 'source_language' must be a non-empty string.")
         target_lang = config.get("target_language")
         per_segment = bool(config.get("per_segment_language", False))
-        failure_mode_str = config.get("on_stage_failure", "abort").lower()
-        failure_mode = FailureMode(failure_mode_str)
+        failure_mode_str = str(config.get("on_stage_failure", "abort")).lower()
+        try:
+            failure_mode = FailureMode(failure_mode_str)
+        except ValueError as exc:
+            raise ValueError(
+                f"Invalid on_stage_failure {failure_mode_str!r}: must be one of {[e.value for e in FailureMode]}."
+            ) from exc
         name = config.get("name")
         description = config.get("description")
         metadata = config.get("metadata", {})
@@ -144,12 +106,33 @@ class ConfigLoader:
             impl = self.registry.resolve(kind, key, version=version)
             if isinstance(impl, type):
                 # Instantiable class
-                instance = impl(**params) if params else impl()
+                try:
+                    instance = impl(**params) if params else impl()
+                except TypeError as exc:
+                    raise TypeError(
+                        f"Failed to instantiate component ({kind!r}, {key!r}) with params {params!r}: {exc}"
+                    ) from exc
             elif isinstance(impl, Component):
+                if params:
+                    logger.warning(
+                        "Stage #%d (%s/%s) resolved to an instance but params %r were supplied and will be ignored.",
+                        i,
+                        kind,
+                        key,
+                        params,
+                    )
                 instance = impl
             else:
-                # Custom callable or object
-                instance = impl
+                # Custom callable or object — try calling if params supplied
+                if params and callable(impl):
+                    try:
+                        instance = impl(**params)  # type: ignore[operator]
+                    except Exception as exc:
+                        raise TypeError(
+                            f"Resolved object for ({kind!r}, {key!r}) with params {params!r} failed: {exc}"
+                        ) from exc
+                else:
+                    instance = impl
 
             if not isinstance(instance, Component):
                 raise TypeError(
@@ -187,8 +170,22 @@ class ConfigLoader:
 
         content = filepath.read_text(encoding="utf-8")
         if filepath.suffix.lower() == ".json":
-            config = json.loads(content)
+            try:
+                config = json.loads(content)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"Failed to parse JSON configuration {filepath}: {exc}") from exc
+        elif filepath.suffix.lower() in (".yaml", ".yml"):
+            config = _parse_yaml(content, filepath)
         else:
-            config = _parse_simple_yaml(content)
+            # Try YAML first, fallback to JSON for extension-less files
+            try:
+                config = _parse_yaml(content, filepath)
+            except Exception:
+                try:
+                    config = json.loads(content)
+                except json.JSONDecodeError as exc:
+                    raise ValueError(
+                        f"Configuration file {filepath} is not valid YAML or JSON: {exc}"
+                    ) from exc
 
         return self.load_dict(config)

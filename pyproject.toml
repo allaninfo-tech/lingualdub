@@ -44,6 +44,10 @@ classifiers = [
     "Typing :: Typed",
 ]
 
+dependencies = [
+    "pyyaml>=6.0",
+]
+
 [project.urls]
 Homepage = "https://lingualdub.pages.dev"
 Documentation = "https://lingualdub.pages.dev/docs"
