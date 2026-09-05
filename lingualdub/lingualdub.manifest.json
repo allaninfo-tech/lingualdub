@@ -308,6 +308,27 @@
         "task": "alignment",
         "type": "heuristic"
       }
+    },
+    {
+      "kind": "component",
+      "key": "video_merger",
+      "module": "lingualdub.components.av_sync.video_merger",
+      "attr": "VideoMergerComponent",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "video",
+        "type": "merger"
+      }
+    },
+    {
+      "kind": "resource",
+      "key": "dummy_video_lug_v1",
+      "module": "lingualdub.resources.eval_sets",
+      "attr": "DUMMY_VIDEO_RESOURCE",
+      "version": "1.0.0",
+      "metadata": {
+        "kind": "video"
+      }
     }
   ]
 }

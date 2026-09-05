@@ -325,3 +325,39 @@ SYNCNET_RESOURCE = Resource(
 )
 
 EVAL_RESOURCES["syncnet_dummy_v1"] = SYNCNET_RESOURCE
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 8. Dummy Video Resource (M7.3)
+#    Used by VideoMergerComponent and DialogueTimingComponent to satisfy
+#    ResourceManager dependency for source video. Offline fallback is a
+#    placeholder; production would be a real MP4 with consent.
+# ─────────────────────────────────────────────────────────────────────────────
+DUMMY_VIDEO_RESOURCE = Resource(
+    id="dummy_video_lug_v1",
+    kind=ResourceKind.VIDEO,
+    language="lug",
+    version="1.0.0",
+    provenance={
+        "source": "LingualDub Offline Dummy Video",
+        "license": "Apache-2.0",
+        "evaluation_protocol": "AV_SYNC_PROTOCOL_V1",
+        "dataset_version": "1.0.0",
+        "consent_basis": "synthetic_offline_video",
+    },
+    quality_flags=["offline_safe", "no_ml_dependency", "deterministic"],
+    compatible_components=["video_merger", "dialogue_timing", "av_sync_evaluator"],
+    path="data/samples/sample_lug.mp4",
+    metadata={
+        "description": "Placeholder video for offline AV-sync pipeline tests. Synthetic color clip.",
+        "duration": 12.5,
+        "fps": 25,
+        "has_audio": True,
+        "resolution": "640x480",
+    },
+)
+
+# Also expose under legacy key for helper fallback
+DUMMY_VIDEO_RESOURCE_LEGACY = DUMMY_VIDEO_RESOURCE
+
+EVAL_RESOURCES["dummy_video_lug_v1"] = DUMMY_VIDEO_RESOURCE
+EVAL_RESOURCES["dummy_video_resource"] = DUMMY_VIDEO_RESOURCE

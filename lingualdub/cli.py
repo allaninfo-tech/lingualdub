@@ -136,6 +136,18 @@ def get_default_registry() -> ld.Registry:
     except Exception:
         pass
 
+    # Register video merger + resources (M7.3)
+    try:
+        from lingualdub.components.av_sync.video_merger import VideoMergerComponent
+
+        registry.register("component", "video_merger", VideoMergerComponent, version="1.0.0")
+    except Exception:
+        pass
+
+    from lingualdub.resources.eval_sets import DUMMY_VIDEO_RESOURCE
+
+    registry.register("resource", "dummy_video_lug_v1", DUMMY_VIDEO_RESOURCE, version="1.0.0")
+
 
     # Scan installed extension manifests
     scanner = ManifestScanner(registry)
