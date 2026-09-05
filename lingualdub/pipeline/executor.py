@@ -73,10 +73,16 @@ class PipelineExecutor:
         base_provenance["pipeline_repr"] = repr(self.pipeline)
         # Propagate input provenance (e.g. consent_basis) into base provenance
         # so voice consent is not lost after the first stage. Stage-specific keys
-        # (run_id, pipeline) win on conflict, but consent and dataset keys are preserved.
+        # win on conflict, but consent and dataset keys are preserved. We must
+        # not let make_provenance's None placeholders (e.g. dataset_version=None)
+        # shadow real values from the input resource.
         if isinstance(input, (Resource, Result)):
             for k, v in getattr(input, "provenance", {}).items():
-                base_provenance.setdefault(k, v)
+                if v is None:
+                    continue
+                if k not in base_provenance or base_provenance[k] is None:
+                    base_provenance[k] = v
+                # existing non-None base values (run_id, pipeline, timestamp) keep precedence
 
         result = Result(
             source_language=self.pipeline.source_language,
@@ -85,10 +91,8 @@ class PipelineExecutor:
         )
 
         for stage in self.pipeline.stages:
-            # Resolve failure mode: stage-level overrides pipeline-level only
-            # if they differ from the pipeline default (i.e. stage has its own).
-            # Since FailureMode is always set (never None), we compare against
-            # the pipeline default to detect explicit stage-level overrides.
+            # Resolve failure mode: stage-level (Component.on_failure) wins if
+            # explicitly set (not None); otherwise fall back to pipeline default.
             stage_fm = getattr(stage, "on_failure", None)
             failure_mode = stage_fm if stage_fm is not None else self.pipeline.on_stage_failure
             logger.info("Running stage: %s (failure_mode=%s)", stage.name, failure_mode.value)
