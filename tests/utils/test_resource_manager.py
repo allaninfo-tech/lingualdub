@@ -38,10 +38,15 @@ def test_downloads_on_miss(tmp_path):
     checksum = _sha256_of(content)
     manager = ResourceManager(cache_dir=tmp_path)
 
-    def fake_download(url, dest):
-        Path(dest).write_bytes(content)
+    def fake_urlopen(req, timeout=30):
+        # req may be Request or str
+        mock_resp = MagicMock()
+        mock_resp.read = MagicMock(side_effect=[content, b""])
+        mock_resp.__enter__ = lambda s: s
+        mock_resp.__exit__ = lambda s, *a: None
+        return mock_resp
 
-    with patch("urllib.request.urlretrieve", side_effect=fake_download):
+    with patch("urllib.request.urlopen", side_effect=fake_urlopen):
         result = manager.get("my_model", "1.0.0", "http://example.com/model.bin", checksum)
 
     assert result.exists()
@@ -77,6 +82,6 @@ def test_cache_path_helper(tmp_path):
 def test_download_failure_raises_resource_not_found(tmp_path):
     manager = ResourceManager(cache_dir=tmp_path)
 
-    with patch("urllib.request.urlretrieve", side_effect=OSError("network error")):
+    with patch("urllib.request.urlopen", side_effect=OSError("network error")):
         with pytest.raises(ResourceNotFoundError, match="Could not download"):
             manager.get("my_model", "1.0.0", "http://example.com/model.bin", "abc123")
