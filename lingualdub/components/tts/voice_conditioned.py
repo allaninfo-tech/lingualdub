@@ -11,16 +11,18 @@ from __future__ import annotations
 
 import hashlib
 import logging
-import math
-import re
 import struct
 import tempfile
-import wave
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
 from lingualdub.components.speaker.embedding import _deterministic_embedding
 from lingualdub.components.tts.base import FittingStrategy, TTSComponent
+from lingualdub.components.tts.shared import (
+    _SPLIT_PATTERN,
+    choose_strategy as _choose_strategy,
+    write_dummy_wav as _write_dummy_wav,
+)
 from lingualdub.core.component import ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result
@@ -39,26 +41,6 @@ logger = logging.getLogger(__name__)
 
 XTTS_MODEL_ID = "coqui/XTTS-v2"
 YOURTTS_MODEL_ID = "coqui/XTTS-v2"  # alias for docs
-
-_SPLIT_PATTERN = re.compile(r"[,;:—–]|\.\s|\?\s|!\s")
-_COMPRESS_MAX_RATIO = 1.35
-_SKIP_MIN_RATIO = 1.75
-
-
-def _write_dummy_wav(filepath: Path, duration_sec: float = 1.0, freq_hz: float = 440.0, sample_rate: int = 16000) -> None:
-    """Generate synthetic WAV with speaker-conditioned frequency."""
-    filepath.parent.mkdir(parents=True, exist_ok=True)
-    num_samples = int(duration_sec * sample_rate)
-    with wave.open(str(filepath), "wb") as wav_file:
-        wav_file.setnchannels(1)
-        wav_file.setsampwidth(2)
-        wav_file.setframerate(sample_rate)
-        frames = bytearray()
-        for i in range(num_samples):
-            envelope = math.sin(math.pi * (i / max(num_samples, 1)))
-            val = int(32767.0 * 0.3 * envelope * math.sin(2.0 * math.pi * freq_hz * (i / sample_rate)))
-            frames.extend(struct.pack("<h", val))
-        wav_file.writeframes(frames)
 
 
 def _copy_or_generate_voice_wav(
@@ -93,14 +75,6 @@ def _copy_or_generate_voice_wav(
         except Exception:
             pass
     _write_dummy_wav(dest, duration_sec=duration_sec, freq_hz=freq_hz, sample_rate=sample_rate)
-
-
-def _choose_strategy(ratio: float, text: str) -> FittingStrategy:
-    if ratio <= _COMPRESS_MAX_RATIO:
-        return FittingStrategy.COMPRESS
-    if ratio <= _SKIP_MIN_RATIO or _SPLIT_PATTERN.search(text):
-        return FittingStrategy.SPLIT
-    return FittingStrategy.SKIP
 
 
 def _freq_from_embedding(embedding: List[float], base: float = 440.0) -> float:
@@ -189,39 +163,12 @@ class VoiceConditionedTTSComponent(TTSComponent):
         """Acquire voice cloning model via Registry/ResourceManager."""
         if self._voice_resource is not None:
             return
-        if self._registry is not None and hasattr(self._registry, "resolve"):
-            try:
-                self._voice_resource = self._registry.resolve("resource", "voice_cloning_dummy_v1")
-            except Exception as exc:
-                logger.debug("Registry voice resource lookup: %s", exc)
-        elif self._registry is not None and hasattr(self._registry, "get"):
-            try:
-                self._voice_resource = self._registry.get("resource", "voice_cloning_dummy_v1")
-            except Exception as exc:
-                logger.debug("Registry voice resource lookup: %s", exc)
+        from lingualdub.utils.resource_helpers import acquire_resource
 
-        if self._resource_manager is not None and self._voice_resource is not None:
-            try:
-                if hasattr(self._resource_manager, "get"):
-                    prov = self._voice_resource.provenance or {}
-                    url = prov.get("url")
-                    checksum = prov.get("checksum")
-                    if url and checksum:
-                        path = self._resource_manager.get(
-                            self._voice_resource.id,
-                            self._voice_resource.version,
-                            url,
-                            checksum,
-                        )
-                        self._voice_resource_path = str(path)
-                        logger.info("VoiceConditionedTTS: acquired resource via ResourceManager: %s", path)
-            except Exception as exc:
-                logger.debug("ResourceManager voice acquisition: %s", exc)
-
-        if self._voice_resource is not None:
-            logger.info("VoiceConditionedTTS: loaded resource %r", getattr(self._voice_resource, "id", None))
-        else:
-            logger.debug("VoiceConditionedTTS: using deterministic offline synthesis.")
+        res, path = acquire_resource(self._registry, self._resource_manager, "voice_cloning_dummy_v1")
+        if res is not None:
+            self._voice_resource = res
+            self._voice_resource_path = path
 
     def _load_model(self) -> Optional[object]:
         """Lazy-load neural voice cloning model if available."""

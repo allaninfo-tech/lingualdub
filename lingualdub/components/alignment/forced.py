@@ -89,50 +89,17 @@ class DummyForcedAlignmentComponent(AlignmentComponent):
         self._timing_resource_path: Optional[str] = None
 
     def _load_timing_resource(self) -> None:
-        """
-        Acquire a timing/pronunciation resource via Registry and/or ResourceManager.
-        If a ResourceManager is provided and the resource carries a URL and checksum,
-        download and cache the resource file. Falls back gracefully in offline mode.
-        """
+        """Acquire timing/pronunciation resource via Registry/ResourceManager."""
         if self._timing_resource is not None:
             return
+        from lingualdub.utils.resource_helpers import acquire_resource
 
-        # 1. Look up in registry if provided
-        if self._registry is not None and hasattr(self._registry, "get"):
-            try:
-                self._timing_resource = self._registry.get(
-                    "resource", "dummy_timing_resource"
-                )
-            except Exception as exc:
-                logger.debug("Registry timing resource lookup: %s", exc)
-
-        # 2. Acquire via ResourceManager if available and resource specifies a URL/checksum
-        if self._resource_manager is not None:
-            try:
-                # If ResourceManager has the full download get() signature
-                if hasattr(self._resource_manager, "get") and self._timing_resource is not None:
-                    prov = self._timing_resource.provenance or {}
-                    url = prov.get("url")
-                    checksum = prov.get("checksum")
-                    if url and checksum:
-                        path = self._resource_manager.get(
-                            self._timing_resource.id,
-                            self._timing_resource.version,
-                            url,
-                            checksum,
-                        )
-                        self._timing_resource_path = str(path)
-                        logger.info("DummyForcedAligner: acquired resource via ResourceManager: %s", path)
-            except Exception as exc:
-                logger.debug("ResourceManager acquisition: %s", exc)
-
-        if self._timing_resource is not None:
-            logger.info(
-                "DummyForcedAligner: loaded timing resource %r",
-                getattr(self._timing_resource, "id", None),
-            )
-        else:
-            logger.debug("DummyForcedAligner: using default offline timing heuristics.")
+        res, path = acquire_resource(
+            self._registry, self._resource_manager, "dummy_timing_resource"
+        )
+        if res is not None:
+            self._timing_resource = res
+            self._timing_resource_path = path
 
 
     def run(self, input: Union[Result, Resource]) -> Result:

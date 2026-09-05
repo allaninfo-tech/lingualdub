@@ -7,42 +7,14 @@ populating Segment.language per segment.
 
 from __future__ import annotations
 import re
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 from lingualdub.components.code_switch.base import CodeSwitchComponent
 from lingualdub.core.component import ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result
 from lingualdub.core.segment import Segment
-
-# Luganda high-frequency function words, affixes, and markers
-LUGANDA_LEXICON: Set[str] = {
-    "oli", "otya", "nnyabo", "sebo", "webale", "ffe", "gwe", "nze",
-    "bwe", "nga", "ku", "mu", "ne", "era", "kuba", "kola", "ebitabo",
-    "abaana", "leero", "enkuba", "amatooke", "ssente", "omuntu", "bantu",
-    "okukola", "okulaba", "twebaza", "tusanyuse", "emirimu", "bulungi",
-    "ki", "kati", "lwa", "lwaki", "bangi", "bano", "ekintu", "ebintu",
-    "abantu", "omulimu", "ensi", "katonda", "omukazi", "omusajja",
-    "nsaba", "ontereze", "eno", "wano", "eri", "wali", "awo", "naye",
-}
-
-# English high-frequency stop words, auxiliaries, and common loanwords
-ENGLISH_LEXICON: Set[str] = {
-    "the", "be", "to", "of", "and", "a", "in", "that", "have", "i",
-    "it", "for", "not", "on", "with", "he", "as", "you", "do", "at",
-    "this", "but", "his", "by", "from", "they", "we", "say", "her",
-    "she", "or", "an", "will", "my", "one", "all", "would", "there",
-    "their", "what", "so", "up", "out", "if", "about", "who", "get",
-    "which", "go", "me", "when", "make", "can", "like", "time", "no",
-    "just", "him", "know", "take", "people", "into", "year", "your",
-    "good", "some", "could", "them", "see", "other", "than", "then",
-    "now", "look", "only", "come", "its", "over", "think", "also",
-    "back", "after", "use", "two", "how", "our", "work", "first",
-    "well", "way", "even", "new", "want", "because", "any", "these",
-    "give", "day", "most", "us", "morning", "report", "project",
-    "meeting", "send", "please", "today", "tomorrow", "boss", "manager",
-    "system", "program", "file", "computer", "phone", "network", "call",
-}
+from lingualdub.components.code_switch.lexicons import ENGLISH_LEXICON, LUGANDA_LEXICON
 
 
 class HeuristicLIDComponent(CodeSwitchComponent):

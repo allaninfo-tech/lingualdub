@@ -6,45 +6,11 @@ from __future__ import annotations
 from typing import Dict, List, Optional, Union
 
 from lingualdub.components.code_switch.base import CodeSwitchComponent
+from lingualdub.components.code_switch.lexicons import DEFAULT_WORD_LANGUAGES
 from lingualdub.core.component import ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result
 from lingualdub.core.segment import Segment
-
-DEFAULT_WORD_LANGUAGES: Dict[str, str] = {
-    # English trigger words
-    "hello": "eng",
-    "hi": "eng",
-    "good": "eng",
-    "morning": "eng",
-    "report": "eng",
-    "today": "eng",
-    "can": "eng",
-    "you": "eng",
-    "send": "eng",
-    "me": "eng",
-    "project": "eng",
-    "meeting": "eng",
-    "the": "eng",
-    "was": "eng",
-    "completely": "eng",
-    "successful": "eng",
-    # Luganda trigger words
-    "oli": "lug",
-    "otya": "lug",
-    "nnyabo": "lug",
-    "sebo": "lug",
-    "webale": "lug",
-    "nnyo": "lug",
-    "tusanyuse": "lug",
-    "okulaba": "lug",
-    "leero": "lug",
-    "abaana": "lug",
-    "ebitabo": "lug",
-    "nsaba": "lug",
-    "ontereze": "lug",
-    "eno": "lug",
-}
 
 
 class DummyCodeSwitchComponent(CodeSwitchComponent):

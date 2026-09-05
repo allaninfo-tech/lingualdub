@@ -14,14 +14,7 @@ from lingualdub.core.segment import Segment
 
 logger = logging.getLogger(__name__)
 
-# ISO 639-3 to NLLB language code mapping
-NLLB_CODE_MAP = {
-    "lug": "lug_Latn",
-    "nyn": "nyn_Latn",
-    "eng": "eng_Latn",
-    "swa": "swh_Latn",
-    "fra": "fra_Latn",
-}
+from lingualdub.languages.nllb import NLLB_CODE_MAP
 
 
 class HuggingFaceTranslationComponent(TranslationComponent):

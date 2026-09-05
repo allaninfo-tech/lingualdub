@@ -3,15 +3,18 @@ Deterministic dummy TTS component for offline testing without ML dependencies.
 """
 
 from __future__ import annotations
-import math
-import re
-import struct
 import tempfile
-import wave
 from pathlib import Path
 from typing import List, Optional, Union
 
 from lingualdub.components.tts.base import FittingStrategy, TTSComponent
+from lingualdub.components.tts.shared import (
+    _COMPRESS_MAX_RATIO,
+    _SKIP_MIN_RATIO,
+    _SPLIT_PATTERN,
+    choose_strategy as _choose_strategy,
+    write_dummy_wav as _write_dummy_wav,
+)
 from lingualdub.core.component import ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result
@@ -19,38 +22,8 @@ from lingualdub.core.segment import Segment
 from lingualdub.utils.consent import ensure_consent
 
 
-def _write_dummy_wav(filepath: Path, duration_sec: float = 1.0, freq_hz: float = 440.0, sample_rate: int = 16000) -> None:
-    """Generate a clean synthetic WAV file using Python standard library."""
-    filepath.parent.mkdir(parents=True, exist_ok=True)
-    num_samples = int(duration_sec * sample_rate)
-    with wave.open(str(filepath), "wb") as wav_file:
-        wav_file.setnchannels(1)  # mono
-        wav_file.setsampwidth(2)  # 16-bit
-        wav_file.setframerate(sample_rate)
-        frames = bytearray()
-        for i in range(num_samples):
-            # Sine wave with smooth envelope
-            envelope = math.sin(math.pi * (i / max(num_samples, 1)))
-            val = int(32767.0 * 0.3 * envelope * math.sin(2.0 * math.pi * freq_hz * (i / sample_rate)))
-            frames.extend(struct.pack("<h", val))
-        wav_file.writeframes(frames)
-
-
-# Clause-boundary punctuation used to detect SPLIT candidates
-_SPLIT_PATTERN = re.compile(r"[,;:—–]|\.\s|\?\s|!\s")
-
-# Duration-ratio thresholds for fitting strategy selection
-_COMPRESS_MAX_RATIO = 1.35
-_SKIP_MIN_RATIO = 1.75
-
-
-def _choose_strategy(ratio: float, text: str) -> FittingStrategy:
-    """Select the fitting strategy based on duration ratio and text structure."""
-    if ratio <= _COMPRESS_MAX_RATIO:
-        return FittingStrategy.COMPRESS
-    if ratio <= _SKIP_MIN_RATIO or _SPLIT_PATTERN.search(text):
-        return FittingStrategy.SPLIT
-    return FittingStrategy.SKIP
+# Re-export shared constants for backward compatibility (tests import from dummy)
+# New code should import from lingualdub.components.tts.shared directly.
 
 
 class DummyTTSComponent(TTSComponent):

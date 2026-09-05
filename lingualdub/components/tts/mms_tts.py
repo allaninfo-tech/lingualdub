@@ -131,12 +131,14 @@ class MMSTTSComponent(TTSComponent):
             if not text:
                 continue
 
-            # Annotate fitting strategy from duration modelling metadata
+            # Annotate fitting strategy from duration modelling metadata (shared thresholds)
+            from lingualdub.components.tts.shared import _COMPRESS_MAX_RATIO, _SKIP_MIN_RATIO
+
             ratio = seg.metadata.get("duration_ratio", 1.0)
             target_dur = seg.metadata.get("target_duration", seg.duration)
-            if ratio <= 1.35:
+            if ratio <= _COMPRESS_MAX_RATIO:
                 strategy = FittingStrategy.COMPRESS
-            elif ratio <= 1.75:
+            elif ratio <= _SKIP_MIN_RATIO:
                 strategy = FittingStrategy.SPLIT
             else:
                 strategy = FittingStrategy.SKIP

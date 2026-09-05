@@ -104,55 +104,17 @@ class SpeakerEmbeddingComponent(SpeakerComponent):
         self._model = None  # Lazy-loaded neural model if available
 
     def _load_speaker_resource(self) -> None:
-        """
-        Acquire speaker encoder model via Registry and/or ResourceManager.
-        Falls back gracefully in offline mode.
-        """
+        """Acquire speaker encoder model via Registry and/or ResourceManager."""
         if self._speaker_resource is not None:
             return
+        from lingualdub.utils.resource_helpers import acquire_resource
 
-        # 1. Look up in registry if provided
-        if self._registry is not None and hasattr(self._registry, "resolve"):
-            try:
-                # Try both resolve and get for compatibility
-                if hasattr(self._registry, "resolve"):
-                    self._speaker_resource = self._registry.resolve("resource", "speaker_encoder_dummy_v1")
-                else:
-                    self._speaker_resource = self._registry.get("resource", "speaker_encoder_dummy_v1")
-            except Exception as exc:
-                logger.debug("Registry speaker resource lookup: %s", exc)
-        elif self._registry is not None and hasattr(self._registry, "get"):
-            try:
-                self._speaker_resource = self._registry.get("resource", "speaker_encoder_dummy_v1")
-            except Exception as exc:
-                logger.debug("Registry speaker resource lookup: %s", exc)
-
-        # 2. Acquire via ResourceManager if resource specifies URL/checksum
-        if self._resource_manager is not None and self._speaker_resource is not None:
-            try:
-                if hasattr(self._resource_manager, "get"):
-                    prov = self._speaker_resource.provenance or {}
-                    url = prov.get("url")
-                    checksum = prov.get("checksum")
-                    if url and checksum:
-                        path = self._resource_manager.get(
-                            self._speaker_resource.id,
-                            self._speaker_resource.version,
-                            url,
-                            checksum,
-                        )
-                        self._speaker_resource_path = str(path)
-                        logger.info("SpeakerEmbedding: acquired resource via ResourceManager: %s", path)
-            except Exception as exc:
-                logger.debug("ResourceManager speaker acquisition: %s", exc)
-
-        if self._speaker_resource is not None:
-            logger.info(
-                "SpeakerEmbedding: loaded resource %r",
-                getattr(self._speaker_resource, "id", None),
-            )
-        else:
-            logger.debug("SpeakerEmbedding: using deterministic offline embedding (no model file).")
+        res, path = acquire_resource(
+            self._registry, self._resource_manager, "speaker_encoder_dummy_v1"
+        )
+        if res is not None:
+            self._speaker_resource = res
+            self._speaker_resource_path = path
 
     def _load_neural_model(self) -> Optional[object]:
         """Attempt to load neural speaker encoder if dependencies available."""

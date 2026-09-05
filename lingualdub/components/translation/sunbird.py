@@ -137,16 +137,10 @@ class SunbirdTranslationComponent(TranslationComponent):
             decoded = self._translate_api(texts)
         else:
             self._load_model()
-            # Target language mapping for NLLB / multilingual Seq2Seq
-            nllb_map = {
-                "lug": "lug_Latn",
-                "nyn": "nyn_Latn",
-                "eng": "eng_Latn",
-                "swa": "swh_Latn",
-                "ach": "ach_Latn",
-            }
-            src_code = nllb_map.get(self.source_language, self.source_language)
-            tgt_code = nllb_map.get(self.target_language, self.target_language)
+            from lingualdub.languages.nllb import NLLB_CODE_MAP
+
+            src_code = NLLB_CODE_MAP.get(self.source_language, self.source_language)
+            tgt_code = NLLB_CODE_MAP.get(self.target_language, self.target_language)
 
             if hasattr(self._tokenizer, "src_lang"):
                 self._tokenizer.src_lang = src_code
