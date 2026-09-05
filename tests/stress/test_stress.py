@@ -65,15 +65,20 @@ def test_concurrent_resource_manager_downloads(tmp_path):
     download_count = 0
     lock = threading.Lock()
 
-    def fake_download(url, dest):
+    def fake_urlopen(req, timeout=30):
         nonlocal download_count
         with lock:
             download_count += 1
-        with open(dest, "wb") as f:
-            f.write(content)
+        from unittest.mock import MagicMock
+
+        mock_resp = MagicMock()
+        mock_resp.read = MagicMock(side_effect=[content, b""])
+        mock_resp.__enter__ = lambda s: s
+        mock_resp.__exit__ = lambda s, *a: None
+        return mock_resp
 
     def worker():
-        with patch("urllib.request.urlretrieve", side_effect=fake_download):
+        with patch("urllib.request.urlopen", side_effect=fake_urlopen):
             path = manager.get("model-shared", "1.0.0", "http://example.com/weights.bin", checksum)
             assert path.exists()
             assert path.read_bytes() == content

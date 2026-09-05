@@ -73,6 +73,25 @@ class Pipeline:
                 if cap not in accumulated_provides:
                     accumulated_provides.append(cap)
 
+        # Language compatibility check (assembly-time) — only for non-routing pipelines.
+        # Per-segment pipelines deliberately allow stages that support a subset of languages.
+        if not self.per_segment_language:
+            for stage in self.stages:
+                langs = getattr(stage, "supported_languages", [])
+                if not langs or "*" in langs:
+                    continue
+                # Stage supports a specific set — pipeline languages should intersect
+                pipeline_langs = {self.source_language}
+                if self.target_language:
+                    pipeline_langs.add(self.target_language)
+                # Also include any metadata-declared pipeline languages?
+                if not pipeline_langs.intersection(set(langs)):
+                    raise ValueError(
+                        f"Pipeline language error: stage {stage.name!r} supports {langs!r} "
+                        f"but pipeline languages are {sorted(pipeline_langs)!r}. "
+                        f"Use per_segment_language=True for code-switch routing or adjust stage languages."
+                    )
+
     @property
     def stage_names(self) -> List[str]:
         """Returns the names of all stages in order."""
