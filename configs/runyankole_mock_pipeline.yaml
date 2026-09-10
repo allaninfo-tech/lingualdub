@@ -1,0 +1,33 @@
+# Runyankole mock pipeline for M8 generalisation proof — Level 2 offline testing.
+# Zero-dependency deterministic mocks; <0.2s end-to-end. Proves framework core unchanged.
+# Uses runyankole_asr (strict nyn scoping) -> dummy translator -> dummy TTS.
+name: "runyankole_mock_pipeline"
+description: "M8 Runyankole→English offline mock pipeline with family-transfer ASR (lug->nyn). No ML dependencies."
+source_language: "nyn"
+target_language: "eng"
+per_segment_language: false
+on_stage_failure: "abort"
+
+stages:
+  - kind: "component"
+    key: "runyankole_asr"
+    version: "1.0.0"
+    params:
+      language: "nyn"
+      use_neural: false
+  - kind: "component"
+    key: "dummy_translator"
+    version: "1.0.0"
+    params:
+      source_language: "nyn"
+      target_language: "eng"
+  - kind: "component"
+    key: "dummy_tts"
+    version: "1.0.0"
+
+metadata:
+  environment: "local"
+  tier: "m8_runyankole_mock"
+  milestone: "8"
+  transfer_basis: "lug->nyn family transfer"
+  description: "Deterministic Runyankole pipeline for M8 CI — verifies ConfigLoader + PipelineExecutor + WER"

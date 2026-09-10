@@ -20,6 +20,11 @@ A pipeline configuration specifies:
 | [`local_mock_pipeline.yaml`](local_mock_pipeline.yaml) | Zero-dependency local integration testing | Level 2 (Local) | `dummy_asr` $\to$ `dummy_translator` $\to$ `dummy_tts` |
 | [`speech_dubbing_baseline.yaml`](speech_dubbing_baseline.yaml) | Generic multilingual dubbing template (any language) | Level 3 (Colab / Cloud GPU) | Configurable ASR $\to$ MT $\to$ TTS |
 | [`luganda_english_baseline.yaml`](luganda_english_baseline.yaml) | Reference baseline for Luganda $\to$ English | Level 3 (Colab GPU) | `sunbird_asr` $\to$ `sunbird_translator` $\to$ `mms_tts` |
+| [`runyankole_mock_pipeline.yaml`](runyankole_mock_pipeline.yaml) | **M8 Runyankole mock** — offline generalisation proof (lug→nyn transfer) | Level 2 (Local) | `runyankole_asr` $\to$ `dummy_translator` $\to$ `dummy_tts` |
+| [`runyankole_english_baseline.yaml`](runyankole_english_baseline.yaml) | **M8 Runyankole baseline** — Colab/GPU (NLLB `nyn_Latn`) | Level 3 (Colab GPU) | `runyankole_asr` (Sunbird SALT) $\to$ `hf_translator` (NLLB) $\to$ `mms_tts` |
+| [`temporal_alignment_pipeline.yaml`](temporal_alignment_pipeline.yaml) | M4 temporal alignment (forced align + duration) | Level 2 (Local) | `dummy_asr` $\to$ `dummy_forced_aligner` $\to$ `duration_modeller` $\to$ `dummy_tts` |
+| [`voice_transfer_pipeline.yaml`](voice_transfer_pipeline.yaml) | M6 voice-conditioned TTS (Coqui XTTS-v2) | Level 2 (Local) | `dummy_asr` $\to$ `dummy_translator` $\to$ `speaker_embedding` $\to$ `voice_conditioned_tts` |
+| [`av_sync_mock_pipeline.yaml`](av_sync_mock_pipeline.yaml) | M7 AV-sync offline mock | Level 2 (Local) | `dummy_asr` $\to$ `dummy_forced_aligner` $\to$ `duration_modeller` $\to$ `dialogue_timing` $\to$ `dummy_tts` $\to$ `video_merger` |
 
 ---
 

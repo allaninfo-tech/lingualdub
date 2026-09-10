@@ -148,6 +148,19 @@ def get_default_registry() -> ld.Registry:
 
     registry.register("resource", "dummy_video_lug_v1", DUMMY_VIDEO_RESOURCE, version="1.0.0")
 
+    # Register Runyankole transfer component + eval resources (M8.2 / M8.3)
+    try:
+        from lingualdub.components.asr.runyankole import RunyankoleASRComponent
+
+        registry.register("component", "runyankole_asr", RunyankoleASRComponent, version="1.0.0")
+    except Exception:
+        pass
+
+    from lingualdub.resources.eval_sets import RUNYANKOLE_ASR_EVAL_SET, RUNYANKOLE_ENG_PARALLEL_EVAL_SET
+
+    registry.register("resource", "nyn_asr_eval_salt_v1", RUNYANKOLE_ASR_EVAL_SET, version="1.0.0")
+    registry.register("resource", "nyn_eng_parallel_eval_salt_v1", RUNYANKOLE_ENG_PARALLEL_EVAL_SET, version="1.0.0")
+
 
     # Scan installed extension manifests
     scanner = ManifestScanner(registry)

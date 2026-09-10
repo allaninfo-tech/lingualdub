@@ -1,6 +1,7 @@
 # LingualDub Milestone 1 & 2 Baseline Pipeline (Level 3 - Remote / Colab GPU)
+# Updated M4-compatible: includes forced alignment + duration modelling for temporal envelope.
 name: "luganda_english_baseline_sunbird_v1"
-description: "End-to-end Luganda to English dubbing pipeline using Sunbird ASR, Sunbird Translation, and Meta MMS-TTS."
+description: "End-to-end Luganda to English dubbing pipeline using Sunbird ASR, Sunbird Translation, and Meta MMS-TTS (with temporal alignment)."
 source_language: "lug"
 target_language: "eng"
 per_segment_language: false
@@ -14,12 +15,18 @@ stages:
       model_name_or_path: "Sunbird/asr-whisper-51-african-languages"
       language: "lug"
   - kind: "component"
+    key: "dummy_forced_aligner"
+    version: "1.0.0"
+  - kind: "component"
     key: "sunbird_translator"
     version: "1.0.0"
     params:
       model_name_or_path: "facebook/nllb-200-distilled-600M"
       source_language: "lug"
       target_language: "eng"
+  - kind: "component"
+    key: "duration_modeller"
+    version: "1.0.0"
   - kind: "component"
     key: "mms_tts"
     version: "1.0.0"

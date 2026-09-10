@@ -17,12 +17,20 @@ stages:
       language: "lug"
 
   - kind: "component"
+    key: "dummy_forced_aligner"  # M4 temporal alignment — emits word timestamps & aligned boundaries
+    version: "1.0.0"
+
+  - kind: "component"
     key: "sunbird_translator" # or "hf_translator", "dummy_translator", or custom MT
     version: "1.0.0"
     params:
       model_name_or_path: "facebook/nllb-200-distilled-600M"
       source_language: "lug"
       target_language: "eng"
+
+  - kind: "component"
+    key: "duration_modeller"    # M4 — target duration per segment for TTS fitting
+    version: "1.0.0"
 
   - kind: "component"
     key: "mms_tts"           # or "dummy_tts", or custom voice-conditioned TTS

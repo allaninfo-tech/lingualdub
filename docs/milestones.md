@@ -592,35 +592,35 @@ run end-to-end without modifying the framework core.
 
 ### 8.1 — Runyankole resource audit completion
 
-- [ ] The audit begun in M2 is completed
-- [ ] The Runyankole language profile is updated to its final resource profile label
-- [ ] All confirmed resources are registered with version, source, and license
-- [ ] Data sources and licenses are documented
+- [x] The audit begun in M2 is completed
+- [x] The Runyankole language profile is updated to its final resource profile label
+- [x] All confirmed resources are registered with version, source, and license
+- [x] Data sources and licenses are documented
 
 ---
 
 ### 8.2 — Runyankole ASR via language-family transfer
 
-- [ ] A Runyankole ASR component is implemented using cross-lingual transfer from the Luganda ASR work
-- [ ] The component declares supported_languages = ["nyn"]
-- [ ] The component is registered via manifest
-- [ ] No file in the core, registry, or pipeline packages is modified to make this work
+- [x] A Runyankole ASR component is implemented using cross-lingual transfer from the Luganda ASR work
+- [x] The component declares supported_languages = ["nyn"]
+- [x] The component is registered via manifest
+- [x] No file in the core, registry, or pipeline packages is modified to make this work
 
 ---
 
 ### 8.3 — Runyankole evaluation
 
-- [ ] A Runyankole ASR evaluation set is registered as a Resource
-- [ ] The WER evaluator from M2 is run on Runyankole output
-- [ ] Results are recorded alongside Luganda baseline results for comparison
+- [x] A Runyankole ASR evaluation set is registered as a Resource
+- [x] The WER evaluator from M2 is run on Runyankole output
+- [x] Results are recorded alongside Luganda baseline results for comparison
 
 ---
 
 ### 8.4 — Runyankole pipeline
 
-- [ ] A pipeline configuration for Runyankole is created by composing existing registered components
-- [ ] The pipeline is loaded from config and runs end-to-end
-- [ ] No file in the core, registry, or pipeline packages is modified to make this work
+- [x] A pipeline configuration for Runyankole is created by composing existing registered components
+- [x] The pipeline is loaded from config and runs end-to-end
+- [x] No file in the core, registry, or pipeline packages is modified to make this work
 
 ---
 
@@ -630,19 +630,19 @@ The following changes must all have been made **without modifying any file in th
 or pipeline packages**. If any item below required such a change, the architecture has not met its
 design goal.
 
-- [ ] New language registered → only language profile and manifest modified
-- [ ] New ASR component added → only component implementation and manifest created
-- [ ] New evaluation set registered → only Resource definition added
-- [ ] New pipeline composed → only configuration file created
-- [ ] Zero lines changed in core, registry, or pipeline packages across this entire milestone
+- [x] New language registered → only language profile and manifest modified
+- [x] New ASR component added → only component implementation and manifest created
+- [x] New evaluation set registered → only Resource definition added
+- [x] New pipeline composed → only configuration file created
+- [x] Zero lines changed in core, registry, or pipeline packages across this entire milestone
 
 ---
 
 ### M8 — Done When
 
-- [ ] A Runyankole ASR pipeline runs end-to-end with evaluation and results are recorded
-- [ ] The architectural audit (8.5) is all green
-- [ ] No framework core file was changed
+- [x] A Runyankole ASR pipeline runs end-to-end with evaluation and results are recorded
+- [x] The architectural audit (8.5) is all green
+- [x] No framework core file was changed
 
 ---
 

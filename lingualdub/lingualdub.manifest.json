@@ -21,7 +21,7 @@
       "version": "1.0.0",
       "metadata": {
         "family": "Bantu (Great Lakes)",
-        "profile": "speech-sparse / text-sparse"
+        "profile": "speech-sparse / text-sparse → speech-moderate via Luganda family transfer (audit 2026-09-10)"
       }
     },
     {
@@ -328,6 +328,42 @@
       "version": "1.0.0",
       "metadata": {
         "kind": "video"
+      }
+    },
+    {
+      "kind": "component",
+      "key": "runyankole_asr",
+      "module": "lingualdub.components.asr.runyankole",
+      "attr": "RunyankoleASRComponent",
+      "version": "1.0.0",
+      "metadata": {
+        "task": "asr",
+        "provider": "sunbird_transfer",
+        "language": "nyn",
+        "type": "neural+deteriministic",
+        "transfer": "lug->nyn"
+      }
+    },
+    {
+      "kind": "resource",
+      "key": "nyn_asr_eval_salt_v1",
+      "module": "lingualdub.resources.eval_sets",
+      "attr": "RUNYANKOLE_ASR_EVAL_SET",
+      "version": "1.0.0",
+      "metadata": {
+        "kind": "eval_set",
+        "language": "nyn"
+      }
+    },
+    {
+      "kind": "resource",
+      "key": "nyn_eng_parallel_eval_salt_v1",
+      "module": "lingualdub.resources.eval_sets",
+      "attr": "RUNYANKOLE_ENG_PARALLEL_EVAL_SET",
+      "version": "1.0.0",
+      "metadata": {
+        "kind": "parallel_text",
+        "language": "nyn"
       }
     }
   ]

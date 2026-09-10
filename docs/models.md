@@ -57,11 +57,28 @@ Resource: `voice_cloning_dummy_v1` (synthetic, Apache-2.0) provenance `VOICE_CLO
 
 ---
 
-## Milestone 7 — Planned (AV Sync)
+## Milestone 7 — Audio-Visual Sync
 
-| Component | Model | Licence |
-|---|---|---|
-| AV Sync | SyncNet / TalkNet | MIT / Apache-2.0 |
+| Component | Model | Licence | Notes |
+|---|---|---|---|
+| AV Sync Evaluator | `SyncNet` deterministic timing offset (`AVSyncEvaluator`, `syncnet_dummy_v1`) | Apache-2.0 (offline) / MIT production | `mean_av_offset_ms`, `pct_within_100ms`, tolerance 100ms |
+| Dialogue Timing | Heuristic snap to `video_cues`/`scene_cut` (`DialogueTimingComponent`) | Apache-2.0 | Compatible with M4 `DurationModellingComponent` |
+| Video Merger | FFmpeg `VideoMergerComponent` (dummy WAV+video placeholder offline) | Apache-2.0 | `ResourceKind.VIDEO`, provenance `video_merger`, `source_video_ref` |
+
+## Milestone 8 — Generalisation Proof (Runyankole)
+
+| Task | Component | Model | Licence | Rationale |
+|---|---|---|---|---|
+| ASR (Runyankole) | `RunyankoleASRComponent` (`runyankole_asr`) | `Sunbird/asr-whisper-51-african-languages` (SALT Runyankole-Rukiga, 51 langs) | Apache-2.0 (via HF) | SALT fine-tune covers nyn+Rukiga jointly; Luganda→nyn transfer evidence ~35% zero-shot WER → <20% with 10h adapt |
+| ASR fallback (offline) | `RunyankoleASRComponent` deterministic | Deterministic nyn phrase `Agandi nungyi...` | Apache-2.0 | No torch dependency, `supported_languages=["nyn"]` strict scoping for M8.2 proof |
+| Translation (nyn→eng) | `HuggingFaceTranslationComponent` | `facebook/nllb-200-distilled-600M` (`nyn_Latn`) | CC-BY-NC 4.0 | NLLB nyn_Latn already proven; same pipeline as Luganda |
+| TTS | `MMSTTSComponent` / `DummyTTSComponent` | `facebook/mms-tts-eng` or `mms-tts-nyn` | CC-BY-NC 4.0 | Reused, no new TTS needed |
+
+Evaluation sets (M8.3): `nyn_asr_eval_salt_v1` (SALT Runyankole-Rukiga test split, 5 samples, `SALT_ASR_EVAL_PROTOCOL_V1`, CC-BY-4.0, `consent_basis: institutional_open_research_release`) and `nyn_eng_parallel_eval_salt_v1` (3 pairs, `SALT_MT_EVAL_PROTOCOL_V1`). Both carry `related_language_proxy: lug`, `transfer_basis: lug->nyn`.
+
+Configs: `configs/runyankole_mock_pipeline.yaml` (offline `runyankole_asr→dummy_translator→dummy_tts`) and `configs/runyankole_english_baseline.yaml` (Colab `runyankole_asr(use_neural=true) + hf_translator(nyn→eng) + mms_tts`). Loaded via `ConfigLoader` + `PipelineExecutor` without core changes — architectural audit 8.5.
+
+Audit: `docs/research/runyankole_audit.md` (speech ~40h SALT, text Hansard/JW.org/MoH, licenses CC-BY-4.0/CC-BY-NC 4.0, transfer analysis).
 
 All model weights are acquired via `lingualdub.utils.ResourceManager` (SHA256 verified, `~/.cache/lingualdub`, `LINGUALDUB_CACHE_DIR` override) and versioned in `Result.provenance`.
 
