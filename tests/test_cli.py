@@ -4,9 +4,10 @@ Unit tests for lingualdub CLI commands.
 
 import json
 from pathlib import Path
+
 import pytest
 
-from lingualdub.cli import main, get_default_registry
+from lingualdub.cli import main
 
 
 def test_cli_help(capsys):
@@ -42,12 +43,17 @@ def test_cli_experiment_run_missing_config():
 def test_cli_experiment_run_sample_text(tmp_path, capsys):
     cfg_file = Path("configs/local_mock_pipeline.yaml")
     out_dir = tmp_path / "cli_out"
-    ret = main([
-        "experiment", "run",
-        str(cfg_file),
-        "--sample-text", "Oli otya nnyabo",
-        "--output-dir", str(out_dir),
-    ])
+    ret = main(
+        [
+            "experiment",
+            "run",
+            str(cfg_file),
+            "--sample-text",
+            "Oli otya nnyabo",
+            "--output-dir",
+            str(out_dir),
+        ]
+    )
     assert ret == 0
     assert (out_dir / "results.json").exists()
     assert (out_dir / "README.md").exists()
@@ -56,11 +62,15 @@ def test_cli_experiment_run_sample_text(tmp_path, capsys):
 def test_cli_experiment_run_with_audio_input(tmp_path):
     cfg_file = Path("configs/local_mock_pipeline.yaml")
     audio_file = Path("data/samples/sample_lug.wav")
-    ret = main([
-        "experiment", "run",
-        str(cfg_file),
-        "--input-audio", str(audio_file),
-    ])
+    ret = main(
+        [
+            "experiment",
+            "run",
+            str(cfg_file),
+            "--input-audio",
+            str(audio_file),
+        ]
+    )
     assert ret == 0
 
 

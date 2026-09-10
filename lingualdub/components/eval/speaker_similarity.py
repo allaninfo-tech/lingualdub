@@ -11,7 +11,6 @@ a score in [0, 1] with full provenance. Registered via manifest.
 from __future__ import annotations
 
 import math
-from typing import List, Union
 
 from lingualdub.components.eval.base import EvaluatorComponent
 from lingualdub.core.component import ComponentTask, FailureMode
@@ -19,13 +18,13 @@ from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result
 
 
-def _cosine_similarity(vec_a: List[float], vec_b: List[float]) -> float:
+def _cosine_similarity(vec_a: list[float], vec_b: list[float]) -> float:
     """Compute cosine similarity between two vectors (range [-1, 1])."""
     if len(vec_a) != len(vec_b):
         raise ValueError(f"Embedding dimension mismatch: {len(vec_a)} vs {len(vec_b)}")
     if not vec_a:
         raise ValueError("Empty embedding vector")
-    dot = sum(a * b for a, b in zip(vec_a, vec_b))
+    dot = sum(a * b for a, b in zip(vec_a, vec_b, strict=True))
     norm_a = math.sqrt(sum(a * a for a in vec_a))
     norm_b = math.sqrt(sum(b * b for b in vec_b))
     if norm_a == 0 or norm_b == 0:
@@ -56,15 +55,15 @@ class SpeakerSimilarityEvaluator(EvaluatorComponent):
     name: str = "speaker_similarity_evaluator"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.EVAL
-    supported_languages: List[str] = ["lug", "nyn", "eng", "swa"]
-    requires: List[str] = ["speaker_embedding"]
-    provides: List[str] = ["speaker_similarity_metrics"]
+    supported_languages: list[str] = ["lug", "nyn", "eng", "swa"]
+    requires: list[str] = ["speaker_embedding"]
+    provides: list[str] = ["speaker_similarity_metrics"]
     on_failure: FailureMode = FailureMode.SKIP
 
     def __init__(self, version: str = "1.0.0") -> None:
         self.version = version
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         # Default run: if input is a Result with embedding, return it with metrics placeholder
         if isinstance(input, Result):
             if "speaker_embedding" in input.metadata:
@@ -73,7 +72,7 @@ class SpeakerSimilarityEvaluator(EvaluatorComponent):
             return input
         return Result()
 
-    def evaluate_pair(self, hypothesis: Result, reference: Union[Result, Resource]) -> Result:
+    def evaluate_pair(self, hypothesis: Result, reference: Result | Resource) -> Result:
         """
         Compute cosine similarity between hypothesis and reference embeddings.
 
@@ -107,7 +106,6 @@ class SpeakerSimilarityEvaluator(EvaluatorComponent):
                     "Run SpeakerEmbeddingComponent on the reference audio first."
                 )
             ref_provenance = reference.provenance
-            ref_version = reference.provenance.get("speaker_encoder", "unknown")
         elif isinstance(reference, Resource):
             # Resource may carry embedding in metadata (pre-computed) or we error
             ref_emb = reference.metadata.get("speaker_embedding")
@@ -117,7 +115,6 @@ class SpeakerSimilarityEvaluator(EvaluatorComponent):
                     "Provide a Result with embedding or a Resource with metadata['speaker_embedding']."
                 )
             ref_provenance = reference.provenance
-            ref_version = reference.provenance.get("speaker_encoder", "unknown")
         else:
             raise ValueError(f"Unsupported reference type: {type(reference).__name__}")
 

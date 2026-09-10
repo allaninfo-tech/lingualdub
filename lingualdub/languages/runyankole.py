@@ -84,4 +84,3 @@ RUNYANKOLE = Language(
         "notes": "M8.1 final audit completed 2026-09-10 — speech-sparse native augmented to moderate via family transfer. No core framework change required.",
     },
 )
-

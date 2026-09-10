@@ -23,7 +23,6 @@ import logging
 import math
 import struct
 from pathlib import Path
-from typing import List, Optional, Union
 
 from lingualdub.components.speaker.base import SpeakerComponent
 from lingualdub.core.component import ComponentTask, FailureMode
@@ -35,7 +34,7 @@ from lingualdub.utils.consent import ensure_consent as _ensure_consent_shared
 logger = logging.getLogger(__name__)
 
 
-def _deterministic_embedding(key: str, dim: int = 192) -> List[float]:
+def _deterministic_embedding(key: str, dim: int = 192) -> list[float]:
     """
     Generate a deterministic unit-norm embedding from a string key.
 
@@ -47,13 +46,13 @@ def _deterministic_embedding(key: str, dim: int = 192) -> List[float]:
     buf = b""
     counter = 0
     while len(buf) < needed:
-        h = hashlib.sha256(f"{key}:{counter}".encode("utf-8")).digest()
+        h = hashlib.sha256(f"{key}:{counter}".encode()).digest()
         buf += h
         counter += 1
     buf = buf[:needed]
 
     # Convert each 4-byte chunk to float in [-1, 1]
-    vec: List[float] = []
+    vec: list[float] = []
     for i in range(dim):
         chunk = buf[i * 4 : (i + 1) * 4]
         # unpack as unsigned int, map to [0,1), then to [-1,1]
@@ -68,7 +67,7 @@ def _deterministic_embedding(key: str, dim: int = 192) -> List[float]:
     return vec
 
 
-def _ensure_consent(input_obj: Union[Resource, Result]) -> None:
+def _ensure_consent(input_obj: Resource | Result) -> None:
     """Backward-compatible wrapper around utils.consent.ensure_consent."""
     _ensure_consent_shared(input_obj, "SpeakerEmbeddingComponent")
 
@@ -84,17 +83,17 @@ class SpeakerEmbeddingComponent(SpeakerComponent):
     name: str = "speaker_embedding"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.SPEAKER
-    supported_languages: List[str] = ["lug", "nyn", "eng", "swa"]
-    requires: List[str] = []
-    provides: List[str] = ["speaker_embedding"]
+    supported_languages: list[str] = ["lug", "nyn", "eng", "swa"]
+    requires: list[str] = []
+    provides: list[str] = ["speaker_embedding"]
     on_failure: FailureMode = FailureMode.ABORT
 
     def __init__(
         self,
-        model_name_or_path: Optional[str] = None,
+        model_name_or_path: str | None = None,
         embedding_dim: int = 192,
-        resource_manager: Optional[object] = None,
-        registry: Optional[object] = None,
+        resource_manager: object | None = None,
+        registry: object | None = None,
         version: str = "1.0.0",
     ) -> None:
         self.model_name_or_path = model_name_or_path or "speechbrain/spkrec-ecapa-voxceleb"
@@ -102,8 +101,8 @@ class SpeakerEmbeddingComponent(SpeakerComponent):
         self.version = version
         self._resource_manager = resource_manager
         self._registry = registry
-        self._speaker_resource: Optional[Resource] = None
-        self._speaker_resource_path: Optional[str] = None
+        self._speaker_resource: Resource | None = None
+        self._speaker_resource_path: str | None = None
         self._model = None  # Lazy-loaded neural model if available
 
     def _load_speaker_resource(self) -> None:
@@ -119,27 +118,30 @@ class SpeakerEmbeddingComponent(SpeakerComponent):
             self._speaker_resource = res
             self._speaker_resource_path = path
 
-    def _load_neural_model(self) -> Optional[object]:
+    def _load_neural_model(self) -> object | None:
         """Attempt to load neural speaker encoder if dependencies available."""
         if self._model is not None:
             return self._model
         # Try speechbrain ECAPA as primary, fallback to dummy
         try:
-            import torch
             from speechbrain.pretrained import EncoderClassifier
 
             # If we have a cached path from ResourceManager, use it; else use HF id
             model_src = self._speaker_resource_path or self.model_name_or_path
             logger.info("Loading speaker encoder %r", model_src)
             # speechbrain expects a directory; we attempt but may fail in offline
-            self._model = EncoderClassifier.from_hparams(source=model_src, run_opts={"device": "cpu"})
+            self._model = EncoderClassifier.from_hparams(
+                source=model_src, run_opts={"device": "cpu"}
+            )
             return self._model
         except Exception as exc:
-            logger.debug("Neural speaker model not available (%s), using deterministic fallback.", exc)
+            logger.debug(
+                "Neural speaker model not available (%s), using deterministic fallback.", exc
+            )
             self._model = None
             return None
 
-    def _extract_key(self, input_obj: Union[Resource, Result]) -> str:
+    def _extract_key(self, input_obj: Resource | Result) -> str:
         """Derive a deterministic key from the input audio/text."""
         if isinstance(input_obj, Resource):
             # Prefer file content hash if file exists — content-addressable, id-independent
@@ -152,7 +154,7 @@ class SpeakerEmbeddingComponent(SpeakerComponent):
                 except Exception:
                     pass
             # Fallback to id + language + version
-            return f"{input_obj.id}:{input_obj.language}:{input_obj.version}:{input_obj.provenance.get('consent_basis','')}"
+            return f"{input_obj.id}:{input_obj.language}:{input_obj.version}:{input_obj.provenance.get('consent_basis', '')}"
         else:  # Result
             # Prefer artifact file hash if available — content-addressable
             if input_obj.artifacts:
@@ -172,21 +174,23 @@ class SpeakerEmbeddingComponent(SpeakerComponent):
             # Include provenance run_id to keep distinct runs separate unless same content
             base = "|".join(parts) or "empty"
             # Incorporate consent and language for stability
-            extra = f"{input_obj.source_language}:{input_obj.target_language}:{input_obj.provenance.get('consent_basis','')}"
-            return hashlib.sha256(f"{base}:{extra}".encode("utf-8")).hexdigest()
+            extra = f"{input_obj.source_language}:{input_obj.target_language}:{input_obj.provenance.get('consent_basis', '')}"
+            return hashlib.sha256(f"{base}:{extra}".encode()).hexdigest()
 
-    def run(self, input: Union[Resource, Result]) -> Result:
+    def run(self, input: Resource | Result) -> Result:
         _ensure_consent(input)
         self._load_speaker_resource()
 
         # Try neural model first if available and torch installed
         neural_model = self._load_neural_model()
-        embedding: List[float]
+        embedding: list[float]
         if neural_model is not None:
             # Neural path: would extract real embedding, but we still use deterministic
             # for testing determinism; log and use deterministic to ensure repeatability
             # In production, replace this branch with actual inference.
-            logger.debug("Neural model loaded but using deterministic embedding for reproducibility in tests.")
+            logger.debug(
+                "Neural model loaded but using deterministic embedding for reproducibility in tests."
+            )
             key = self._extract_key(input)
             embedding = _deterministic_embedding(key, self.embedding_dim)
         else:
@@ -200,7 +204,7 @@ class SpeakerEmbeddingComponent(SpeakerComponent):
             warnings = []
             provenance = dict(input.provenance)
             artifacts = [str(input.path)] if input.path else []
-            segments: List[Segment] = []
+            segments: list[Segment] = []
             # Create a single segment representing the utterance
             segments.append(
                 Segment(
@@ -224,7 +228,9 @@ class SpeakerEmbeddingComponent(SpeakerComponent):
         provenance["speaker_encoder"] = f"{self.name}@{self.version}"
         # Use speaker resource version if available
         if self._speaker_resource is not None:
-            provenance["speaker_encoder_resource"] = getattr(self._speaker_resource, "id", "unknown")
+            provenance["speaker_encoder_resource"] = getattr(
+                self._speaker_resource, "id", "unknown"
+            )
         provenance["embedding_dim"] = str(self.embedding_dim)
 
         metadata = dict(input.metadata) if isinstance(input, Result) else {}
@@ -248,7 +254,7 @@ class SpeakerEmbeddingComponent(SpeakerComponent):
 
         return result
 
-    def degrade(self, input: Union[Resource, Result]) -> Result:
+    def degrade(self, input: Resource | Result) -> Result:
         """Degraded path: return input with degraded flag, no embedding."""
         result = input if isinstance(input, Result) else Result()
         result.mark_degraded("Speaker embedding unavailable; returning without embedding.")

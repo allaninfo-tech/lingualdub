@@ -1,13 +1,13 @@
 """Tests for lingualdub.utils.resource_manager."""
 
 import hashlib
+from unittest.mock import MagicMock, patch
+
 import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
 
 from lingualdub.utils.resource_manager import (
-    ResourceManager,
     ChecksumError,
+    ResourceManager,
     ResourceNotFoundError,
 )
 
@@ -82,6 +82,8 @@ def test_cache_path_helper(tmp_path):
 def test_download_failure_raises_resource_not_found(tmp_path):
     manager = ResourceManager(cache_dir=tmp_path)
 
-    with patch("urllib.request.urlopen", side_effect=OSError("network error")):
-        with pytest.raises(ResourceNotFoundError, match="Could not download"):
-            manager.get("my_model", "1.0.0", "http://example.com/model.bin", "abc123")
+    with (
+        patch("urllib.request.urlopen", side_effect=OSError("network error")),
+        pytest.raises(ResourceNotFoundError, match="Could not download"),
+    ):
+        manager.get("my_model", "1.0.0", "http://example.com/model.bin", "abc123")

@@ -3,18 +3,19 @@ Unit tests for dummy adapters and evaluation metrics.
 """
 
 from pathlib import Path
+
 from lingualdub.components.asr.dummy import DummyASRComponent
-from lingualdub.components.translation.dummy import DummyTranslationComponent
-from lingualdub.components.tts.dummy import DummyTTSComponent
 from lingualdub.components.eval.metrics import (
-    WEREvaluator,
-    TranslationEvaluator,
     TemporalAlignmentEvaluator,
-    compute_wer,
+    TranslationEvaluator,
+    WEREvaluator,
+    compute_bleu,
     compute_cer,
     compute_chrf,
-    compute_bleu,
+    compute_wer,
 )
+from lingualdub.components.translation.dummy import DummyTranslationComponent
+from lingualdub.components.tts.dummy import DummyTTSComponent
 from lingualdub.core.resource import Resource, ResourceKind
 from lingualdub.core.result import Result, ResultStatus
 from lingualdub.core.segment import Segment
@@ -36,7 +37,14 @@ def test_dummy_translation_preserves_speaker():
     trans = DummyTranslationComponent(source_language="lug", target_language="eng")
     inp = Result(
         segments=[
-            Segment(start=0.0, end=2.0, text="oli otya", language="lug", speaker="speaker_1", confidence=0.9)
+            Segment(
+                start=0.0,
+                end=2.0,
+                text="oli otya",
+                language="lug",
+                speaker="speaker_1",
+                confidence=0.9,
+            )
         ],
         source_language="lug",
     )
@@ -53,9 +61,7 @@ def test_dummy_translation_preserves_speaker():
 def test_dummy_tts_generates_audio(tmp_path):
     tts = DummyTTSComponent(output_dir=str(tmp_path))
     inp = Result(
-        segments=[
-            Segment(start=0.0, end=1.5, text="Hello madam", language="eng")
-        ],
+        segments=[Segment(start=0.0, end=1.5, text="Hello madam", language="eng")],
         source_language="lug",
         target_language="eng",
     )
@@ -113,26 +119,31 @@ def test_evaluators_with_results():
 
 
 def test_neural_adapters_contracts_and_fallback(tmp_path):
+    import pytest
+
     from lingualdub.components.asr.sunbird import SunbirdASRComponent
     from lingualdub.components.asr.whisper import WhisperASRComponent
-    from lingualdub.components.translation.sunbird import SunbirdTranslationComponent
     from lingualdub.components.translation.hf_translator import HuggingFaceTranslationComponent
+    from lingualdub.components.translation.sunbird import SunbirdTranslationComponent
     from lingualdub.components.tts.mms_tts import MMSTTSComponent
     from lingualdub.core.component import ComponentTask
-    import pytest
 
     # Sunbird ASR contract
     sunbird_asr = SunbirdASRComponent()
     assert sunbird_asr.task == ComponentTask.ASR
     assert "lug" in sunbird_asr.supported_languages
     with pytest.raises(FileNotFoundError):
-        sunbird_asr.run(Resource(id="missing", kind=ResourceKind.SPEECH, language="lug", version="1.0"))
+        sunbird_asr.run(
+            Resource(id="missing", kind=ResourceKind.SPEECH, language="lug", version="1.0")
+        )
 
     # Whisper ASR contract
     whisper_asr = WhisperASRComponent()
     assert whisper_asr.task == ComponentTask.ASR
     with pytest.raises(FileNotFoundError):
-        whisper_asr.run(Resource(id="missing", kind=ResourceKind.SPEECH, language="lug", version="1.0"))
+        whisper_asr.run(
+            Resource(id="missing", kind=ResourceKind.SPEECH, language="lug", version="1.0")
+        )
 
     # Sunbird Translator contract
     sunbird_trans = SunbirdTranslationComponent()

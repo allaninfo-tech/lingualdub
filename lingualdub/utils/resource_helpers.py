@@ -11,14 +11,13 @@ with inconsistent hasattr checks (resolve vs get) and unreachable branches.
 from __future__ import annotations
 
 import logging
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
 
 def acquire_resource(
-    registry: Optional[object],
-    resource_manager: Optional[object],
+    registry: object | None,
+    resource_manager: object | None,
     resource_key: str,
     kind: str = "resource",
 ):

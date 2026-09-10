@@ -1,8 +1,8 @@
 """
 Shared test fixtures for the LingualDub test suite.
 """
+
 from __future__ import annotations
-from typing import Union
 
 import pytest
 
@@ -24,7 +24,7 @@ class MockComponent(Component):
     provides = ["transcription"]
     on_failure = FailureMode.ABORT
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         return Result(source_language="lug")
 
 

@@ -6,10 +6,11 @@ Meta MMS-TTS / VITS component adapter for high-quality speech synthesis.
 """
 
 from __future__ import annotations
+
 import logging
 import tempfile
 from pathlib import Path
-from typing import Any, List, Optional, Union
+from typing import Any
 
 from lingualdub.components.tts.base import FittingStrategy, TTSComponent
 from lingualdub.core.component import ComponentTask, FailureMode
@@ -41,18 +42,17 @@ class MMSTTSComponent(TTSComponent):
     name: str = "mms_tts"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.TTS
-    supported_languages: List[str] = ["eng", "lug", "swa"]
-    requires: List[str] = ["translation", "duration_target"]
-    provides: List[str] = ["synthesised_audio"]
+    supported_languages: list[str] = ["eng", "lug", "swa"]
+    requires: list[str] = ["translation", "duration_target"]
+    provides: list[str] = ["synthesised_audio"]
     on_failure: FailureMode = FailureMode.DEGRADE
-
 
     def __init__(
         self,
-        model_name_or_path: Optional[str] = None,
+        model_name_or_path: str | None = None,
         language: str = "eng",
-        output_dir: Optional[str] = None,
-        device: Optional[str] = None,
+        output_dir: str | None = None,
+        device: str | None = None,
         version: str = "1.0.0",
     ) -> None:
         self.language = language
@@ -64,10 +64,13 @@ class MMSTTSComponent(TTSComponent):
         else:
             logger.warning(
                 "MMS-TTS: no checkpoint for language %r; falling back to %r.",
-                language, MMS_TTS_FALLBACK,
+                language,
+                MMS_TTS_FALLBACK,
             )
             self.model_name_or_path = MMS_TTS_FALLBACK
-        self.output_dir = Path(output_dir) if output_dir else Path(tempfile.gettempdir()) / "lingualdub_mms_tts"
+        self.output_dir = (
+            Path(output_dir) if output_dir else Path(tempfile.gettempdir()) / "lingualdub_mms_tts"
+        )
         self.device = device
         self.version = version
         self._model = None
@@ -93,7 +96,7 @@ class MMSTTSComponent(TTSComponent):
             self._tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
             self._model = VitsModel.from_pretrained(self.model_name_or_path).to(device)
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result):
             raise ValueError(f"MMSTTSComponent expects a Result input, got {type(input).__name__}")
         ensure_consent(input, self.__class__.__name__)
@@ -114,10 +117,12 @@ class MMSTTSComponent(TTSComponent):
         def _write_wav(dest: Path, rate: int, data: Any) -> None:
             try:
                 import scipy.io.wavfile
+
                 scipy.io.wavfile.write(str(dest), rate=rate, data=data)
             except ImportError:
                 import struct
                 import wave
+
                 with wave.open(str(dest), "wb") as wf:
                     wf.setnchannels(1)
                     wf.setsampwidth(2)
@@ -152,7 +157,9 @@ class MMSTTSComponent(TTSComponent):
 
             if strategy == FittingStrategy.SKIP:
                 seg.metadata["unfit"] = True
-                warnings.append(f"MMS-TTS segment #{idx} skipped (duration_ratio={ratio:.2f} exceeds threshold)")
+                warnings.append(
+                    f"MMS-TTS segment #{idx} skipped (duration_ratio={ratio:.2f} exceeds threshold)"
+                )
                 continue
 
             try:
@@ -177,8 +184,6 @@ class MMSTTSComponent(TTSComponent):
                 logger.warning("MMS-TTS synthesis failed on segment #%d (%r): %s", idx, text, exc)
                 warnings.append(f"MMS-TTS synthesis failed on segment #{idx}: {exc}")
 
-
-
         return Result(
             segments=list(input.segments),
             source_language=input.source_language,
@@ -192,10 +197,13 @@ class MMSTTSComponent(TTSComponent):
             },
         )
 
-    def degrade(self, input: Union[Result, Resource]) -> Result:
+    def degrade(self, input: Result | Resource) -> Result:
         """Degraded fallback if neural synthesis fails."""
         from lingualdub.components.tts.dummy import DummyTTSComponent
+
         dummy = DummyTTSComponent(output_dir=str(self.output_dir))
         res = dummy.degrade(input)
-        res.mark_degraded(f"MMSTTSComponent ({self.model_name_or_path}) failed; fell back to dummy audio")
+        res.mark_degraded(
+            f"MMSTTSComponent ({self.model_name_or_path}) failed; fell back to dummy audio"
+        )
         return res

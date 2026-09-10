@@ -11,8 +11,8 @@ audio-visual synchronisation.
 """
 
 from __future__ import annotations
+
 from abc import abstractmethod
-from typing import Union
 
 from lingualdub.core.component import Component, ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
@@ -26,11 +26,11 @@ class AlignmentComponent(Component):
     on_failure: FailureMode = FailureMode.DEGRADE
 
     @abstractmethod
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         """Align segment timing and return a Result with updated Segment timing."""
         ...
 
-    def degrade(self, input: Union[Result, Resource]) -> Result:
+    def degrade(self, input: Result | Resource) -> Result:
         """
         Default degrade path: return the input without alignment applied.
         Marks the result as degraded so consumers are aware timing is not adjusted.

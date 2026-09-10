@@ -1,7 +1,8 @@
 """Tests for lingualdub.registry.registry."""
 
 import pytest
-from lingualdub.registry.registry import Registry, ConflictPolicy, RegistryError
+
+from lingualdub.registry.registry import ConflictPolicy, Registry, RegistryError
 
 
 def test_registry_register_and_resolve():

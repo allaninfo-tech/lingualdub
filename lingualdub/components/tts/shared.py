@@ -53,6 +53,8 @@ def write_dummy_wav(
         frames = bytearray()
         for i in range(num_samples):
             envelope = math.sin(math.pi * (i / max(num_samples, 1)))
-            val = int(32767.0 * 0.3 * envelope * math.sin(2.0 * math.pi * freq_hz * (i / sample_rate)))
+            val = int(
+                32767.0 * 0.3 * envelope * math.sin(2.0 * math.pi * freq_hz * (i / sample_rate))
+            )
             frames.extend(struct.pack("<h", val))
         wav_file.writeframes(frames)

@@ -11,16 +11,12 @@ the download entirely.
 """
 
 from __future__ import annotations
+
 import hashlib
 import os
-import urllib.request
-from pathlib import Path
-from typing import Optional
-
-
 import threading
 import uuid
-
+from pathlib import Path
 
 DEFAULT_CACHE_DIR = Path.home() / ".cache" / "lingualdub"
 ENV_CACHE_DIR = "LINGUALDUB_CACHE_DIR"
@@ -45,7 +41,7 @@ class ResourceManager:
     race conditions during concurrent downloads.
     """
 
-    def __init__(self, cache_dir: Optional[Path] = None) -> None:
+    def __init__(self, cache_dir: Path | None = None) -> None:
         env_dir = os.environ.get(ENV_CACHE_DIR)
         # Explicit cache_dir takes precedence over env var; env var used only as fallback.
         if cache_dir is not None:
@@ -73,7 +69,7 @@ class ResourceManager:
         version: str,
         url: str,
         checksum: str,
-        filename: Optional[str] = None,
+        filename: str | None = None,
     ) -> Path:
         """
         Return the local path to a cached resource, downloading if needed.
@@ -101,13 +97,17 @@ class ResourceManager:
         self._sanitize_part(filename, "filename")
         # Validate URL scheme to prevent SSRF (only http/https allowed)
         if not (url.startswith("http://") or url.startswith("https://")):
-            raise ResourceNotFoundError(f"Unsupported URL scheme for {url!r}: only http/https allowed.")
+            raise ResourceNotFoundError(
+                f"Unsupported URL scheme for {url!r}: only http/https allowed."
+            )
         local_path = self.cache_dir / resource_id / version / filename
         # Ensure resolved path stays within cache_dir
         try:
             local_path.resolve().relative_to(self.cache_dir.resolve())
         except ValueError as exc:
-            raise ValueError(f"Resolved path {local_path!r} escapes cache directory {self.cache_dir!r}.") from exc
+            raise ValueError(
+                f"Resolved path {local_path!r} escapes cache directory {self.cache_dir!r}."
+            ) from exc
 
         # Fast path: already cached and verified
         if local_path.exists():
@@ -146,7 +146,6 @@ class ResourceManager:
 
         return local_path
 
-
     def _verify(self, path: Path, expected: str) -> None:
         """Verify the SHA256 checksum of a local file."""
         sha256 = hashlib.sha256()
@@ -156,8 +155,7 @@ class ResourceManager:
         actual = sha256.hexdigest()
         if actual != expected:
             raise ChecksumError(
-                f"Checksum mismatch for {path.name!r}: "
-                f"expected {expected!r}, got {actual!r}."
+                f"Checksum mismatch for {path.name!r}: expected {expected!r}, got {actual!r}."
             )
 
     def cache_path(self, resource_id: str, version: str, filename: str) -> Path:
@@ -169,5 +167,7 @@ class ResourceManager:
         try:
             p.resolve().relative_to(self.cache_dir.resolve())
         except ValueError as exc:
-            raise ValueError(f"Resolved path {p!r} escapes cache directory {self.cache_dir!r}.") from exc
+            raise ValueError(
+                f"Resolved path {p!r} escapes cache directory {self.cache_dir!r}."
+            ) from exc
         return p

@@ -11,8 +11,6 @@ without consent across all voice-related components.
 
 from __future__ import annotations
 
-from typing import Union
-
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result
 
@@ -34,13 +32,10 @@ def _result_has_voice_signal(result: Result) -> bool:
         # provenance has consent key (even if empty) -> caller intends voice
         return True
     # Legacy: segments with provenance voice keys
-    for s in result.segments:
-        if s.provenance.get("consent_basis") or s.speaker:
-            return True
-    return False
+    return any(s.provenance.get("consent_basis") or s.speaker for s in result.segments)
 
 
-def ensure_consent(input_obj: Union[Resource, Result], component_name: str) -> None:
+def ensure_consent(input_obj: Resource | Result, component_name: str) -> None:
     """
     Enforce consent_basis for voice processing.
 

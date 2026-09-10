@@ -13,13 +13,13 @@ initial implementation. Non-linear DAG execution is a planned extension.
 """
 
 from __future__ import annotations
+
 import logging
-from typing import List, Optional, Tuple, Union
 
 from lingualdub.core.component import Component, FailureMode
 from lingualdub.core.pipeline import Pipeline
 from lingualdub.core.resource import Resource
-from lingualdub.core.result import Result, ResultStatus
+from lingualdub.core.result import Result
 from lingualdub.core.segment import Segment
 from lingualdub.utils.provenance import make_provenance
 
@@ -41,7 +41,7 @@ class PipelineExecutor:
     def __init__(self, pipeline: Pipeline) -> None:
         self.pipeline = pipeline
 
-    def run(self, input: Union[Resource, Result]) -> Result:
+    def run(self, input: Resource | Result) -> Result:
         """
         Execute all pipeline stages in order.
 
@@ -68,7 +68,7 @@ class PipelineExecutor:
         Raises:
             PipelineExecutionError: If a stage fails under ABORT mode.
         """
-        current: Union[Resource, Result] = input
+        current: Resource | Result = input
         base_provenance = make_provenance(
             pipeline_name=self.pipeline.name or repr(self.pipeline),
             component_versions={s.name: s.version for s in self.pipeline.stages},
@@ -178,8 +178,8 @@ class PipelineExecutor:
         if not stage_langs or "*" in stage_langs:
             return stage.run(current)
 
-        supported: List[Tuple[int, Segment]] = []
-        unsupported: List[Tuple[int, Segment]] = []
+        supported: list[tuple[int, Segment]] = []
+        unsupported: list[tuple[int, Segment]] = []
 
         for idx, seg in enumerate(current.segments):
             seg_lang = seg.language or current.source_language or self.pipeline.source_language
@@ -191,10 +191,14 @@ class PipelineExecutor:
         if not unsupported:
             return stage.run(current)
 
-        unsupported_langs = sorted(list(set(
-            (s.language or current.source_language or self.pipeline.source_language)
-            for _, s in unsupported
-        )))
+        unsupported_langs = sorted(
+            list(
+                set(
+                    (s.language or current.source_language or self.pipeline.source_language)
+                    for _, s in unsupported
+                )
+            )
+        )
 
         if failure_mode == FailureMode.ABORT:
             raise PipelineExecutionError(
@@ -233,9 +237,11 @@ class PipelineExecutor:
             return current
 
         # Recombine processed segments and skipped segments
-        combined_segments: List[Segment] = []
+        combined_segments: list[Segment] = []
         if len(stage_out.segments) == len(supported):
-            new_segments_map = {orig_idx: stage_out.segments[i] for i, (orig_idx, _) in enumerate(supported)}
+            new_segments_map = {
+                orig_idx: stage_out.segments[i] for i, (orig_idx, _) in enumerate(supported)
+            }
             unsupported_map = {orig_idx: seg for orig_idx, seg in unsupported}
             for i in range(len(current.segments)):
                 if i in new_segments_map:
@@ -258,4 +264,3 @@ class PipelineExecutor:
                 f"Stage {stage.name!r} routed {len(supported)} segments; skipped {len(unsupported)} segments."
             )
         return stage_out
-

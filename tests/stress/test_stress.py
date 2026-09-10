@@ -14,10 +14,7 @@ import hashlib
 import json
 import random
 import threading
-from typing import List, Union
 from unittest.mock import patch
-
-import pytest
 
 import lingualdub as ld
 from lingualdub.core.component import Component, ComponentTask, FailureMode
@@ -25,13 +22,13 @@ from lingualdub.core.pipeline import Pipeline
 from lingualdub.core.resource import Resource, ResourceKind
 from lingualdub.core.result import Result, ResultStatus
 from lingualdub.core.segment import Segment
-from lingualdub.pipeline.executor import PipelineExecutionError, PipelineExecutor
+from lingualdub.pipeline.executor import PipelineExecutor
 from lingualdub.registry.manifest import ManifestScanner
-from lingualdub.registry.registry import ConflictPolicy, Registry, RegistryError
-from lingualdub.utils.resource_manager import ChecksumError, ResourceManager
-
+from lingualdub.registry.registry import ConflictPolicy, Registry
+from lingualdub.utils.resource_manager import ResourceManager
 
 # ─── 1. CONCURRENCY & THREAD SAFETY ───
+
 
 def test_concurrent_registry_writes_and_reads():
     """Test 50 threads concurrently registering and resolving entries."""
@@ -91,6 +88,7 @@ def test_concurrent_resource_manager_downloads(tmp_path):
 
 # ─── 2. LARGE PAYLOAD & SCALE STRESS ───
 
+
 def test_large_segment_payload_round_trip():
     """Test serialization and timing calculation for 10,000 segments."""
     num_segments = 10_000
@@ -142,9 +140,11 @@ def test_large_segment_payload_round_trip():
 
 # ─── 3. DEEP PIPELINE CHAINS & CAPABILITY VALIDATION ───
 
+
 class PassThroughStage(Component):
     """Component that passes input through and records its execution in provenance."""
-    def __init__(self, stage_idx: int, req: List[str], prov: List[str]):
+
+    def __init__(self, stage_idx: int, req: list[str], prov: list[str]):
         self.name = f"stage_{stage_idx:03d}"
         self.version = "1.0.0"
         self.task = ComponentTask.ASR
@@ -153,7 +153,7 @@ class PassThroughStage(Component):
         self.on_failure = FailureMode.ABORT
         self.stage_idx = stage_idx
 
-    def run(self, input: Union[Resource, Result]) -> Result:
+    def run(self, input: Resource | Result) -> Result:
         res = input if isinstance(input, Result) else Result(source_language="lug")
         res.provenance[f"executed_stage_{self.stage_idx}"] = True
         return res
@@ -164,7 +164,7 @@ def test_deep_pipeline_chain_100_stages():
     stages = []
     for i in range(100):
         req = [f"cap_{i}"] if i > 0 else []
-        prov = [f"cap_{i+1}"]
+        prov = [f"cap_{i + 1}"]
         stages.append(PassThroughStage(i, req, prov))
 
     pipeline = Pipeline(stages=stages, source_language="lug")
@@ -181,6 +181,7 @@ def test_deep_pipeline_chain_100_stages():
 
 # ─── 4. CHAOTIC FAILURE CASCADES ───
 
+
 class FlakyStage(Component):
     def __init__(self, name: str, mode: FailureMode, fail: bool, has_degrade: bool = True):
         self.name = name
@@ -192,12 +193,12 @@ class FlakyStage(Component):
         self.fail = fail
         self.has_degrade = has_degrade
 
-    def run(self, input: Union[Resource, Result]) -> Result:
+    def run(self, input: Resource | Result) -> Result:
         if self.fail:
             raise RuntimeError(f"Simulated fault in {self.name}")
         return input if isinstance(input, Result) else Result()
 
-    def degrade(self, input: Union[Resource, Result]) -> Result:
+    def degrade(self, input: Resource | Result) -> Result:
         if not self.has_degrade:
             raise NotImplementedError()
         res = input if isinstance(input, Result) else Result()
@@ -228,41 +229,49 @@ def test_mixed_failure_cascade_pipeline():
 
 # ─── 5. DESERIALIZATION FUZZING & CORRUPTED INPUTS ───
 
+
 def test_deserialization_fuzzing_resilience():
     """Test from_dict resilience against missing, malformed, or extra fields."""
     # Language with extra unknown keys
-    lang = ld.Language.from_dict({
-        "code": "lug",
-        "name": "Luganda",
-        "family": "Bantu",
-        "resource_profile": "speech-moderate",
-        "unknown_future_field": "test",
-    })
+    lang = ld.Language.from_dict(
+        {
+            "code": "lug",
+            "name": "Luganda",
+            "family": "Bantu",
+            "resource_profile": "speech-moderate",
+            "unknown_future_field": "test",
+        }
+    )
     assert lang.code == "lug"
 
     # Segment with missing optional fields
-    seg = ld.Segment.from_dict({
-        "start": 0.0,
-        "end": 1.5,
-        "text": "Hello",
-        "language": "eng",
-    })
+    seg = ld.Segment.from_dict(
+        {
+            "start": 0.0,
+            "end": 1.5,
+            "text": "Hello",
+            "language": "eng",
+        }
+    )
     assert seg.speaker is None
     assert seg.confidence is None
 
     # Resource with unknown fields
-    res = ld.Resource.from_dict({
-        "id": "res_001",
-        "kind": "speech",
-        "language": "lug",
-        "version": "1.0",
-        "extra_info": [1, 2, 3],
-    })
+    res = ld.Resource.from_dict(
+        {
+            "id": "res_001",
+            "kind": "speech",
+            "language": "lug",
+            "version": "1.0",
+            "extra_info": [1, 2, 3],
+        }
+    )
     assert res.kind == ResourceKind.SPEECH
     assert res.has_consent is False
 
 
 # ─── 6. MANIFEST SCANNER STRESS & ISOLATION ───
+
 
 def test_manifest_scanner_heavy_directory_tree(tmp_path):
     """Test scanner traversal across a large nested directory tree with mixed manifests."""
@@ -273,19 +282,23 @@ def test_manifest_scanner_heavy_directory_tree(tmp_path):
         # Create a valid manifest in every 5th directory
         if i % 5 == 0:
             manifest_file = sub / "lingualdub.manifest.json"
-            manifest_file.write_text(json.dumps({
-                "name": f"ext_{i}",
-                "version": "1.0.0",
-                "entries": [
+            manifest_file.write_text(
+                json.dumps(
                     {
-                        "kind": "component",
-                        "key": f"comp_{i}",
-                        "module": "pathlib",
-                        "attr": "Path",
-                        "version": "1.0.0"
+                        "name": f"ext_{i}",
+                        "version": "1.0.0",
+                        "entries": [
+                            {
+                                "kind": "component",
+                                "key": f"comp_{i}",
+                                "module": "pathlib",
+                                "attr": "Path",
+                                "version": "1.0.0",
+                            }
+                        ],
                     }
-                ]
-            }))
+                )
+            )
         # Create a corrupted manifest in every 7th directory
         elif i % 7 == 0:
             corrupt = sub / "lingualdub.manifest.json"

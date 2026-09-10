@@ -7,25 +7,27 @@ Covers:
 - FittingStrategy enum: all three values exist
 - TTS fitting strategies: COMPRESS / SPLIT / SKIP triggered correctly
 """
+
 from __future__ import annotations
+
 import pytest
+
+from lingualdub.components.alignment.duration import (
+    DurationModellingComponent,
+)
 from lingualdub.components.alignment.forced import (
     DummyForcedAlignmentComponent,
     _distribute_word_timestamps,
-)
-from lingualdub.components.alignment.duration import (
-    DurationModellingComponent,
-    _estimate_speech_duration,
 )
 from lingualdub.components.tts.base import FittingStrategy
 from lingualdub.components.tts.dummy import DummyTTSComponent, _choose_strategy
 from lingualdub.core.result import Result
 from lingualdub.core.segment import Segment
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _make_segment(text: str, start: float = 0.0, end: float = 3.0, lang: str = "lug", **meta):
     seg = Segment(start=start, end=end, text=text, language=lang)
@@ -41,6 +43,7 @@ def _make_result(*segs, src="lug", tgt="eng"):
 # FittingStrategy Enum
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestFittingStrategyEnum:
     def test_all_values_exist(self):
         assert FittingStrategy.COMPRESS == "compress"
@@ -55,6 +58,7 @@ class TestFittingStrategyEnum:
 # ─────────────────────────────────────────────────────────────────────────────
 # _distribute_word_timestamps helper
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestDistributeWordTimestamps:
     def test_empty_words(self):
@@ -94,12 +98,14 @@ class TestDistributeWordTimestamps:
 # DummyForcedAlignmentComponent
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestDummyForcedAlignmentComponent:
     def setup_method(self):
         self.aligner = DummyForcedAlignmentComponent()
 
     def test_rejects_non_result_input(self):
         from lingualdub.core.resource import Resource, ResourceKind
+
         r = Resource(id="r1", kind=ResourceKind.SPEECH, language="lug", version="1.0.0")
         with pytest.raises(ValueError):
             self.aligner.run(r)
@@ -149,12 +155,14 @@ class TestDummyForcedAlignmentComponent:
 # DurationModellingComponent
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestDurationModellingComponent:
     def setup_method(self):
         self.modeller = DurationModellingComponent()
 
     def test_rejects_non_result_input(self):
         from lingualdub.core.resource import Resource, ResourceKind
+
         r = Resource(id="r1", kind=ResourceKind.SPEECH, language="lug", version="1.0.0")
         with pytest.raises(ValueError):
             self.modeller.run(r)
@@ -201,6 +209,7 @@ class TestDurationModellingComponent:
 # TTS Fitting Strategy Selection
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestChooseStrategy:
     def test_compress_for_normal_ratio(self):
         assert _choose_strategy(1.0, "Hello world") == FittingStrategy.COMPRESS
@@ -212,7 +221,9 @@ class TestChooseStrategy:
         assert _choose_strategy(1.35, "Just fits") == FittingStrategy.COMPRESS
 
     def test_split_for_high_ratio_with_comma(self):
-        assert _choose_strategy(1.5, "Hello, world this is a long sentence") == FittingStrategy.SPLIT
+        assert (
+            _choose_strategy(1.5, "Hello, world this is a long sentence") == FittingStrategy.SPLIT
+        )
 
     def test_split_for_high_ratio_without_punctuation(self):
         # ratio 1.5 <= 1.75, so SPLIT even without punctuation
@@ -224,14 +235,29 @@ class TestChooseStrategy:
 
     def test_split_for_very_high_ratio_with_comma(self):
         # ratio > 1.75 but has a comma → SPLIT (splittable)
-        assert _choose_strategy(2.0, "this is a long sentence, with a clause boundary") == FittingStrategy.SPLIT
+        assert (
+            _choose_strategy(2.0, "this is a long sentence, with a clause boundary")
+            == FittingStrategy.SPLIT
+        )
 
 
 class TestDummyTTSStrategies:
-    def _make_tts_result(self, text: str, start: float = 0.0, end: float = 3.0,
-                         duration_ratio: float = 1.0, target_duration: float = 3.0):
-        seg = _make_segment(text, start=start, end=end, lang="eng",
-                            duration_ratio=duration_ratio, target_duration=target_duration)
+    def _make_tts_result(
+        self,
+        text: str,
+        start: float = 0.0,
+        end: float = 3.0,
+        duration_ratio: float = 1.0,
+        target_duration: float = 3.0,
+    ):
+        seg = _make_segment(
+            text,
+            start=start,
+            end=end,
+            lang="eng",
+            duration_ratio=duration_ratio,
+            target_duration=target_duration,
+        )
         return _make_result(seg)
 
     def test_compress_strategy_applied(self, tmp_path):
@@ -244,8 +270,10 @@ class TestDummyTTSStrategies:
         tts = DummyTTSComponent(output_dir=str(tmp_path))
         inp = self._make_tts_result(
             "Hello world, this is a very long sentence for the segment",
-            start=0.0, end=2.0,
-            duration_ratio=1.5, target_duration=3.0,
+            start=0.0,
+            end=2.0,
+            duration_ratio=1.5,
+            target_duration=3.0,
         )
         result = tts.run(inp)
         strategies = [s.metadata.get("fitting_strategy") for s in result.segments]
@@ -255,8 +283,10 @@ class TestDummyTTSStrategies:
         tts = DummyTTSComponent(output_dir=str(tmp_path))
         inp = self._make_tts_result(
             "verylongwordwithoutsplitpoints",
-            start=0.0, end=1.0,
-            duration_ratio=2.5, target_duration=5.0,
+            start=0.0,
+            end=1.0,
+            duration_ratio=2.5,
+            target_duration=5.0,
         )
         result = tts.run(inp)
         assert any(s.metadata.get("fitting_strategy") == "skip" for s in result.segments)
@@ -267,10 +297,22 @@ class TestDummyTTSStrategies:
     def test_fitting_strategy_recorded_for_every_segment(self, tmp_path):
         tts = DummyTTSComponent(output_dir=str(tmp_path))
         segs = [
-            _make_segment("Hello world", start=0.0, end=2.0, lang="eng",
-                          duration_ratio=1.0, target_duration=2.0),
-            _make_segment("A longer translation text here", start=2.0, end=3.5, lang="eng",
-                          duration_ratio=1.5, target_duration=4.0),
+            _make_segment(
+                "Hello world",
+                start=0.0,
+                end=2.0,
+                lang="eng",
+                duration_ratio=1.0,
+                target_duration=2.0,
+            ),
+            _make_segment(
+                "A longer translation text here",
+                start=2.0,
+                end=3.5,
+                lang="eng",
+                duration_ratio=1.5,
+                target_duration=4.0,
+            ),
         ]
         inp = _make_result(*segs, tgt="eng")
         result = tts.run(inp)
@@ -283,6 +325,7 @@ class TestDummyTTSStrategies:
         assert "translation" in tts.requires
 
         from lingualdub.components.tts.mms_tts import MMSTTSComponent
+
         mms = MMSTTSComponent()
         assert "duration_target" in mms.requires
         assert "translation" in mms.requires

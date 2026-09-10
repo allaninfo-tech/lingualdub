@@ -6,7 +6,6 @@ Deterministic dummy code-switch detection component for offline testing.
 """
 
 from __future__ import annotations
-from typing import Dict, List, Optional, Union
 
 from lingualdub.components.code_switch.base import CodeSwitchComponent
 from lingualdub.components.code_switch.lexicons import DEFAULT_WORD_LANGUAGES
@@ -27,15 +26,15 @@ class DummyCodeSwitchComponent(CodeSwitchComponent):
     name: str = "dummy_code_switch"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.CODE_SWITCH
-    supported_languages: List[str] = ["lug", "nyn", "eng", "swa"]
-    requires: List[str] = ["transcription"]
-    provides: List[str] = ["language_labels", "code_switch_detection"]
+    supported_languages: list[str] = ["lug", "nyn", "eng", "swa"]
+    requires: list[str] = ["transcription"]
+    provides: list[str] = ["language_labels", "code_switch_detection"]
     on_failure: FailureMode = FailureMode.DEGRADE
 
     def __init__(
         self,
         default_language: str = "lug",
-        word_map: Optional[Dict[str, str]] = None,
+        word_map: dict[str, str] | None = None,
         split_mixed_segments: bool = False,
         version: str = "1.0.0",
     ) -> None:
@@ -55,7 +54,7 @@ class DummyCodeSwitchComponent(CodeSwitchComponent):
         if not words:
             return self.default_language
 
-        counts: Dict[str, int] = {}
+        counts: dict[str, int] = {}
         for w in words:
             lang = self._classify_word(w)
             counts[lang] = counts.get(lang, 0) + 1
@@ -64,11 +63,13 @@ class DummyCodeSwitchComponent(CodeSwitchComponent):
         sorted_langs = sorted(counts.items(), key=lambda x: x[1], reverse=True)
         return sorted_langs[0][0]
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result):
-            raise ValueError(f"DummyCodeSwitchComponent expects a Result input, got {type(input).__name__}")
+            raise ValueError(
+                f"DummyCodeSwitchComponent expects a Result input, got {type(input).__name__}"
+            )
 
-        new_segments: List[Segment] = []
+        new_segments: list[Segment] = []
         any_switch_detected = False
 
         for seg in input.segments:
@@ -83,8 +84,8 @@ class DummyCodeSwitchComponent(CodeSwitchComponent):
             # If segment splitting on mixed spans is requested and word metadata exists
             if self.split_mixed_segments and is_code_switched and seg.metadata.get("words"):
                 meta_words = seg.metadata["words"]
-                current_span: List[dict] = []
-                current_lang: Optional[str] = None
+                current_span: list[dict] = []
+                current_lang: str | None = None
 
                 for w_obj in meta_words:
                     w_text = w_obj.get("word", "")

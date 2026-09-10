@@ -2,13 +2,15 @@
 
 from lingualdub.core.language import Language
 from lingualdub.core.resource import Resource, ResourceKind
-from lingualdub.core.segment import Segment
 from lingualdub.core.result import Result, ResultStatus
+from lingualdub.core.segment import Segment
 
 
 def test_language_round_trip():
     original = Language(
-        code="lug", name="Luganda", family="Bantu (Great Lakes)",
+        code="lug",
+        name="Luganda",
+        family="Bantu (Great Lakes)",
         resource_profile="speech-moderate / text-moderate",
         supported_tasks=["asr", "translation"],
         related_languages=["nyn"],
@@ -26,7 +28,10 @@ def test_language_round_trip():
 
 def test_resource_round_trip():
     original = Resource(
-        id="lug_speech_v1", kind=ResourceKind.SPEECH, language="lug", version="1.0.0",
+        id="lug_speech_v1",
+        kind=ResourceKind.SPEECH,
+        language="lug",
+        version="1.0.0",
         provenance={"source": "CommonVoice", "license": "CC0"},
         quality_flags=["weak_transcripts"],
         path="/data/lug.wav",
@@ -50,9 +55,15 @@ def test_resource_kind_preserved():
 
 def test_segment_round_trip():
     original = Segment(
-        start=1.0, end=3.5, text="Oli otya", language="lug",
-        speaker="SPK_001", confidence=0.92, source_language="lug",
-        provenance={"model": "whisper"}, metadata={"word_count": 2},
+        start=1.0,
+        end=3.5,
+        text="Oli otya",
+        language="lug",
+        speaker="SPK_001",
+        confidence=0.92,
+        source_language="lug",
+        provenance={"model": "whisper"},
+        metadata={"word_count": 2},
     )
     restored = Segment.from_dict(original.to_dict())
     assert restored.start == original.start
@@ -98,11 +109,11 @@ def test_result_status_preserved():
 
 
 def test_pipeline_to_dict():
+
     from lingualdub.core.component import Component, ComponentTask, FailureMode
     from lingualdub.core.pipeline import Pipeline
     from lingualdub.core.resource import Resource
     from lingualdub.core.result import Result
-    from typing import Union
 
     class MockStage(Component):
         name: str = "mock_asr"
@@ -112,7 +123,8 @@ def test_pipeline_to_dict():
         requires = []
         provides = ["transcription"]
         on_failure = FailureMode.ABORT
-        def run(self, input: Union[Result, Resource]) -> Result:
+
+        def run(self, input: Result | Resource) -> Result:
             return Result()
 
     p = Pipeline(
@@ -132,11 +144,11 @@ def test_pipeline_to_dict():
 
 
 def test_pipeline_from_dict():
+
     from lingualdub.core.component import Component, ComponentTask, FailureMode
     from lingualdub.core.pipeline import Pipeline
     from lingualdub.core.resource import Resource
     from lingualdub.core.result import Result
-    from typing import Union
 
     class MockStage(Component):
         name: str = "mock_asr"
@@ -146,7 +158,8 @@ def test_pipeline_from_dict():
         requires = []
         provides = ["transcription"]
         on_failure = FailureMode.ABORT
-        def run(self, input: Union[Result, Resource]) -> Result:
+
+        def run(self, input: Result | Resource) -> Result:
             return Result()
 
     original = Pipeline(stages=[MockStage()], source_language="lug", target_language="eng")

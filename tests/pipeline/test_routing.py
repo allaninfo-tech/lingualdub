@@ -3,17 +3,17 @@ Tests for per-segment language routing in PipelineExecutor (M3.2).
 """
 
 import pytest
-from typing import List, Union
 
 from lingualdub.core.component import Component, ComponentTask, FailureMode
 from lingualdub.core.pipeline import Pipeline
 from lingualdub.core.result import Result, ResultStatus
 from lingualdub.core.segment import Segment
-from lingualdub.pipeline.executor import PipelineExecutor, PipelineExecutionError
+from lingualdub.pipeline.executor import PipelineExecutionError, PipelineExecutor
 
 
 class LugandaOnlyStage(Component):
     """Component that only processes Luganda segments and appends '[LUG_PROCESSED]'."""
+
     name = "lug_processor"
     version = "1.0.0"
     task = ComponentTask.TRANSLATION
@@ -22,7 +22,7 @@ class LugandaOnlyStage(Component):
     provides = ["translation"]
     on_failure = FailureMode.SKIP
 
-    def run(self, input: Union[Result, Component]) -> Result:
+    def run(self, input: Result | Component) -> Result:
         res = input if isinstance(input, Result) else Result()
         out_segs = []
         for s in res.segments:
@@ -46,6 +46,7 @@ class LugandaOnlyStage(Component):
 
 class StrictLugandaStage(LugandaOnlyStage):
     """Component that aborts if an unsupported language is encountered."""
+
     name = "strict_lug_processor"
     on_failure = FailureMode.ABORT
 

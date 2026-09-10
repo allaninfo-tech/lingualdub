@@ -8,8 +8,8 @@ Validates:
 """
 
 from lingualdub.components.asr.dummy import DummyASRComponent
+from lingualdub.components.eval.metrics import TranslationEvaluator, WEREvaluator
 from lingualdub.components.translation.dummy import DummyTranslationComponent
-from lingualdub.components.eval.metrics import WEREvaluator, TranslationEvaluator
 from lingualdub.core.pipeline import Pipeline
 from lingualdub.core.resource import Resource, ResourceKind
 from lingualdub.core.result import ResultStatus
@@ -127,7 +127,9 @@ def test_m2_translation_evaluation():
     )
 
     executor = PipelineExecutor(pipe)
-    dubbed_res = executor.run(Resource(id="sample", kind=ResourceKind.SPEECH, language="lug", version="1.0.0"))
+    dubbed_res = executor.run(
+        Resource(id="sample", kind=ResourceKind.SPEECH, language="lug", version="1.0.0")
+    )
 
     evaluator = TranslationEvaluator()
     eval_res = evaluator.evaluate_pair(dubbed_res, reference_eng)

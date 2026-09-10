@@ -35,9 +35,8 @@ import importlib
 import json
 import logging
 from pathlib import Path
-from typing import List, Optional
 
-from lingualdub.registry.registry import Registry, RegistryError
+from lingualdub.registry.registry import Registry
 
 logger = logging.getLogger(__name__)
 
@@ -101,14 +100,10 @@ class ManifestScanner:
         try:
             data = json.loads(raw)
         except json.JSONDecodeError as exc:
-            raise ManifestError(
-                f"Manifest {manifest_path} is not valid JSON: {exc}"
-            ) from exc
+            raise ManifestError(f"Manifest {manifest_path} is not valid JSON: {exc}") from exc
 
         if not isinstance(data, dict):
-            raise ManifestError(
-                f"Manifest {manifest_path}: top-level value must be a JSON object."
-            )
+            raise ManifestError(f"Manifest {manifest_path}: top-level value must be a JSON object.")
 
         entries = data.get("entries")
         if entries is None:
@@ -116,16 +111,12 @@ class ManifestScanner:
                 f"Manifest {manifest_path}: missing required top-level key 'entries'."
             )
         if not isinstance(entries, list):
-            raise ManifestError(
-                f"Manifest {manifest_path}: 'entries' must be a JSON array."
-            )
+            raise ManifestError(f"Manifest {manifest_path}: 'entries' must be a JSON array.")
 
         registered = 0
         for i, entry in enumerate(entries):
             if not isinstance(entry, dict):
-                raise ManifestError(
-                    f"Manifest {manifest_path}: entry[{i}] must be a JSON object."
-                )
+                raise ManifestError(f"Manifest {manifest_path}: entry[{i}] must be a JSON object.")
             _validate_entry(entry, manifest_path, i)
 
             try:
@@ -133,8 +124,7 @@ class ManifestScanner:
                 impl = getattr(module, entry["attr"])
             except ImportError as exc:
                 raise ManifestError(
-                    f"Manifest {manifest_path}: entry[{i}] cannot import "
-                    f"'{entry['module']}': {exc}"
+                    f"Manifest {manifest_path}: entry[{i}] cannot import '{entry['module']}': {exc}"
                 ) from exc
             except AttributeError as exc:
                 raise ManifestError(
@@ -151,16 +141,17 @@ class ManifestScanner:
             )
             logger.debug(
                 "Registered %r/%r@%s from %s",
-                entry["kind"], entry["key"], entry["version"], manifest_path.name,
+                entry["kind"],
+                entry["key"],
+                entry["version"],
+                manifest_path.name,
             )
             registered += 1
 
-        logger.info(
-            "Loaded %d entries from manifest %s", registered, manifest_path.name
-        )
+        logger.info("Loaded %d entries from manifest %s", registered, manifest_path.name)
         return registered
 
-    def scan(self, search_paths: Optional[List[Path]] = None) -> int:
+    def scan(self, search_paths: list[Path] | None = None) -> int:
         """
         Discover and load all extension manifests from installed packages.
 
@@ -182,10 +173,7 @@ class ManifestScanner:
             # Build search paths from sys.path; empty string means cwd
             paths = []
             for p in sys.path:
-                if not p or p == ".":
-                    resolved = Path.cwd().resolve()
-                else:
-                    resolved = Path(p).resolve()
+                resolved = Path.cwd().resolve() if not p or p == "." else Path(p).resolve()
                 if resolved.is_dir() and resolved not in paths:
                     paths.append(resolved)
         total = 0

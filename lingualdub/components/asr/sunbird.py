@@ -11,12 +11,13 @@ Supports:
 """
 
 from __future__ import annotations
+
 import json
 import logging
 import os
 import urllib.request
 from pathlib import Path
-from typing import Any, List, Optional, Union
+from typing import Any
 
 from lingualdub.components.asr.base import ASRComponent
 from lingualdub.core.component import ComponentTask, FailureMode
@@ -38,18 +39,18 @@ class SunbirdASRComponent(ASRComponent):
     name: str = "sunbird_asr"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.ASR
-    supported_languages: List[str] = SUNBIRD_SUPPORTED_LANGUAGES
-    requires: List[str] = []
-    provides: List[str] = ["transcription", "word_timestamps", "language_detection"]
+    supported_languages: list[str] = SUNBIRD_SUPPORTED_LANGUAGES
+    requires: list[str] = []
+    provides: list[str] = ["transcription", "word_timestamps", "language_detection"]
     on_failure: FailureMode = FailureMode.ABORT
 
     def __init__(
         self,
         model_name_or_path: str = "Sunbird/asr-whisper-51-african-languages",
-        api_key: Optional[str] = None,
+        api_key: str | None = None,
         language: str = "lug",
         use_api: bool = False,
-        device: Optional[str] = None,
+        device: str | None = None,
         version: str = "1.0.0",
     ) -> None:
         self.model_name_or_path = model_name_or_path
@@ -76,7 +77,9 @@ class SunbirdASRComponent(ASRComponent):
             if device is None:
                 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-            logger.info("Loading Sunbird ASR model %r on device %s", self.model_name_or_path, device)
+            logger.info(
+                "Loading Sunbird ASR model %r on device %s", self.model_name_or_path, device
+            )
             try:
                 # NOTE: return_timestamps="word" causes TypeError with newer transformers/Python.
                 # Use True (chunk-level timestamps) which is stable across all versions.
@@ -86,19 +89,23 @@ class SunbirdASRComponent(ASRComponent):
                     device=device,
                     return_timestamps=True,
                 )
-                
+
                 # FIX: Sunbird fine-tuned whisper models often have eos_token_id as a list
-                # in their generation_config.json, which breaks WhisperTimeStampLogitsProcessor 
-                # (TypeError: slice indices must be integers). 
+                # in their generation_config.json, which breaks WhisperTimeStampLogitsProcessor
+                # (TypeError: slice indices must be integers).
                 gen_config = getattr(self._pipeline.model, "generation_config", None)
-                if gen_config is not None and isinstance(gen_config.eos_token_id, list):
-                    if len(gen_config.eos_token_id) > 0:
-                        gen_config.eos_token_id = gen_config.eos_token_id[0]
-                        
+                if (
+                    gen_config is not None
+                    and isinstance(gen_config.eos_token_id, list)
+                    and len(gen_config.eos_token_id) > 0
+                ):
+                    gen_config.eos_token_id = gen_config.eos_token_id[0]
+
             except Exception as exc:
                 logger.warning(
                     "Failed to load %r (%s). Falling back to 'openai/whisper-small'.",
-                    self.model_name_or_path, exc,
+                    self.model_name_or_path,
+                    exc,
                 )
                 self._pipeline = pipeline(
                     "automatic-speech-recognition",
@@ -145,8 +152,8 @@ class SunbirdASRComponent(ASRComponent):
             metadata={"provider": "sunbird_api", "model": self.model_name_or_path},
         )
 
-    def run(self, input: Union[Result, Resource]) -> Result:
-        audio_path: Optional[str] = None
+    def run(self, input: Result | Resource) -> Result:
+        audio_path: str | None = None
         source_lang = self.language
 
         if isinstance(input, Resource):
@@ -174,7 +181,7 @@ class SunbirdASRComponent(ASRComponent):
         # "english", "swahili" etc. Let the model's own config handle language.
         out = pipe(audio_path, generate_kwargs={"task": "transcribe"})
 
-        segments: List[Segment] = []
+        segments: list[Segment] = []
         chunks = out.get("chunks", [])
         full_text = out.get("text", "").strip()
 
@@ -182,7 +189,11 @@ class SunbirdASRComponent(ASRComponent):
             for chunk in chunks:
                 timestamp = chunk.get("timestamp", (0.0, 0.0))
                 start = float(timestamp[0]) if timestamp[0] is not None else 0.0
-                end = float(timestamp[1]) if (len(timestamp) > 1 and timestamp[1] is not None) else start + 1.0
+                end = (
+                    float(timestamp[1])
+                    if (len(timestamp) > 1 and timestamp[1] is not None)
+                    else start + 1.0
+                )
                 text = chunk.get("text", "").strip()
                 if text:
                     segments.append(

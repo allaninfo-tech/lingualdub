@@ -11,8 +11,8 @@ to be invoked once per distinct language span rather than once per utterance.
 """
 
 from __future__ import annotations
+
 from abc import abstractmethod
-from typing import Union
 
 from lingualdub.core.component import Component, ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
@@ -26,6 +26,6 @@ class TranslationComponent(Component):
     on_failure: FailureMode = FailureMode.ABORT
 
     @abstractmethod
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         """Translate segments and return a Result with translated text."""
         ...

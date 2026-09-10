@@ -15,13 +15,12 @@ a stage cannot run to full completion.
 """
 
 from __future__ import annotations
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from enum import Enum
-from typing import List, Optional, Union
 
-from lingualdub.core.result import Result
+from abc import ABC, abstractmethod
+from enum import Enum
+
 from lingualdub.core.resource import Resource
+from lingualdub.core.result import Result
 
 
 class ComponentTask(str, Enum):
@@ -73,13 +72,13 @@ class Component(ABC):
     name: str
     version: str
     task: ComponentTask
-    supported_languages: List[str] = []
-    requires: List[str] = []
-    provides: List[str] = []
-    on_failure: Optional[FailureMode] = None
+    supported_languages: list[str] = []
+    requires: list[str] = []
+    provides: list[str] = []
+    on_failure: FailureMode | None = None
 
     @abstractmethod
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         """
         Execute the component's primary processing logic.
 
@@ -91,7 +90,7 @@ class Component(ABC):
         """
         ...
 
-    def degrade(self, input: Union[Result, Resource]) -> Result:
+    def degrade(self, input: Result | Resource) -> Result:
         """
         Execute a reduced-quality fallback when full processing cannot complete.
 
@@ -105,15 +104,13 @@ class Component(ABC):
         Returns:
             A Result with status DEGRADED.
         """
-        raise NotImplementedError(
-            f"Component {self.name!r} does not define a degrade() path."
-        )
+        raise NotImplementedError(f"Component {self.name!r} does not define a degrade() path.")
 
     def supports_language(self, language_code: str) -> bool:
         """Returns True if this component supports the given language code."""
         return not self.supported_languages or language_code in self.supported_languages
 
-    def check_compatibility(self, upstream_provides: List[str]) -> List[str]:
+    def check_compatibility(self, upstream_provides: list[str]) -> list[str]:
         """
         Returns a list of missing capability tokens that this component requires
         but the upstream stage does not provide. An empty list means compatible.

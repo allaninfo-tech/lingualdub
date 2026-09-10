@@ -13,8 +13,8 @@ in lingualdub.pipeline. This module defines the pipeline's structure and contrac
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import List, Optional
 
 from lingualdub.core.component import Component, FailureMode
 
@@ -37,13 +37,13 @@ class Pipeline:
         description: Optional description of this pipeline's purpose.
     """
 
-    stages: List[Component]
+    stages: list[Component]
     source_language: str
-    target_language: Optional[str] = None
+    target_language: str | None = None
     per_segment_language: bool = False
     on_stage_failure: FailureMode = FailureMode.ABORT
-    name: Optional[str] = None
-    description: Optional[str] = None
+    name: str | None = None
+    description: str | None = None
     metadata: dict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -63,7 +63,7 @@ class Pipeline:
         and Stage 2 provides "translation", Stage 3 can require either or both.
         This check runs at pipeline assembly time, not at execution time.
         """
-        accumulated_provides: List[str] = []
+        accumulated_provides: list[str] = []
         for stage in self.stages:
             missing = stage.check_compatibility(accumulated_provides)
             if missing:
@@ -96,7 +96,7 @@ class Pipeline:
                     )
 
     @property
-    def stage_names(self) -> List[str]:
+    def stage_names(self) -> list[str]:
         """Returns the names of all stages in order."""
         return [s.name for s in self.stages]
 
@@ -116,14 +116,11 @@ class Pipeline:
             "name": self.name,
             "description": self.description,
             "metadata": dict(self.metadata),
-            "stages": [
-                {"name": s.name, "version": s.version}
-                for s in self.stages
-            ],
+            "stages": [{"name": s.name, "version": s.version} for s in self.stages],
         }
 
     @classmethod
-    def from_dict(cls, data: dict, resolved_stages: List["Component"]) -> "Pipeline":
+    def from_dict(cls, data: dict, resolved_stages: list[Component]) -> Pipeline:
         """
         Deserialize a Pipeline from a dictionary produced by to_dict().
 

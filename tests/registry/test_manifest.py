@@ -1,11 +1,12 @@
 """Tests for lingualdub.registry.manifest."""
 
 import json
-import pytest
 from pathlib import Path
 
+import pytest
+
+from lingualdub.registry.manifest import MANIFEST_FILENAME, ManifestError, ManifestScanner
 from lingualdub.registry.registry import Registry
-from lingualdub.registry.manifest import ManifestScanner, ManifestError, MANIFEST_FILENAME
 
 
 def _write_manifest(tmp_path: Path, data: dict) -> Path:
@@ -45,8 +46,20 @@ def test_load_registers_all_entries(tmp_path):
         "name": "multi",
         "version": "1.0.0",
         "entries": [
-            {"kind": "component", "key": "a", "module": "pathlib", "attr": "Path", "version": "1.0.0"},
-            {"kind": "language", "key": "b", "module": "pathlib", "attr": "PurePath", "version": "2.0.0"},
+            {
+                "kind": "component",
+                "key": "a",
+                "module": "pathlib",
+                "attr": "Path",
+                "version": "1.0.0",
+            },
+            {
+                "kind": "language",
+                "key": "b",
+                "module": "pathlib",
+                "attr": "PurePath",
+                "version": "2.0.0",
+            },
         ],
     }
     manifest_path = _write_manifest(tmp_path, data)
@@ -90,8 +103,13 @@ def test_load_bad_module_raises(tmp_path):
         "name": "bad",
         "version": "1.0.0",
         "entries": [
-            {"kind": "component", "key": "x", "module": "nonexistent_module_xyz",
-             "attr": "Foo", "version": "1.0.0"}
+            {
+                "kind": "component",
+                "key": "x",
+                "module": "nonexistent_module_xyz",
+                "attr": "Foo",
+                "version": "1.0.0",
+            }
         ],
     }
     p = _write_manifest(tmp_path, data)
@@ -105,8 +123,13 @@ def test_load_bad_attr_raises(tmp_path):
         "name": "bad",
         "version": "1.0.0",
         "entries": [
-            {"kind": "component", "key": "x", "module": "pathlib",
-             "attr": "NonExistentClass", "version": "1.0.0"}
+            {
+                "kind": "component",
+                "key": "x",
+                "module": "pathlib",
+                "attr": "NonExistentClass",
+                "version": "1.0.0",
+            }
         ],
     }
     p = _write_manifest(tmp_path, data)
@@ -151,4 +174,3 @@ def test_scan_discovers_with_empty_string_in_sys_path(monkeypatch, tmp_path):
     count = scanner.scan()
     assert count == 1
     assert registry.resolve("component", "pathlib_path") is Path
-

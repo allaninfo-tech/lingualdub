@@ -2,7 +2,6 @@
 Unit tests for abstract base components (Adaptation, Alignment, Speaker).
 """
 
-from typing import Union
 from lingualdub.components.adaptation.base import AdaptationComponent
 from lingualdub.components.alignment.base import AlignmentComponent
 from lingualdub.components.speaker.base import SpeakerComponent
@@ -15,7 +14,7 @@ class DummyAdaptation(AdaptationComponent):
     name = "dummy_adaptation"
     version = "1.0.0"
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         res = input if isinstance(input, Result) else Result()
         res.artifacts.append("checkpoint.pt")
         return res
@@ -25,7 +24,7 @@ class DummyAlignment(AlignmentComponent):
     name = "dummy_alignment"
     version = "1.0.0"
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         res = input if isinstance(input, Result) else Result()
         return res
 
@@ -34,7 +33,7 @@ class DummySpeaker(SpeakerComponent):
     name = "dummy_speaker"
     version = "1.0.0"
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         res = input if isinstance(input, Result) else Result()
         res.metadata["speaker_id"] = "spk_01"
         return res

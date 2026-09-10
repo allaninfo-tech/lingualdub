@@ -6,7 +6,6 @@ Deterministic dummy ASR component for offline testing and fast local verificatio
 """
 
 from __future__ import annotations
-from typing import List, Optional, Union
 
 from lingualdub.components.asr.base import ASRComponent
 from lingualdub.core.component import ComponentTask, FailureMode
@@ -18,16 +17,16 @@ from lingualdub.core.segment import Segment
 class DummyASRComponent(ASRComponent):
     """
     A lightweight, deterministic ASR component for testing pipelines locally.
-    
+
     Returns predefined Segments without requiring GPU or machine learning dependencies.
     """
 
     name: str = "dummy_asr"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.ASR
-    supported_languages: List[str] = ["lug", "nyn", "eng", "swa"]
-    requires: List[str] = []
-    provides: List[str] = ["transcription", "word_timestamps", "language_detection"]
+    supported_languages: list[str] = ["lug", "nyn", "eng", "swa"]
+    requires: list[str] = []
+    provides: list[str] = ["transcription", "word_timestamps", "language_detection"]
     on_failure: FailureMode = FailureMode.ABORT
 
     def __init__(
@@ -44,7 +43,7 @@ class DummyASRComponent(ASRComponent):
         self.confidence = confidence
         self.version = version
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         source_lang = getattr(input, "language", None) or self.language
         text = self.default_text
 
@@ -82,7 +81,11 @@ class DummyASRComponent(ASRComponent):
                     speaker="speaker_0",
                     metadata={
                         "words": [
-                            {"word": w, "start": round(i * step, 2), "end": round((i + 1) * step, 2)}
+                            {
+                                "word": w,
+                                "start": round(i * step, 2),
+                                "end": round((i + 1) * step, 2),
+                            }
                             for i, w in enumerate(words)
                         ]
                     },

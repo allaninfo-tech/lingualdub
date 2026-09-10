@@ -48,6 +48,7 @@ def test_result_multiple_warnings():
 
 def test_result_has_segments():
     from lingualdub.core.segment import Segment
+
     seg = Segment(start=0.0, end=1.0, text="hello", language="lug")
     result = Result(segments=[seg])
     assert len(result.segments) == 1

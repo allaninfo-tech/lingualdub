@@ -6,18 +6,17 @@ Hugging Face translation adapter for NLLB, M2M100, or Sunbird models.
 """
 
 from __future__ import annotations
+
 import logging
-from typing import Any, List, Optional, Union
 
 from lingualdub.components.translation.base import TranslationComponent
 from lingualdub.core.component import ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result
 from lingualdub.core.segment import Segment
+from lingualdub.languages.nllb import NLLB_CODE_MAP
 
 logger = logging.getLogger(__name__)
-
-from lingualdub.languages.nllb import NLLB_CODE_MAP
 
 
 class HuggingFaceTranslationComponent(TranslationComponent):
@@ -28,9 +27,9 @@ class HuggingFaceTranslationComponent(TranslationComponent):
     name: str = "hf_translator"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.TRANSLATION
-    supported_languages: List[str] = ["lug", "nyn", "eng", "swa", "fra"]
-    requires: List[str] = ["transcription"]
-    provides: List[str] = ["translation"]
+    supported_languages: list[str] = ["lug", "nyn", "eng", "swa", "fra"]
+    requires: list[str] = ["transcription"]
+    provides: list[str] = ["translation"]
     on_failure: FailureMode = FailureMode.ABORT
 
     def __init__(
@@ -38,7 +37,7 @@ class HuggingFaceTranslationComponent(TranslationComponent):
         model_name_or_path: str = "facebook/nllb-200-distilled-600M",
         source_language: str = "lug",
         target_language: str = "eng",
-        device: Optional[str] = None,
+        device: str | None = None,
         max_length: int = 512,
         version: str = "1.0.0",
     ) -> None:
@@ -67,11 +66,13 @@ class HuggingFaceTranslationComponent(TranslationComponent):
             if device is None:
                 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 
-            logger.info("Loading translation model %r on device %s", self.model_name_or_path, device)
+            logger.info(
+                "Loading translation model %r on device %s", self.model_name_or_path, device
+            )
             self._tokenizer = AutoTokenizer.from_pretrained(self.model_name_or_path)
             self._model = AutoModelForSeq2SeqLM.from_pretrained(self.model_name_or_path).to(device)
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result):
             raise ValueError(
                 f"HuggingFaceTranslationComponent expects a Result input, got {type(input).__name__}"
@@ -93,7 +94,7 @@ class HuggingFaceTranslationComponent(TranslationComponent):
         src_lang_code = NLLB_CODE_MAP.get(self.source_language, self.source_language)
         tgt_lang_code = NLLB_CODE_MAP.get(self.target_language, self.target_language)
 
-        translated_segments: List[Segment] = []
+        translated_segments: list[Segment] = []
         texts = [s.text for s in input.segments]
 
         # Tokenize batch
@@ -104,7 +105,10 @@ class HuggingFaceTranslationComponent(TranslationComponent):
         inputs = {k: v.to(self._model.device) for k, v in inputs.items()}
 
         forced_bos_token_id = None
-        if hasattr(self._tokenizer, "lang_code_to_id") and tgt_lang_code in self._tokenizer.lang_code_to_id:
+        if (
+            hasattr(self._tokenizer, "lang_code_to_id")
+            and tgt_lang_code in self._tokenizer.lang_code_to_id
+        ):
             forced_bos_token_id = self._tokenizer.lang_code_to_id[tgt_lang_code]
 
         if torch is not None:
@@ -129,7 +133,7 @@ class HuggingFaceTranslationComponent(TranslationComponent):
 
         decoded = self._tokenizer.batch_decode(generated, skip_special_tokens=True)
 
-        for s, trans in zip(input.segments, decoded):
+        for s, trans in zip(input.segments, decoded, strict=False):
             translated_segments.append(
                 Segment(
                     start=s.start,

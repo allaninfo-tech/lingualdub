@@ -3,13 +3,12 @@ Unit tests for neural adapters with mocked pipeline/model outputs.
 """
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
-import pytest
+from unittest.mock import MagicMock
 
 from lingualdub.components.asr.sunbird import SunbirdASRComponent
 from lingualdub.components.asr.whisper import WhisperASRComponent
-from lingualdub.components.translation.sunbird import SunbirdTranslationComponent
 from lingualdub.components.translation.hf_translator import HuggingFaceTranslationComponent
+from lingualdub.components.translation.sunbird import SunbirdTranslationComponent
 from lingualdub.components.tts.mms_tts import MMSTTSComponent
 from lingualdub.core.resource import Resource, ResourceKind
 from lingualdub.core.result import Result
@@ -31,7 +30,13 @@ def test_sunbird_asr_mock_inference(tmp_path):
     }
     asr._pipeline = mock_pipe
 
-    res = Resource(id="test_audio", kind=ResourceKind.SPEECH, language="lug", version="1.0", path=str(audio_file))
+    res = Resource(
+        id="test_audio",
+        kind=ResourceKind.SPEECH,
+        language="lug",
+        version="1.0",
+        path=str(audio_file),
+    )
     out = asr.run(res)
 
     assert len(out.segments) == 2
@@ -54,7 +59,13 @@ def test_whisper_asr_mock_inference(tmp_path):
     }
     asr._pipeline = mock_pipe
 
-    res = Resource(id="test_audio", kind=ResourceKind.SPEECH, language="lug", version="1.0", path=str(audio_file))
+    res = Resource(
+        id="test_audio",
+        kind=ResourceKind.SPEECH,
+        language="lug",
+        version="1.0",
+        path=str(audio_file),
+    )
     out = asr.run(res)
 
     assert len(out.segments) == 1
@@ -115,6 +126,7 @@ def test_hf_translator_mock_inference():
 
 def test_mms_tts_mock_inference(tmp_path):
     import numpy as np
+
     tts = MMSTTSComponent(output_dir=str(tmp_path))
     mock_model = MagicMock()
     mock_tokenizer = MagicMock()
@@ -126,7 +138,9 @@ def test_mms_tts_mock_inference(tmp_path):
 
     mock_output = MagicMock()
     mock_waveform = MagicMock()
-    mock_waveform.squeeze.return_value.cpu.return_value.numpy.return_value = np.zeros(16000, dtype=np.float32)
+    mock_waveform.squeeze.return_value.cpu.return_value.numpy.return_value = np.zeros(
+        16000, dtype=np.float32
+    )
     mock_output.waveform = mock_waveform
     mock_model.return_value = mock_output
     mock_model.config.sampling_rate = 16000

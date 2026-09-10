@@ -1,4 +1,3 @@
-from pathlib import Path
 from lingualdub.cli import get_default_registry
 from lingualdub.core.component import FailureMode
 from lingualdub.pipeline.config_loader import ConfigLoader
@@ -33,7 +32,8 @@ def test_load_from_yaml_file(tmp_path):
     loader = ConfigLoader(registry)
 
     yaml_file = tmp_path / "pipeline.yaml"
-    yaml_file.write_text("""
+    yaml_file.write_text(
+        """
 name: "yaml_pipeline"
 source_language: "lug"
 target_language: "eng"
@@ -43,7 +43,9 @@ stages:
   - key: "dummy_asr"
   - key: "dummy_translator"
   - key: "dummy_tts"
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
 
     pipeline = loader.load_file(yaml_file)
     assert pipeline.name == "yaml_pipeline"
@@ -55,6 +57,6 @@ def test_load_empty_stages_raises():
     loader = ConfigLoader(registry)
     try:
         loader.load_dict({"source_language": "lug", "stages": []})
-        assert False, "Expected ValueError"
+        raise AssertionError("Expected ValueError")
     except ValueError as exc:
         assert "at least one stage" in str(exc)

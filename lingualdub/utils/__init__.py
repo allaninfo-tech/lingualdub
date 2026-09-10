@@ -10,8 +10,8 @@ version comparison utilities.
 """
 
 from lingualdub.utils.resource_manager import (
-    ResourceManager,
     ChecksumError,
+    ResourceManager,
     ResourceNotFoundError,
 )
 

@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Optional, Union
 
 from lingualdub.components.alignment.base import AlignmentComponent
 from lingualdub.core.component import ComponentTask, FailureMode
@@ -31,9 +30,9 @@ logger = logging.getLogger(__name__)
 
 
 def _detect_cues_from_video(
-    video_path: Optional[str],
-    fallback_duration: Optional[float] = None,
-) -> List[float]:
+    video_path: str | None,
+    fallback_duration: float | None = None,
+) -> list[float]:
     """
     Detect dialogue cue boundaries from video.
 
@@ -43,7 +42,7 @@ def _detect_cues_from_video(
 
     Returns sorted list of cue timestamps (seconds).
     """
-    cues: List[float] = []
+    cues: list[float] = []
 
     if not video_path or not Path(str(video_path)).exists():
         return cues
@@ -80,7 +79,6 @@ def _detect_cues_from_video(
     # Attempt ffmpeg probe for scene detection metadata
     try:
         import subprocess
-        import json as _json
 
         # Use ffprobe to get duration and try to estimate cues from keyframes
         result = subprocess.run(
@@ -90,7 +88,6 @@ def _detect_cues_from_video(
             timeout=5,
         )
         if result.returncode == 0:
-            data = _json.loads(result.stdout)
             # No reliable cue without scene filter; fallback to empty
             pass
     except Exception as exc:
@@ -101,7 +98,7 @@ def _detect_cues_from_video(
 
 def _snap_to_cues(
     value: float,
-    cues: List[float],
+    cues: list[float],
     tolerance: float,
 ) -> tuple[float, bool]:
     """
@@ -134,9 +131,9 @@ class DialogueTimingComponent(AlignmentComponent):
     name: str = "dialogue_timing"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.ALIGNMENT
-    supported_languages: List[str] = ["lug", "nyn", "eng", "swa"]
-    requires: List[str] = ["aligned_timestamps"]
-    provides: List[str] = ["av_aligned_timestamps", "dialogue_timing"]
+    supported_languages: list[str] = ["lug", "nyn", "eng", "swa"]
+    requires: list[str] = ["aligned_timestamps"]
+    provides: list[str] = ["av_aligned_timestamps", "dialogue_timing"]
     on_failure: FailureMode = FailureMode.DEGRADE
 
     def __init__(
@@ -144,16 +141,16 @@ class DialogueTimingComponent(AlignmentComponent):
         snap_tolerance: float = 0.15,
         cue_source: str = "scene_cut",
         version: str = "1.0.0",
-        resource_manager: Optional[object] = None,
-        registry: Optional[object] = None,
+        resource_manager: object | None = None,
+        registry: object | None = None,
     ) -> None:
         self.snap_tolerance = snap_tolerance
         self.cue_source = cue_source
         self.version = version
         self._resource_manager = resource_manager
         self._registry = registry
-        self._video_resource: Optional[Resource] = None
-        self._video_resource_path: Optional[str] = None
+        self._video_resource: Resource | None = None
+        self._video_resource_path: str | None = None
 
     def _load_video_resource(self) -> None:
         """Acquire video resource via Registry/ResourceManager if configured."""
@@ -168,7 +165,7 @@ class DialogueTimingComponent(AlignmentComponent):
             self._video_resource = res
             self._video_resource_path = path
 
-    def _resolve_video_path(self, input_obj: Result) -> Optional[str]:
+    def _resolve_video_path(self, input_obj: Result) -> str | None:
         """Resolve source video path from provenance, artifacts, or acquired resource."""
         # 1. Explicit provenance keys
         for key in ("source_video", "video_path", "video"):
@@ -182,9 +179,12 @@ class DialogueTimingComponent(AlignmentComponent):
 
         # 2. Scan artifacts for video files
         for art in input_obj.artifacts:
-            if isinstance(art, str) and Path(art).suffix.lower() in (".mp4", ".mkv", ".avi", ".mov", ".webm"):
-                if Path(art).exists():
-                    return art
+            if (
+                isinstance(art, str)
+                and Path(art).suffix.lower() in (".mp4", ".mkv", ".avi", ".mov", ".webm")
+                and Path(art).exists()
+            ):
+                return art
 
         # 3. Check segments metadata for video path
         for seg in input_obj.segments:
@@ -197,27 +197,33 @@ class DialogueTimingComponent(AlignmentComponent):
         self._load_video_resource()
         if self._video_resource_path and Path(self._video_resource_path).exists():
             return self._video_resource_path
-        if self._video_resource and self._video_resource.path and Path(str(self._video_resource.path)).exists():
+        if (
+            self._video_resource
+            and self._video_resource.path
+            and Path(str(self._video_resource.path)).exists()
+        ):
             return str(self._video_resource.path)
 
         return None
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result):
-            raise ValueError(f"DialogueTimingComponent expects a Result, got {type(input).__name__}")
+            raise ValueError(
+                f"DialogueTimingComponent expects a Result, got {type(input).__name__}"
+            )
 
         video_path = self._resolve_video_path(input)
         cues = _detect_cues_from_video(video_path)
 
         # Also consider subtitle cues in metadata if present
-        subtitle_cues: List[float] = []
+        subtitle_cues: list[float] = []
         for seg in input.segments:
             # Check for subtitle boundaries in provenance/metadata
             if "subtitle_cues" in seg.metadata:
-                try:
+                import contextlib
+
+                with contextlib.suppress(Exception):
                     subtitle_cues.extend([float(x) for x in seg.metadata["subtitle_cues"]])
-                except Exception:
-                    pass
         if subtitle_cues:
             cues = sorted(set(cues + subtitle_cues))
 
@@ -230,11 +236,11 @@ class DialogueTimingComponent(AlignmentComponent):
             except Exception:
                 pass
 
-        snapped_segments: List[Segment] = []
+        snapped_segments: list[Segment] = []
         total_snapped = 0
 
         for seg in input.segments:
-            new_meta: Dict[str, object] = dict(seg.metadata)
+            new_meta: dict[str, object] = dict(seg.metadata)
             orig_start, orig_end = seg.start, seg.end
 
             snapped_start, did_snap_start = _snap_to_cues(seg.start, cues, self.snap_tolerance)

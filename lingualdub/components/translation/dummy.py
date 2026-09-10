@@ -6,7 +6,6 @@ Deterministic dummy translation component for offline testing.
 """
 
 from __future__ import annotations
-from typing import Dict, List, Optional, Union
 
 from lingualdub.components.translation.base import TranslationComponent
 from lingualdub.core.component import ComponentTask, FailureMode
@@ -14,9 +13,8 @@ from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result
 from lingualdub.core.segment import Segment
 
-
 # Sample dictionary of common Luganda/Runyankole words/phrases to English
-SAMPLE_DICTIONARY: Dict[str, str] = {
+SAMPLE_DICTIONARY: dict[str, str] = {
     "oli otya": "how are you",
     "oli otya nnyabo": "hello madam, how are you",
     "twebaza nnyo": "thank you very much",
@@ -37,9 +35,9 @@ class DummyTranslationComponent(TranslationComponent):
     name: str = "dummy_translator"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.TRANSLATION
-    supported_languages: List[str] = ["lug", "nyn", "eng", "swa"]
-    requires: List[str] = ["transcription"]
-    provides: List[str] = ["translation"]
+    supported_languages: list[str] = ["lug", "nyn", "eng", "swa"]
+    requires: list[str] = ["transcription"]
+    provides: list[str] = ["translation"]
     on_failure: FailureMode = FailureMode.ABORT
 
     def __init__(
@@ -47,8 +45,8 @@ class DummyTranslationComponent(TranslationComponent):
         source_language: str = "lug",
         target_language: str = "eng",
         prefix: str = "[EN] ",
-        custom_dictionary: Optional[Dict[str, str]] = None,
-        default_translation: Optional[str] = None,
+        custom_dictionary: dict[str, str] | None = None,
+        default_translation: str | None = None,
         version: str = "1.0.0",
     ) -> None:
         self.source_language = source_language
@@ -72,11 +70,13 @@ class DummyTranslationComponent(TranslationComponent):
                 return text.lower().replace(key, SAMPLE_DICTIONARY[key])
         return f"{self.prefix}{text}"
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result):
-            raise ValueError(f"DummyTranslationComponent expects a Result input, got {type(input).__name__}")
+            raise ValueError(
+                f"DummyTranslationComponent expects a Result input, got {type(input).__name__}"
+            )
 
-        translated_segments: List[Segment] = []
+        translated_segments: list[Segment] = []
         for s in input.segments:
             translated_text = self._translate_text(s.text)
             new_seg = Segment(

@@ -8,7 +8,6 @@ Verifies M6 Done When:
   - Results are reproducible within floating-point tolerance
 """
 
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -43,17 +42,36 @@ class TestM6VoiceTransferE2E:
             language="lug",
             version="1.0.0",
             path=str(src_wav),
-            provenance={"consent_basis": "research", "dataset_version": "1.0.0", "evaluation_protocol": "VOICE_RETENTION_MOS_V1"},
+            provenance={
+                "consent_basis": "research",
+                "dataset_version": "1.0.0",
+                "evaluation_protocol": "VOICE_RETENTION_MOS_V1",
+            },
         )
 
         # Translated result (after ASR+MT)
-        seg = Segment(start=0.0, end=1.0, text="Hello world", language="eng", speaker="spk1", source_language="lug")
+        seg = Segment(
+            start=0.0,
+            end=1.0,
+            text="Hello world",
+            language="eng",
+            speaker="spk1",
+            source_language="lug",
+        )
         trans_res = Result(
             segments=[seg],
             source_language="lug",
             target_language="eng",
-            provenance={"consent_basis": "research", "dataset_version": "1.0.0", "evaluation_protocol": "VOICE_RETENTION_MOS_V1"},
-            metadata={"speaker_embedding": SpeakerEmbeddingComponent().run(src_res).metadata["speaker_embedding"]},
+            provenance={
+                "consent_basis": "research",
+                "dataset_version": "1.0.0",
+                "evaluation_protocol": "VOICE_RETENTION_MOS_V1",
+            },
+            metadata={
+                "speaker_embedding": SpeakerEmbeddingComponent()
+                .run(src_res)
+                .metadata["speaker_embedding"]
+            },
         )
 
         # Baseline: unconditioned TTS
@@ -70,7 +88,9 @@ class TestM6VoiceTransferE2E:
         )
 
         # Candidate: voice-conditioned TTS (conditioned on src)
-        voice_tts = VoiceConditionedTTSComponent(speaker_reference=src_res, output_dir=str(tmp_path / "voice"))
+        voice_tts = VoiceConditionedTTSComponent(
+            speaker_reference=src_res, output_dir=str(tmp_path / "voice")
+        )
         candidate_out = voice_tts.run(trans_res)
         candidate_wav = Path(candidate_out.artifacts[0])
         candidate_res_for_eval = Resource(
@@ -100,7 +120,10 @@ class TestM6VoiceTransferE2E:
 
         # Voice transfer should be measurably higher (at least 0.05 delta for dummy)
         # With our deterministic copy logic, candidate is 1.0, baseline ~0.03
-        assert candidate_sim.metadata["metrics"]["speaker_similarity"] > baseline_sim.metadata["metrics"]["speaker_similarity"], (
+        assert (
+            candidate_sim.metadata["metrics"]["speaker_similarity"]
+            > baseline_sim.metadata["metrics"]["speaker_similarity"]
+        ), (
             f"Voice transfer {candidate_sim.metadata['metrics']['speaker_similarity']} not greater than baseline {baseline_sim.metadata['metrics']['speaker_similarity']}"
         )
         # Also check via compare_runs
@@ -110,14 +133,16 @@ class TestM6VoiceTransferE2E:
         assert comp["deltas"]["speaker_similarity_delta"] > 0
 
     def test_no_consent_cannot_reach_voice_transfer(self, tmp_path):
-        bad_ref = Resource(id="bad", kind=ResourceKind.SPEECH, language="lug", version="1.0.0", provenance={})
+        bad_ref = Resource(
+            id="bad", kind=ResourceKind.SPEECH, language="lug", version="1.0.0", provenance={}
+        )
         with pytest.raises(ValueError, match="consent_basis"):
             VoiceConditionedTTSComponent(speaker_reference=bad_ref)
 
         # Via pipeline
         from lingualdub.components.asr.dummy import DummyASRComponent
-        from lingualdub.components.translation.dummy import DummyTranslationComponent
         from lingualdub.components.speaker.embedding import SpeakerEmbeddingComponent
+        from lingualdub.components.translation.dummy import DummyTranslationComponent
 
         pipeline = Pipeline(
             stages=[
@@ -130,7 +155,9 @@ class TestM6VoiceTransferE2E:
             target_language="eng",
         )
         executor = PipelineExecutor(pipeline)
-        bad_input = Resource(id="bad_input", kind=ResourceKind.SPEECH, language="lug", version="1.0.0", provenance={})
+        bad_input = Resource(
+            id="bad_input", kind=ResourceKind.SPEECH, language="lug", version="1.0.0", provenance={}
+        )
         with pytest.raises(Exception, match="consent_basis"):
             executor.run(bad_input)
 
@@ -138,7 +165,14 @@ class TestM6VoiceTransferE2E:
         """Same config run twice → same scores within floating tolerance."""
         src_wav = tmp_path / "src.wav"
         _write_dummy_wav(src_wav, freq_hz=440)
-        src_res = Resource(id="src", kind=ResourceKind.SPEECH, language="lug", version="1.0.0", path=str(src_wav), provenance={"consent_basis": "research", "dataset_version": "1.0.0"})
+        src_res = Resource(
+            id="src",
+            kind=ResourceKind.SPEECH,
+            language="lug",
+            version="1.0.0",
+            path=str(src_wav),
+            provenance={"consent_basis": "research", "dataset_version": "1.0.0"},
+        )
 
         seg = Segment(start=0.0, end=1.0, text="Hello", language="eng", speaker="spk1")
         trans_res = Result(
@@ -146,12 +180,20 @@ class TestM6VoiceTransferE2E:
             source_language="lug",
             target_language="eng",
             provenance={"consent_basis": "research", "dataset_version": "1.0.0"},
-            metadata={"speaker_embedding": SpeakerEmbeddingComponent().run(src_res).metadata["speaker_embedding"]},
+            metadata={
+                "speaker_embedding": SpeakerEmbeddingComponent()
+                .run(src_res)
+                .metadata["speaker_embedding"]
+            },
         )
 
-        voice_tts = VoiceConditionedTTSComponent(speaker_reference=src_res, output_dir=str(tmp_path / "run1"))
+        voice_tts = VoiceConditionedTTSComponent(
+            speaker_reference=src_res, output_dir=str(tmp_path / "run1")
+        )
         out1 = voice_tts.run(trans_res)
-        voice_tts2 = VoiceConditionedTTSComponent(speaker_reference=src_res, output_dir=str(tmp_path / "run2"))
+        voice_tts2 = VoiceConditionedTTSComponent(
+            speaker_reference=src_res, output_dir=str(tmp_path / "run2")
+        )
         out2 = voice_tts2.run(trans_res)
 
         # Both should have same conditioning frequency and similar artifacts
@@ -159,38 +201,69 @@ class TestM6VoiceTransferE2E:
 
         # Speaker similarity should be identical
         embedder = SpeakerEmbeddingComponent()
-        wav1 = Resource(id="w1", kind=ResourceKind.SPEECH, language="eng", version="1.0.0", path=out1.artifacts[0], provenance={"consent_basis": "research"})
-        wav2 = Resource(id="w2", kind=ResourceKind.SPEECH, language="eng", version="1.0.0", path=out2.artifacts[0], provenance={"consent_basis": "research"})
+        wav1 = Resource(
+            id="w1",
+            kind=ResourceKind.SPEECH,
+            language="eng",
+            version="1.0.0",
+            path=out1.artifacts[0],
+            provenance={"consent_basis": "research"},
+        )
+        wav2 = Resource(
+            id="w2",
+            kind=ResourceKind.SPEECH,
+            language="eng",
+            version="1.0.0",
+            path=out2.artifacts[0],
+            provenance={"consent_basis": "research"},
+        )
         emb1 = embedder.run(wav1)
         emb2 = embedder.run(wav2)
         evaluator = SpeakerSimilarityEvaluator()
         src_emb = embedder.run(src_res)
         sim1 = evaluator.evaluate_pair(emb1, src_emb)
         sim2 = evaluator.evaluate_pair(emb2, src_emb)
-        assert sim1.metadata["metrics"]["speaker_similarity"] == pytest.approx(sim2.metadata["metrics"]["speaker_similarity"], abs=1e-6)
+        assert sim1.metadata["metrics"]["speaker_similarity"] == pytest.approx(
+            sim2.metadata["metrics"]["speaker_similarity"], abs=1e-6
+        )
 
     def test_pipeline_with_voice_transfer_end_to_end(self, tmp_path):
         from lingualdub.components.asr.dummy import DummyASRComponent
-        from lingualdub.components.translation.dummy import DummyTranslationComponent
         from lingualdub.components.speaker.embedding import SpeakerEmbeddingComponent
+        from lingualdub.components.translation.dummy import DummyTranslationComponent
 
         # Create speaker reference wav
         ref_wav = tmp_path / "ref.wav"
         _write_dummy_wav(ref_wav, freq_hz=660)
-        ref_res = Resource(id="ref", kind=ResourceKind.SPEECH, language="lug", version="1.0.0", path=str(ref_wav), provenance={"consent_basis": "research"})
+        ref_res = Resource(
+            id="ref",
+            kind=ResourceKind.SPEECH,
+            language="lug",
+            version="1.0.0",
+            path=str(ref_wav),
+            provenance={"consent_basis": "research"},
+        )
 
         pipeline = Pipeline(
             stages=[
                 DummyASRComponent(),
                 DummyTranslationComponent(),
                 SpeakerEmbeddingComponent(),
-                VoiceConditionedTTSComponent(speaker_reference=ref_res, output_dir=str(tmp_path / "voice_out")),
+                VoiceConditionedTTSComponent(
+                    speaker_reference=ref_res, output_dir=str(tmp_path / "voice_out")
+                ),
             ],
             source_language="lug",
             target_language="eng",
         )
         executor = PipelineExecutor(pipeline)
-        input_res = Resource(id="input", kind=ResourceKind.SPEECH, language="lug", version="1.0.0", provenance={"consent_basis": "research"})
+        input_res = Resource(
+            id="input",
+            kind=ResourceKind.SPEECH,
+            language="lug",
+            version="1.0.0",
+            provenance={"consent_basis": "research"},
+        )
         result = executor.run(input_res)
         assert result.is_usable
         assert result.metadata.get("voice_conditioned") is True

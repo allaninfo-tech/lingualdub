@@ -97,6 +97,7 @@ from lingualdub.components.asr.base import ASRComponent
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result, ResultStatus
 
+
 class WhisperASRComponent(ASRComponent):
     name: str = "whisper_asr"
     version: str = "1.0.0"

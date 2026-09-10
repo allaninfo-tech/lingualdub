@@ -11,8 +11,8 @@ can be resolved by later pipelines as first-class components.
 """
 
 from __future__ import annotations
+
 from abc import abstractmethod
-from typing import Union
 
 from lingualdub.core.component import Component, ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
@@ -26,7 +26,7 @@ class AdaptationComponent(Component):
     on_failure: FailureMode = FailureMode.ABORT
 
     @abstractmethod
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         """
         Run an adaptation workflow against the provided resource.
         Returns a Result carrying artifact links to the adapted checkpoint.

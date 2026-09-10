@@ -11,8 +11,8 @@ directly to per-segment routing behaviour.
 """
 
 from __future__ import annotations
+
 from abc import abstractmethod
-from typing import Union
 
 from lingualdub.core.component import Component, ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
@@ -26,14 +26,14 @@ class CodeSwitchComponent(Component):
     on_failure: FailureMode = FailureMode.DEGRADE
 
     @abstractmethod
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         """
         Detect language boundaries and annotate each Segment with its language.
         Returns a Result with Segment.language populated per segment.
         """
         ...
 
-    def degrade(self, input: Union[Result, Resource]) -> Result:
+    def degrade(self, input: Result | Resource) -> Result:
         """
         Default degrade path: return the input with source language applied
         uniformly to all segments (single-language-assumed processing).

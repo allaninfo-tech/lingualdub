@@ -11,8 +11,8 @@ as every other component, rather than living as separate external scripts.
 """
 
 from __future__ import annotations
+
 from abc import abstractmethod
-from typing import List, Union
 
 from lingualdub.core.component import Component, ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
@@ -32,7 +32,7 @@ class EvaluatorComponent(Component):
     on_failure: FailureMode = FailureMode.SKIP
 
     @abstractmethod
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         """
         Evaluate input and return a Result with metrics in result.metadata.
         """
@@ -43,6 +43,4 @@ class EvaluatorComponent(Component):
         Evaluate a hypothesis Result against a reference Result.
         Override for evaluators that require paired comparison.
         """
-        raise NotImplementedError(
-            f"Evaluator {self.name!r} does not implement evaluate_pair()."
-        )
+        raise NotImplementedError(f"Evaluator {self.name!r} does not implement evaluate_pair().")

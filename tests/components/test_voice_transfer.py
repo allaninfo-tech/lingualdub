@@ -7,13 +7,12 @@ Covers:
 - Assembly validation
 """
 
-import tempfile
 from pathlib import Path
 
 import pytest
 
 from lingualdub.components.speaker.embedding import _deterministic_embedding
-from lingualdub.components.tts.voice_conditioned import VoiceConditionedTTSComponent, XTTS_MODEL_ID
+from lingualdub.components.tts.voice_conditioned import XTTS_MODEL_ID, VoiceConditionedTTSComponent
 from lingualdub.core.pipeline import Pipeline
 from lingualdub.core.resource import Resource, ResourceKind
 from lingualdub.core.result import Result
@@ -37,10 +36,30 @@ class TestVoiceConditionedTTSComponent:
     def test_accepts_translated_segments_with_speaker_embedding(self, tmp_path):
         wav = tmp_path / "ref.wav"
         _make_wav(wav, freq=440)
-        ref = Resource(id="ref", kind=ResourceKind.SPEECH, language="lug", version="1.0.0", path=str(wav), provenance={"consent_basis": "research"})
+        ref = Resource(
+            id="ref",
+            kind=ResourceKind.SPEECH,
+            language="lug",
+            version="1.0.0",
+            path=str(wav),
+            provenance={"consent_basis": "research"},
+        )
         comp = VoiceConditionedTTSComponent(speaker_reference=ref, output_dir=str(tmp_path))
-        seg = Segment(start=0.0, end=1.0, text="Hello world", language="eng", speaker="spk1", source_language="lug")
-        res = Result(segments=[seg], source_language="lug", target_language="eng", provenance={"consent_basis": "research"}, metadata={"speaker_embedding": _deterministic_embedding("test", dim=192)})
+        seg = Segment(
+            start=0.0,
+            end=1.0,
+            text="Hello world",
+            language="eng",
+            speaker="spk1",
+            source_language="lug",
+        )
+        res = Result(
+            segments=[seg],
+            source_language="lug",
+            target_language="eng",
+            provenance={"consent_basis": "research"},
+            metadata={"speaker_embedding": _deterministic_embedding("test", dim=192)},
+        )
         out = comp.run(res)
         assert len(out.artifacts) == 1
         assert out.metadata["voice_conditioned"] is True
@@ -48,7 +67,9 @@ class TestVoiceConditionedTTSComponent:
         assert out.segments[0].speaker == "spk1"  # preserves speaker
 
     def test_enforces_consent_on_reference_at_init(self, tmp_path):
-        bad_ref = Resource(id="bad", kind=ResourceKind.SPEECH, language="lug", version="1.0.0", provenance={})
+        bad_ref = Resource(
+            id="bad", kind=ResourceKind.SPEECH, language="lug", version="1.0.0", provenance={}
+        )
         with pytest.raises(ValueError, match="consent_basis"):
             VoiceConditionedTTSComponent(speaker_reference=bad_ref)
 
@@ -57,14 +78,28 @@ class TestVoiceConditionedTTSComponent:
         # Actually init already checks, but test run with embedding missing and no reference should use segment speaker fallback (allowed)
         comp = VoiceConditionedTTSComponent(output_dir=str(tmp_path))
         seg = Segment(start=0.0, end=1.0, text="Hello", language="eng", speaker="spk1")
-        res = Result(segments=[seg], source_language="lug", target_language="eng", provenance={"consent_basis": "research"}, metadata={"speaker_embedding": _deterministic_embedding("a", dim=192)})
+        res = Result(
+            segments=[seg],
+            source_language="lug",
+            target_language="eng",
+            provenance={"consent_basis": "research"},
+            metadata={"speaker_embedding": _deterministic_embedding("a", dim=192)},
+        )
         out = comp.run(res)
         assert out.is_usable
 
     def test_acquires_via_resource_manager(self, tmp_path):
-        comp = VoiceConditionedTTSComponent(resource_manager=None, registry=None, output_dir=str(tmp_path))
+        comp = VoiceConditionedTTSComponent(
+            resource_manager=None, registry=None, output_dir=str(tmp_path)
+        )
         seg = Segment(start=0.0, end=1.0, text="Hi", language="eng", speaker="spk1")
-        res = Result(segments=[seg], source_language="lug", target_language="eng", provenance={"consent_basis": "research"}, metadata={"speaker_embedding": _deterministic_embedding("x", dim=192)})
+        res = Result(
+            segments=[seg],
+            source_language="lug",
+            target_language="eng",
+            provenance={"consent_basis": "research"},
+            metadata={"speaker_embedding": _deterministic_embedding("x", dim=192)},
+        )
         out = comp.run(res)
         assert "voice_conditioned" in out.metadata
 
@@ -72,10 +107,20 @@ class TestVoiceConditionedTTSComponent:
         # Different speaker embeddings should produce different artifacts (different freq)
         emb_a = _deterministic_embedding("speaker_A", dim=192)
         emb_b = _deterministic_embedding("speaker_B", dim=192)
-        comp_a = VoiceConditionedTTSComponent(speaker_embedding=emb_a, output_dir=str(tmp_path / "a"))
-        comp_b = VoiceConditionedTTSComponent(speaker_embedding=emb_b, output_dir=str(tmp_path / "b"))
+        comp_a = VoiceConditionedTTSComponent(
+            speaker_embedding=emb_a, output_dir=str(tmp_path / "a")
+        )
+        comp_b = VoiceConditionedTTSComponent(
+            speaker_embedding=emb_b, output_dir=str(tmp_path / "b")
+        )
         seg = Segment(start=0.0, end=1.0, text="Hello", language="eng", speaker="spk1")
-        res = Result(segments=[seg], source_language="lug", target_language="eng", provenance={"consent_basis": "research"}, metadata={"speaker_embedding": emb_a})
+        res = Result(
+            segments=[seg],
+            source_language="lug",
+            target_language="eng",
+            provenance={"consent_basis": "research"},
+            metadata={"speaker_embedding": emb_a},
+        )
         out_a = comp_a.run(res)
         out_b = comp_b.run(res)
         assert out_a.metadata["conditioning_freq_hz"] != out_b.metadata["conditioning_freq_hz"]
@@ -100,7 +145,13 @@ class TestVoiceConditionedTTSComponent:
     def test_degrade_fallback(self, tmp_path):
         comp = VoiceConditionedTTSComponent(output_dir=str(tmp_path))
         seg = Segment(start=0.0, end=1.0, text="Hello", language="eng", speaker="spk1")
-        res = Result(segments=[seg], source_language="lug", target_language="eng", provenance={"consent_basis": "research"}, metadata={"speaker_embedding": _deterministic_embedding("a", dim=192)})
+        res = Result(
+            segments=[seg],
+            source_language="lug",
+            target_language="eng",
+            provenance={"consent_basis": "research"},
+            metadata={"speaker_embedding": _deterministic_embedding("a", dim=192)},
+        )
         degraded = comp.degrade(res)
         assert degraded.status.value == "degraded" or degraded.is_usable
 
@@ -119,33 +170,67 @@ class TestSpeakerPropagation:
         from lingualdub.components.asr.dummy import DummyASRComponent
 
         asr = DummyASRComponent()
-        res = asr.run(Resource(id="x", kind=ResourceKind.SPEECH, language="lug", version="1.0.0", provenance={"consent_basis": "research"}))
+        res = asr.run(
+            Resource(
+                id="x",
+                kind=ResourceKind.SPEECH,
+                language="lug",
+                version="1.0.0",
+                provenance={"consent_basis": "research"},
+            )
+        )
         assert res.segments[0].speaker is not None
 
     def test_voice_tts_preserves_speaker(self, tmp_path):
-        ref = Resource(id="ref", kind=ResourceKind.SPEECH, language="lug", version="1.0.0", provenance={"consent_basis": "research"})
+        ref = Resource(
+            id="ref",
+            kind=ResourceKind.SPEECH,
+            language="lug",
+            version="1.0.0",
+            provenance={"consent_basis": "research"},
+        )
         comp = VoiceConditionedTTSComponent(speaker_reference=ref, output_dir=str(tmp_path))
         seg = Segment(start=0.0, end=1.0, text="Hello", language="eng", speaker="spk42")
-        res = Result(segments=[seg], source_language="lug", target_language="eng", provenance={"consent_basis": "research"}, metadata={"speaker_embedding": _deterministic_embedding("a", dim=192)})
+        res = Result(
+            segments=[seg],
+            source_language="lug",
+            target_language="eng",
+            provenance={"consent_basis": "research"},
+            metadata={"speaker_embedding": _deterministic_embedding("a", dim=192)},
+        )
         out = comp.run(res)
         assert out.segments[0].speaker == "spk42"
 
     def test_assembly_validation(self):
         from lingualdub.components.asr.dummy import DummyASRComponent
-        from lingualdub.components.translation.dummy import DummyTranslationComponent
         from lingualdub.components.speaker.embedding import SpeakerEmbeddingComponent
+        from lingualdub.components.translation.dummy import DummyTranslationComponent
 
         # Missing speaker_embedding should fail
         with pytest.raises(ValueError, match="speaker_embedding"):
             Pipeline(
-                stages=[DummyASRComponent(), DummyTranslationComponent(), VoiceConditionedTTSComponent(output_dir="/tmp/bad")],
+                stages=[
+                    DummyASRComponent(),
+                    DummyTranslationComponent(),
+                    VoiceConditionedTTSComponent(output_dir="/tmp/bad"),
+                ],
                 source_language="lug",
                 target_language="eng",
             )
         # With speaker stage should pass
         pipe = Pipeline(
-            stages=[DummyASRComponent(), DummyTranslationComponent(), SpeakerEmbeddingComponent(), VoiceConditionedTTSComponent(output_dir="/tmp/good")],
+            stages=[
+                DummyASRComponent(),
+                DummyTranslationComponent(),
+                SpeakerEmbeddingComponent(),
+                VoiceConditionedTTSComponent(output_dir="/tmp/good"),
+            ],
             source_language="lug",
             target_language="eng",
         )
-        assert pipe.stage_names == ["dummy_asr", "dummy_translator", "speaker_embedding", "voice_conditioned_tts"]
+        assert pipe.stage_names == [
+            "dummy_asr",
+            "dummy_translator",
+            "speaker_embedding",
+            "voice_conditioned_tts",
+        ]

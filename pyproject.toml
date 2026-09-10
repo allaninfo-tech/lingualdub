@@ -160,6 +160,9 @@ ignore = [
 # TODO: expand select to include S (bandit), C (complexity), ANN (annotations) after fixing S110/UP035 churn
 # See technical debt audit Fix 11 (T3): Ruff coverage gaps
 
+[tool.ruff.lint.per-file-ignores]
+"notebooks/*.ipynb" = ["E402"]  # Notebook cells may import mid-cell
+
 [tool.ruff.lint.isort]
 known-first-party = ["lingualdub"]
 

@@ -19,10 +19,10 @@ from lingualdub.components.eval.av_sync import AVSyncEvaluator
 from lingualdub.core.result import Result
 from lingualdub.core.segment import Segment
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _seg(text: str, start: float, end: float, lang: str = "lug", **meta):
     s = Segment(start=start, end=end, text=text, language=lang)
@@ -31,16 +31,23 @@ def _seg(text: str, start: float, end: float, lang: str = "lug", **meta):
 
 
 def _res(*segs, src="lug", tgt="eng", prov=None):
-    return Result(segments=list(segs), source_language=src, target_language=tgt, provenance=prov or {})
+    return Result(
+        segments=list(segs), source_language=src, target_language=tgt, provenance=prov or {}
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # AVSyncEvaluator
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestAVSyncEvaluator:
     def test_evaluate_pair_perfect_alignment(self):
-        src = _res(_seg("a", 0, 2.5, lang="lug"), _seg("b", 2.5, 5.0, lang="lug"), prov={"evaluation_protocol": "AV_SYNC_PROTOCOL_V1"})
+        src = _res(
+            _seg("a", 0, 2.5, lang="lug"),
+            _seg("b", 2.5, 5.0, lang="lug"),
+            prov={"evaluation_protocol": "AV_SYNC_PROTOCOL_V1"},
+        )
         hyp = _res(_seg("a", 0, 2.5, lang="eng"), _seg("b", 2.5, 5.0, lang="eng"), prov={})
         ev = AVSyncEvaluator(tolerance_ms=100)
         out = ev.evaluate_pair(hyp, src)
@@ -60,7 +67,6 @@ class TestAVSyncEvaluator:
         assert m["pct_within_100ms"] == pytest.approx(50.0, abs=0.1)
 
     def test_evaluate_pair_with_split_subsegments(self):
-        src = _res(_seg("a", 0, 5.0, lang="lug"))
         # Simulate SPLIT: two subsegments with source_segment_index 0
         s1 = _seg("part1", 0, 2.5, lang="eng", source_segment_index=0, fitting_strategy="split")
         s2 = _seg("part2", 2.5, 5.02, lang="eng", source_segment_index=0, fitting_strategy="split")
@@ -100,7 +106,10 @@ class TestAVSyncEvaluator:
         assert m["pct_within_100ms"] == 100.0
 
     def test_evaluate_pair_provenance(self):
-        src = _res(_seg("a", 0, 1.0, lang="lug"), prov={"evaluation_protocol": "AV_SYNC_PROTOCOL_V1", "dataset_version": "1.0.0"})
+        src = _res(
+            _seg("a", 0, 1.0, lang="lug"),
+            prov={"evaluation_protocol": "AV_SYNC_PROTOCOL_V1", "dataset_version": "1.0.0"},
+        )
         hyp = _res(_seg("a", 0, 1.0, lang="eng"))
         ev = AVSyncEvaluator(version="1.0.0")
         out = ev.evaluate_pair(hyp, src)
@@ -132,8 +141,11 @@ class TestAVSyncEvaluator:
 
     def test_compare_runs_delta(self):
         from lingualdub.utils.comparison import compare_runs
+
         src = _res(_seg("a", 0, 2.5, lang="lug"))
-        hyp_base = _res(_seg("a", 0, 2.65, lang="eng"), prov={"dataset_version": "1.0.0"})  # 150ms offset
+        hyp_base = _res(
+            _seg("a", 0, 2.65, lang="eng"), prov={"dataset_version": "1.0.0"}
+        )  # 150ms offset
         hyp_cand = _res(_seg("a", 0, 2.52, lang="eng"), prov={"dataset_version": "1.0.0"})  # 20ms
         ev = AVSyncEvaluator(tolerance_ms=100)
         base = ev.evaluate_pair(hyp_base, src)
@@ -149,12 +161,14 @@ class TestAVSyncEvaluator:
 # DialogueTimingComponent
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestDialogueTimingComponent:
     def setup_method(self):
         self.comp = DialogueTimingComponent(snap_tolerance=0.15)
 
     def test_rejects_non_result(self):
         from lingualdub.core.resource import Resource, ResourceKind
+
         r = Resource(id="r1", kind=ResourceKind.SPEECH, language="lug", version="1.0.0")
         with pytest.raises(ValueError):
             self.comp.run(r)
@@ -167,6 +181,7 @@ class TestDialogueTimingComponent:
             prov={"video_cues": [0.0, 2.5, 5.0]},
         )
         from lingualdub.components.alignment.forced import DummyForcedAlignmentComponent
+
         aligned = DummyForcedAlignmentComponent().run(src)
         out = self.comp.run(aligned)
         assert out.segments[0].start == pytest.approx(0.0, abs=0.02)
@@ -176,6 +191,7 @@ class TestDialogueTimingComponent:
     def test_no_snap_beyond_tolerance(self):
         src = _res(_seg("a", 0, 2.5, lang="lug"), prov={"video_cues": [10.0]})  # far cue
         from lingualdub.components.alignment.forced import DummyForcedAlignmentComponent
+
         aligned = DummyForcedAlignmentComponent().run(src)
         out = self.comp.run(aligned)
         assert out.segments[0].start == pytest.approx(0.0, abs=1e-6)
@@ -185,6 +201,7 @@ class TestDialogueTimingComponent:
     def test_no_cues_noop(self):
         src = _res(_seg("a", 0, 2.5, lang="lug"))
         from lingualdub.components.alignment.forced import DummyForcedAlignmentComponent
+
         aligned = DummyForcedAlignmentComponent().run(src)
         out = self.comp.run(aligned)
         assert out.segments[0].start == pytest.approx(0.0, abs=1e-6)
@@ -193,6 +210,7 @@ class TestDialogueTimingComponent:
     def test_provenance_and_metadata(self):
         src = _res(_seg("a", 0, 2.5, lang="lug"), prov={"video_cues": [0.0, 2.5]})
         from lingualdub.components.alignment.forced import DummyForcedAlignmentComponent
+
         aligned = DummyForcedAlignmentComponent().run(src)
         out = self.comp.run(aligned)
         assert "dialogue_timing" in out.provenance
@@ -202,11 +220,15 @@ class TestDialogueTimingComponent:
     def test_preserves_duration_target(self):
         from lingualdub.components.alignment.duration import DurationModellingComponent
         from lingualdub.components.alignment.forced import DummyForcedAlignmentComponent
+
         src = _res(_seg("hello world", 0, 2.0, lang="eng"), prov={"video_cues": [0.0, 2.0]})
         aligned = DummyForcedAlignmentComponent().run(src)
         # Need translation step for duration modeller; use eng target
         from lingualdub.components.translation.dummy import DummyTranslationComponent
-        translated = DummyTranslationComponent(source_language="lug", target_language="eng").run(aligned)
+
+        translated = DummyTranslationComponent(source_language="lug", target_language="eng").run(
+            aligned
+        )
         modeller = DurationModellingComponent()
         with_dur = modeller.run(translated)
         out = self.comp.run(with_dur)
@@ -222,9 +244,11 @@ class TestDialogueTimingComponent:
 # VideoMergerComponent
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestVideoMergerComponent:
     def test_rejects_non_result(self):
         from lingualdub.core.resource import Resource, ResourceKind
+
         r = Resource(id="r1", kind=ResourceKind.SPEECH, language="lug", version="1.0.0")
         comp = VideoMergerComponent(output_dir="/tmp/test_video_reject")
         with pytest.raises(ValueError):
@@ -232,12 +256,15 @@ class TestVideoMergerComponent:
 
     def test_produces_artifact_and_provenance(self, tmp_path):
         seg = _seg("hello world", 0, 2.0, lang="eng", target_duration=2.0)
-        inp = _res(seg, prov={"consent_basis": "research", "source_video": str(tmp_path / "dummy.mp4")})
+        inp = _res(
+            seg, prov={"consent_basis": "research", "source_video": str(tmp_path / "dummy.mp4")}
+        )
         # Create dummy source video
         dummy_vid = tmp_path / "dummy.mp4"
         dummy_vid.write_bytes(b"fake video")
         # Add dummy audio artifact via TTS
         from lingualdub.components.tts.dummy import DummyTTSComponent
+
         # Ensure consent
         inp.provenance["consent_basis"] = "research"
         tts = DummyTTSComponent(output_dir=str(tmp_path / "tts_tmp"))

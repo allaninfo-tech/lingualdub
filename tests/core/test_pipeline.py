@@ -1,7 +1,7 @@
 """Tests for lingualdub.core.pipeline."""
 
 import pytest
-from typing import Union
+
 from lingualdub.core.component import Component, ComponentTask, FailureMode
 from lingualdub.core.pipeline import Pipeline
 from lingualdub.core.resource import Resource
@@ -17,7 +17,7 @@ class MockASR(Component):
     provides = ["transcription", "word_timestamps"]
     on_failure = FailureMode.ABORT
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         return Result()
 
 
@@ -30,7 +30,7 @@ class MockTranslation(Component):
     provides = ["translation"]
     on_failure = FailureMode.ABORT
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         return Result()
 
 
@@ -89,6 +89,7 @@ def test_pipeline_repr():
 
 def test_pipeline_accumulates_capabilities_across_stages():
     """Verify that Stage 3 can access capabilities provided by Stage 1 even if Stage 2 does not re-emit them."""
+
     class Stage3(Component):
         name: str = "stage_3"
         version: str = "1.0.0"
@@ -96,6 +97,7 @@ def test_pipeline_accumulates_capabilities_across_stages():
         requires = ["transcription", "translation"]
         provides = ["speech"]
         on_failure = FailureMode.ABORT
+
         def run(self, input):
             return Result()
 

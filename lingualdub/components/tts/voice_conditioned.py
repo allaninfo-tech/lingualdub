@@ -16,14 +16,18 @@ import hashlib
 import logging
 import struct
 import tempfile
+import wave
 from pathlib import Path
-from typing import Dict, List, Optional, Union
 
 from lingualdub.components.speaker.embedding import _deterministic_embedding
 from lingualdub.components.tts.base import FittingStrategy, TTSComponent
 from lingualdub.components.tts.shared import (
     _SPLIT_PATTERN,
+)
+from lingualdub.components.tts.shared import (
     choose_strategy as _choose_strategy,
+)
+from lingualdub.components.tts.shared import (
     write_dummy_wav as _write_dummy_wav,
 )
 from lingualdub.core.component import ComponentTask, FailureMode
@@ -47,7 +51,11 @@ YOURTTS_MODEL_ID = "coqui/XTTS-v2"  # alias for docs
 
 
 def _copy_or_generate_voice_wav(
-    dest: Path, src_ref: Optional[Resource], duration_sec: float, freq_hz: float, sample_rate: int = 16000
+    dest: Path,
+    src_ref: Resource | None,
+    duration_sec: float,
+    freq_hz: float,
+    sample_rate: int = 16000,
 ) -> None:
     """
     For offline deterministic voice cloning: if src_ref has a real file, copy its
@@ -80,7 +88,7 @@ def _copy_or_generate_voice_wav(
     _write_dummy_wav(dest, duration_sec=duration_sec, freq_hz=freq_hz, sample_rate=sample_rate)
 
 
-def _freq_from_embedding(embedding: List[float], base: float = 440.0) -> float:
+def _freq_from_embedding(embedding: list[float], base: float = 440.0) -> float:
     """
     Derive a deterministic frequency from a speaker embedding.
 
@@ -96,19 +104,20 @@ def _freq_from_embedding(embedding: List[float], base: float = 440.0) -> float:
     return max(80.0, base + offset)
 
 
-def _ensure_consent_for_speaker(speaker_resource: Optional[Resource], speaker_embedding: Optional[List[float]]) -> None:
+def _ensure_consent_for_speaker(
+    speaker_resource: Resource | None, speaker_embedding: list[float] | None
+) -> None:
     """
     Enforce consent on speaker reference.
     If a Resource is provided, it must have consent_basis. If only embedding is provided,
     we check that the embedding provenance elsewhere had consent (handled at run()).
     """
-    if speaker_resource is not None:
-        if not has_valid_consent(speaker_resource.provenance):
-            raise ValueError(
-                f"VoiceConditionedTTSComponent: speaker reference Resource {speaker_resource.id!r} lacks valid 'consent_basis'. "
-                "Cross-lingual voice cloning requires explicit consent. "
-                "Add provenance={'consent_basis': '...'} to the speaker reference."
-            )
+    if speaker_resource is not None and not has_valid_consent(speaker_resource.provenance):
+        raise ValueError(
+            f"VoiceConditionedTTSComponent: speaker reference Resource {speaker_resource.id!r} lacks valid 'consent_basis'. "
+            "Cross-lingual voice cloning requires explicit consent. "
+            "Add provenance={'consent_basis': '...'} to the speaker reference."
+        )
 
 
 class VoiceConditionedTTSComponent(TTSComponent):
@@ -122,23 +131,23 @@ class VoiceConditionedTTSComponent(TTSComponent):
     name: str = "voice_conditioned_tts"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.TTS
-    supported_languages: List[str] = ["lug", "nyn", "eng", "swa"]
+    supported_languages: list[str] = ["lug", "nyn", "eng", "swa"]
     # Requires translation and speaker embedding (assembly-time validation)
-    requires: List[str] = ["translation", "speaker_embedding"]
-    provides: List[str] = ["synthesised_audio", "voice_conditioned"]
+    requires: list[str] = ["translation", "speaker_embedding"]
+    provides: list[str] = ["synthesised_audio", "voice_conditioned"]
     on_failure: FailureMode = FailureMode.DEGRADE
 
     def __init__(
         self,
         model_name_or_path: str = XTTS_MODEL_ID,
-        speaker_reference: Optional[Resource] = None,
-        speaker_embedding: Optional[List[float]] = None,
+        speaker_reference: Resource | None = None,
+        speaker_embedding: list[float] | None = None,
         language: str = "eng",
-        output_dir: Optional[str] = None,
+        output_dir: str | None = None,
         sample_rate: int = 16000,
-        device: Optional[str] = None,
-        resource_manager: Optional[object] = None,
-        registry: Optional[object] = None,
+        device: str | None = None,
+        resource_manager: object | None = None,
+        registry: object | None = None,
         version: str = "1.0.0",
         require_duration_target: bool = False,
     ) -> None:
@@ -146,14 +155,16 @@ class VoiceConditionedTTSComponent(TTSComponent):
         self.speaker_reference = speaker_reference
         self.speaker_embedding = speaker_embedding
         self.language = language
-        self.output_dir = Path(output_dir) if output_dir else Path(tempfile.gettempdir()) / "lingualdub_voice_tts"
+        self.output_dir = (
+            Path(output_dir) if output_dir else Path(tempfile.gettempdir()) / "lingualdub_voice_tts"
+        )
         self.sample_rate = sample_rate
         self.device = device
         self.version = version
         self._resource_manager = resource_manager
         self._registry = registry
-        self._voice_resource: Optional[Resource] = None
-        self._voice_resource_path: Optional[str] = None
+        self._voice_resource: Resource | None = None
+        self._voice_resource_path: str | None = None
         self._model = None
         # Update requires to include duration_target if requested (for M4 compatibility)
         if require_duration_target:
@@ -168,12 +179,14 @@ class VoiceConditionedTTSComponent(TTSComponent):
             return
         from lingualdub.utils.resource_helpers import acquire_resource
 
-        res, path = acquire_resource(self._registry, self._resource_manager, "voice_cloning_dummy_v1")
+        res, path = acquire_resource(
+            self._registry, self._resource_manager, "voice_cloning_dummy_v1"
+        )
         if res is not None:
             self._voice_resource = res
             self._voice_resource_path = path
 
-    def _load_model(self) -> Optional[object]:
+    def _load_model(self) -> object | None:
         """Lazy-load neural voice cloning model if available."""
         if self._model is not None:
             return self._model
@@ -189,11 +202,13 @@ class VoiceConditionedTTSComponent(TTSComponent):
             self._model = CoquiTTS(model_src).to(device)
             return self._model
         except Exception as exc:
-            logger.debug("Neural voice model not available (%s), using deterministic fallback.", exc)
+            logger.debug(
+                "Neural voice model not available (%s), using deterministic fallback.", exc
+            )
             self._model = None
             return None
 
-    def _resolve_speaker_embedding(self, input_obj: Union[Result, Resource]) -> List[float]:
+    def _resolve_speaker_embedding(self, input_obj: Result | Resource) -> list[float]:
         """Resolve speaker embedding from reference, input metadata, or segment speaker."""
         # 1. Explicit embedding provided at construction
         if self.speaker_embedding is not None:
@@ -215,7 +230,9 @@ class VoiceConditionedTTSComponent(TTSComponent):
                 return res_emb.metadata["speaker_embedding"]
             except Exception:
                 # Fallback: hash the reference id
-                return _deterministic_embedding(f"{self.speaker_reference.id}:{self.speaker_reference.language}", dim=192)
+                return _deterministic_embedding(
+                    f"{self.speaker_reference.id}:{self.speaker_reference.language}", dim=192
+                )
 
         # 3. Embedding in input Result metadata (e.g. from previous speaker embedding stage)
         if isinstance(input_obj, Result) and "speaker_embedding" in input_obj.metadata:
@@ -232,9 +249,11 @@ class VoiceConditionedTTSComponent(TTSComponent):
         # 5. Fallback deterministic default
         return _deterministic_embedding("default_voice_conditioned", dim=192)
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result):
-            raise ValueError(f"VoiceConditionedTTSComponent expects a Result input, got {type(input).__name__}")
+            raise ValueError(
+                f"VoiceConditionedTTSComponent expects a Result input, got {type(input).__name__}"
+            )
         # Enforce consent for voice synthesis — both input voice data and speaker reference
         ensure_consent(input, self.__class__.__name__)
         if self.speaker_reference is not None:
@@ -257,9 +276,9 @@ class VoiceConditionedTTSComponent(TTSComponent):
         # We don't strictly validate here; pipeline assembly already checks requires.
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        artifacts: List[str] = list(input.artifacts)
-        out_segments: List[Segment] = []
-        warnings: List[str] = list(input.warnings)
+        artifacts: list[str] = list(input.artifacts)
+        out_segments: list[Segment] = []
+        warnings: list[str] = list(input.warnings)
 
         if input.segments:
             for idx, seg in enumerate(input.segments):
@@ -275,14 +294,20 @@ class VoiceConditionedTTSComponent(TTSComponent):
                 new_meta["source_start"] = seg.start
                 new_meta["source_end"] = seg.end
                 new_meta["voice_conditioned"] = True
-                new_meta["speaker_reference"] = getattr(self.speaker_reference, "id", "embedding_conditioned")
+                new_meta["speaker_reference"] = getattr(
+                    self.speaker_reference, "id", "embedding_conditioned"
+                )
                 new_meta["conditioning_freq_hz"] = round(cond_freq, 2)
 
                 if strategy == FittingStrategy.COMPRESS:
                     audio_dur = max(target_dur, 0.1)
                     audio_path = self.output_dir / f"voice_tts_segment_{idx}_{self.version}.wav"
                     _copy_or_generate_voice_wav(
-                        audio_path, self.speaker_reference, audio_dur, cond_freq + idx * 10, sample_rate=self.sample_rate
+                        audio_path,
+                        self.speaker_reference,
+                        audio_dur,
+                        cond_freq + idx * 10,
+                        sample_rate=self.sample_rate,
                     )
                     artifacts.append(str(audio_path))
                     out_segments.append(
@@ -294,7 +319,10 @@ class VoiceConditionedTTSComponent(TTSComponent):
                             speaker=seg.speaker,  # preserve speaker identity
                             confidence=seg.confidence,
                             source_language=seg.source_language,
-                            provenance={**seg.provenance, "voice_tts": f"{self.name}@{self.version}"},
+                            provenance={
+                                **seg.provenance,
+                                "voice_tts": f"{self.name}@{self.version}",
+                            },
                             metadata=new_meta,
                         )
                     )
@@ -306,9 +334,16 @@ class VoiceConditionedTTSComponent(TTSComponent):
                     for sub_idx, part in enumerate(parts):
                         sub_start = seg.start + sub_idx * sub_dur
                         sub_end = seg.start + (sub_idx + 1) * sub_dur
-                        audio_path = self.output_dir / f"voice_tts_segment_{idx}_split_{sub_idx}_{self.version}.wav"
+                        audio_path = (
+                            self.output_dir
+                            / f"voice_tts_segment_{idx}_split_{sub_idx}_{self.version}.wav"
+                        )
                         _copy_or_generate_voice_wav(
-                            audio_path, self.speaker_reference, sub_dur, cond_freq + idx * 10, sample_rate=self.sample_rate
+                            audio_path,
+                            self.speaker_reference,
+                            sub_dur,
+                            cond_freq + idx * 10,
+                            sample_rate=self.sample_rate,
                         )
                         artifacts.append(str(audio_path))
                         sub_meta = dict(new_meta)
@@ -325,7 +360,10 @@ class VoiceConditionedTTSComponent(TTSComponent):
                                 speaker=seg.speaker,
                                 confidence=seg.confidence,
                                 source_language=seg.source_language,
-                                provenance={**seg.provenance, "voice_tts": f"{self.name}@{self.version}"},
+                                provenance={
+                                    **seg.provenance,
+                                    "voice_tts": f"{self.name}@{self.version}",
+                                },
                                 metadata=sub_meta,
                             )
                         )
@@ -341,7 +379,10 @@ class VoiceConditionedTTSComponent(TTSComponent):
                             speaker=seg.speaker,
                             confidence=seg.confidence,
                             source_language=seg.source_language,
-                            provenance={**seg.provenance, "voice_tts": f"{self.name}@{self.version}"},
+                            provenance={
+                                **seg.provenance,
+                                "voice_tts": f"{self.name}@{self.version}",
+                            },
                             metadata=new_meta,
                         )
                     )
@@ -375,11 +416,13 @@ class VoiceConditionedTTSComponent(TTSComponent):
             },
         )
 
-    def degrade(self, input: Union[Result, Resource]) -> Result:
+    def degrade(self, input: Result | Resource) -> Result:
         """Degraded fallback: use unconditioned DummyTTS."""
         from lingualdub.components.tts.dummy import DummyTTSComponent
 
         dummy = DummyTTSComponent(output_dir=str(self.output_dir))
         res = dummy.degrade(input)
-        res.mark_degraded(f"VoiceConditionedTTS ({self.model_name_or_path}) failed; fell back to dummy")
+        res.mark_degraded(
+            f"VoiceConditionedTTS ({self.model_name_or_path}) failed; fell back to dummy"
+        )
         return res

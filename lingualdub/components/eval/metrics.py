@@ -13,16 +13,18 @@ Includes:
 """
 
 from __future__ import annotations
+
 import math
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any
 
 from lingualdub.components.eval.base import EvaluatorComponent
 from lingualdub.core.component import ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result
+from lingualdub.core.segment import Segment
 
 
-def _levenshtein_distance(seq1: List[Any], seq2: List[Any]) -> int:
+def _levenshtein_distance(seq1: list[Any], seq2: list[Any]) -> int:
     """Compute Levenshtein edit distance between two sequences."""
     size_x = len(seq1) + 1
     size_y = len(seq2) + 1
@@ -38,9 +40,9 @@ def _levenshtein_distance(seq1: List[Any], seq2: List[Any]) -> int:
                 matrix[x][y] = matrix[x - 1][y - 1]
             else:
                 matrix[x][y] = min(
-                    matrix[x - 1][y] + 1,      # deletion
-                    matrix[x][y - 1] + 1,      # insertion
-                    matrix[x - 1][y - 1] + 1   # substitution
+                    matrix[x - 1][y] + 1,  # deletion
+                    matrix[x][y - 1] + 1,  # insertion
+                    matrix[x - 1][y - 1] + 1,  # substitution
                 )
     return matrix[size_x - 1][size_y - 1]
 
@@ -70,8 +72,8 @@ def compute_chrf(hypothesis: str, reference: str, n: int = 6, beta: float = 2.0)
     if not ref:
         return 100.0 if not hyp else 0.0
 
-    def get_ngrams(s: str, order: int) -> Dict[str, int]:
-        counts: Dict[str, int] = {}
+    def get_ngrams(s: str, order: int) -> dict[str, int]:
+        counts: dict[str, int] = {}
         for i in range(len(s) - order + 1):
             gram = s[i : i + order]
             counts[gram] = counts.get(gram, 0) + 1
@@ -104,6 +106,7 @@ def compute_bleu(hypothesis: str, reference: str, max_n: int = 4) -> float:
     """Compute sentence-level BLEU score (0.0 to 100.0)."""
     try:
         import sacrebleu
+
         score = sacrebleu.sentence_bleu(hypothesis.strip(), [reference.strip()]).score
         return round(float(score), 2)
     except Exception:
@@ -125,12 +128,12 @@ def compute_bleu(hypothesis: str, reference: str, max_n: int = 4) -> float:
     for n in range(1, max_n + 1):
         if len(hyp_tokens) < n or len(ref_tokens) < n:
             break
-        hyp_ngrams: Dict[Tuple[str, ...], int] = {}
+        hyp_ngrams: dict[tuple[str, ...], int] = {}
         for i in range(len(hyp_tokens) - n + 1):
             gram = tuple(hyp_tokens[i : i + n])
             hyp_ngrams[gram] = hyp_ngrams.get(gram, 0) + 1
 
-        ref_ngrams: Dict[Tuple[str, ...], int] = {}
+        ref_ngrams: dict[tuple[str, ...], int] = {}
         for i in range(len(ref_tokens) - n + 1):
             gram = tuple(ref_tokens[i : i + n])
             ref_ngrams[gram] = ref_ngrams.get(gram, 0) + 1
@@ -160,17 +163,17 @@ class WEREvaluator(EvaluatorComponent):
     name: str = "wer_evaluator"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.EVAL
-    supported_languages: List[str] = ["lug", "nyn", "eng", "swa"]
-    requires: List[str] = ["transcription"]
-    provides: List[str] = ["asr_metrics"]
+    supported_languages: list[str] = ["lug", "nyn", "eng", "swa"]
+    requires: list[str] = ["transcription"]
+    provides: list[str] = ["asr_metrics"]
     on_failure: FailureMode = FailureMode.SKIP
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         if isinstance(input, Result):
             return input
         return Result()
 
-    def evaluate_pair(self, hypothesis: Result, reference: Union[Result, Resource, str]) -> Result:
+    def evaluate_pair(self, hypothesis: Result, reference: Result | Resource | str) -> Result:
         hyp_text = " ".join(s.text for s in hypothesis.segments if s.text).strip()
         if isinstance(reference, Result):
             ref_text = " ".join(s.text for s in reference.segments if s.text).strip()
@@ -217,15 +220,15 @@ class TranslationEvaluator(EvaluatorComponent):
     name: str = "translation_evaluator"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.EVAL
-    supported_languages: List[str] = ["lug", "nyn", "eng", "swa"]
-    requires: List[str] = ["translation"]
-    provides: List[str] = ["translation_metrics"]
+    supported_languages: list[str] = ["lug", "nyn", "eng", "swa"]
+    requires: list[str] = ["translation"]
+    provides: list[str] = ["translation_metrics"]
     on_failure: FailureMode = FailureMode.SKIP
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         return input if isinstance(input, Result) else Result()
 
-    def evaluate_pair(self, hypothesis: Result, reference: Union[Result, Resource, str]) -> Result:
+    def evaluate_pair(self, hypothesis: Result, reference: Result | Resource | str) -> Result:
         hyp_text = " ".join(s.text for s in hypothesis.segments if s.text).strip()
         if isinstance(reference, Result):
             ref_text = " ".join(s.text for s in reference.segments if s.text).strip()
@@ -272,20 +275,20 @@ class TemporalAlignmentEvaluator(EvaluatorComponent):
     name: str = "temporal_alignment_evaluator"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.EVAL
-    supported_languages: List[str] = ["lug", "nyn", "eng", "swa"]
-    requires: List[str] = ["synthesised_audio"]
-    provides: List[str] = ["alignment_metrics"]
+    supported_languages: list[str] = ["lug", "nyn", "eng", "swa"]
+    requires: list[str] = ["synthesised_audio"]
+    provides: list[str] = ["alignment_metrics"]
     on_failure: FailureMode = FailureMode.SKIP
 
     def __init__(self, tolerance_ms: float = 200.0, version: str = "1.0.0") -> None:
         self.tolerance_ms = tolerance_ms
         self.version = version
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result) or not input.segments:
             return input if isinstance(input, Result) else Result()
 
-        errors_sec: List[float] = []
+        errors_sec: list[float] = []
         within_tolerance_count = 0
 
         for seg in input.segments:
@@ -298,13 +301,22 @@ class TemporalAlignmentEvaluator(EvaluatorComponent):
                 within_tolerance_count += 1
 
         mean_err_ms = (sum(errors_sec) / len(errors_sec) * 1000.0) if errors_sec else 0.0
-        pct_within = (within_tolerance_count / len(input.segments) * 100.0) if input.segments else 100.0
+        pct_within = (
+            (within_tolerance_count / len(input.segments) * 100.0) if input.segments else 100.0
+        )
 
         metrics = {
             "mean_duration_error_ms": round(mean_err_ms, 2),
             "pct_within_tolerance": round(pct_within, 2),
-            "pct_within_200ms": round(pct_within, 2) if self.tolerance_ms == 200.0 else round(
-                (sum(1 for e in errors_sec if (e * 1000.0) <= 200.0) / max(len(input.segments), 1) * 100.0), 2
+            "pct_within_200ms": round(pct_within, 2)
+            if self.tolerance_ms == 200.0
+            else round(
+                (
+                    sum(1 for e in errors_sec if (e * 1000.0) <= 200.0)
+                    / max(len(input.segments), 1)
+                    * 100.0
+                ),
+                2,
             ),
             "tolerance_ms": self.tolerance_ms,
         }
@@ -323,7 +335,7 @@ class TemporalAlignmentEvaluator(EvaluatorComponent):
     def evaluate_pair(
         self,
         hypothesis: Result,
-        reference: Union[Result, "Resource"],
+        reference: Result | Resource,
     ) -> Result:
         """
         Compare dubbed segment end times against source segment end times.
@@ -387,14 +399,15 @@ class TemporalAlignmentEvaluator(EvaluatorComponent):
         # Check if hypothesis segments contain source_segment_index metadata from TTS
         has_source_indices = any("source_segment_index" in s.metadata for s in hyp_segs)
 
-        errors_ms: List[float] = []
+        errors_ms: list[float] = []
         within_count = 0
         total_eval_units = max(len(source_segs), 1)
 
         if has_source_indices and source_segs:
             # Group hypothesis segments by their source segment index
             from collections import defaultdict
-            grouped: Dict[int, List[Segment]] = defaultdict(list)
+
+            grouped: dict[int, list[Segment]] = defaultdict(list)
             for h in hyp_segs:
                 s_idx = h.metadata.get("source_segment_index")
                 if s_idx is not None:
@@ -408,7 +421,10 @@ class TemporalAlignmentEvaluator(EvaluatorComponent):
                     continue
 
                 # If any subsegment in the group was marked unfit/skipped
-                is_unfit = any(h.metadata.get("unfit") or h.metadata.get("fitting_strategy") == "skip" for h in h_group)
+                is_unfit = any(
+                    h.metadata.get("unfit") or h.metadata.get("fitting_strategy") == "skip"
+                    for h in h_group
+                )
                 if is_unfit:
                     errors_ms.append(self.tolerance_ms + 50.0)
                     continue
@@ -469,4 +485,3 @@ class TemporalAlignmentEvaluator(EvaluatorComponent):
             artifacts=list(hypothesis.artifacts),
             metadata={**hypothesis.metadata, "timing_metrics": metrics},
         )
-

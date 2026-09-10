@@ -7,22 +7,21 @@ Verifies the M4 Done When criteria:
   - The timing score is measured by the evaluator and recorded with full provenance.
   - All component and integration tests pass.
 """
+
 from __future__ import annotations
-import pytest
-from lingualdub.components.asr.dummy import DummyASRComponent
-from lingualdub.components.alignment.forced import DummyForcedAlignmentComponent
+
 from lingualdub.components.alignment.duration import DurationModellingComponent
+from lingualdub.components.alignment.forced import DummyForcedAlignmentComponent
+from lingualdub.components.eval.metrics import TemporalAlignmentEvaluator
 from lingualdub.components.translation.dummy import DummyTranslationComponent
 from lingualdub.components.tts.dummy import DummyTTSComponent
-from lingualdub.components.eval.metrics import TemporalAlignmentEvaluator
-from lingualdub.core.resource import Resource, ResourceKind
 from lingualdub.core.result import Result
 from lingualdub.core.segment import Segment
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _make_source_result(n: int = 5) -> Result:
     """Build a source Result with n Luganda segments of known timing."""
@@ -30,12 +29,14 @@ def _make_source_result(n: int = 5) -> Result:
     for i in range(n):
         start = i * 2.5
         end = start + 2.5
-        segs.append(Segment(
-            start=start,
-            end=end,
-            text=f"Oli otya nnyabo {i}",
-            language="lug",
-        ))
+        segs.append(
+            Segment(
+                start=start,
+                end=end,
+                text=f"Oli otya nnyabo {i}",
+                language="lug",
+            )
+        )
     return Result(
         segments=segs,
         source_language="lug",
@@ -65,8 +66,8 @@ def _run_alignment_pipeline(source: Result, tmp_path) -> Result:
 # M4 End-to-End Tests
 # ─────────────────────────────────────────────────────────────────────────────
 
-class TestM4TemporalAlignmentE2E:
 
+class TestM4TemporalAlignmentE2E:
     def test_pipeline_completes_without_error(self, tmp_path):
         source = _make_source_result(n=5)
         dubbed = _run_alignment_pipeline(source, tmp_path)
@@ -82,9 +83,7 @@ class TestM4TemporalAlignmentE2E:
         source = _make_source_result(n=5)
         dubbed = _run_alignment_pipeline(source, tmp_path)
         for seg in dubbed.segments:
-            assert "fitting_strategy" in seg.metadata, (
-                f"Segment missing fitting_strategy: {seg}"
-            )
+            assert "fitting_strategy" in seg.metadata, f"Segment missing fitting_strategy: {seg}"
 
     def test_m4_done_when_pct_within_200ms_ge_80(self, tmp_path):
         """

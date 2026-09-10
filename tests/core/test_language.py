@@ -1,6 +1,7 @@
 """Tests for lingualdub.core.language."""
 
 import pytest
+
 from lingualdub.core.language import Language
 
 
@@ -35,7 +36,10 @@ def test_language_defaults():
 
 def test_language_metadata():
     lang = Language(
-        code="lug", name="Luganda", family="Bantu", resource_profile="sparse",
+        code="lug",
+        name="Luganda",
+        family="Bantu",
+        resource_profile="sparse",
         metadata={"region": "Uganda"},
     )
     assert lang.metadata["region"] == "Uganda"

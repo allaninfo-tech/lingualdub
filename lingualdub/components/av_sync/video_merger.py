@@ -17,11 +17,10 @@ Satisfies M7.3:
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import tempfile
-import hashlib
 from pathlib import Path
-from typing import List, Optional, Union
 
 from lingualdub.core.component import Component, ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
@@ -54,7 +53,7 @@ def _write_dummy_mp4(filepath: Path, duration_sec: float = 2.0) -> None:
         f.write(f"# duration:{duration_sec:.2f}s # dummy video for LingualDub M7\n".encode())
 
 
-def _resolve_source_video(input: Result) -> Optional[str]:
+def _resolve_source_video(input: Result) -> str | None:
     """Resolve source video path from provenance, metadata, artifacts, or segments."""
     # 1. Explicit provenance keys
     for key in ("source_video", "video_path", "video"):
@@ -67,10 +66,13 @@ def _resolve_source_video(input: Result) -> Optional[str]:
 
     # 2. Scan artifacts for video files
     for art in input.artifacts:
-        if isinstance(art, str) and Path(art).suffix.lower() in (".mp4", ".mkv", ".avi", ".mov", ".webm"):
-            if Path(art).exists():
-                # Prefer the earliest video artifact as source (before dubbed)
-                return art
+        if (
+            isinstance(art, str)
+            and Path(art).suffix.lower() in (".mp4", ".mkv", ".avi", ".mov", ".webm")
+            and Path(art).exists()
+        ):
+            # Prefer the earliest video artifact as source (before dubbed)
+            return art
 
     # 3. Check segment metadata
     for seg in input.segments:
@@ -84,9 +86,9 @@ def _resolve_source_video(input: Result) -> Optional[str]:
 
 def _try_ffmpeg_merge(
     source_video: str,
-    audio_paths: List[str],
+    audio_paths: list[str],
     output_path: Path,
-    duration_sec: Optional[float] = None,
+    duration_sec: float | None = None,
 ) -> bool:
     """
     Attempt to merge audio + video via ffmpeg.
@@ -103,7 +105,7 @@ def _try_ffmpeg_merge(
             audio_input = ffmpeg.input(audio_paths[0])
         else:
             # Use concat filter for multiple wavs
-            inputs = [ffmpeg.input(p) for p in audio_paths]
+            _inputs = [ffmpeg.input(p) for p in audio_paths]  # noqa: F841
             # Simplified: just use first audio for offline deterministic; full concat is complex
             audio_input = ffmpeg.input(audio_paths[0])
             logger.debug("Multiple audio files: using first for ffmpeg merge (offline fallback)")
@@ -190,28 +192,32 @@ class VideoMergerComponent(Component):
     name: str = "video_merger"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.OTHER
-    supported_languages: List[str] = ["lug", "nyn", "eng", "swa"]
-    requires: List[str] = ["synthesised_audio"]
-    provides: List[str] = ["dubbed_video"]
+    supported_languages: list[str] = ["lug", "nyn", "eng", "swa"]
+    requires: list[str] = ["synthesised_audio"]
+    provides: list[str] = ["dubbed_video"]
     on_failure: FailureMode = FailureMode.DEGRADE
 
     def __init__(
         self,
-        output_dir: Optional[str] = None,
+        output_dir: str | None = None,
         video_codec: str = "mp4v",
         sample_rate: int = 16000,
         version: str = "1.0.0",
-        resource_manager: Optional[object] = None,
-        registry: Optional[object] = None,
+        resource_manager: object | None = None,
+        registry: object | None = None,
     ) -> None:
-        self.output_dir = Path(output_dir) if output_dir else Path(tempfile.gettempdir()) / "lingualdub_video_merger"
+        self.output_dir = (
+            Path(output_dir)
+            if output_dir
+            else Path(tempfile.gettempdir()) / "lingualdub_video_merger"
+        )
         self.video_codec = video_codec
         self.sample_rate = sample_rate
         self.version = version
         self._resource_manager = resource_manager
         self._registry = registry
-        self._video_resource: Optional[Resource] = None
-        self._video_resource_path: Optional[str] = None
+        self._video_resource: Resource | None = None
+        self._video_resource_path: str | None = None
 
     def _load_video_resource(self) -> None:
         """Acquire dummy video resource via Registry/ResourceManager if configured."""
@@ -227,34 +233,43 @@ class VideoMergerComponent(Component):
             self._video_resource_path = path
         # Fallback to legacy dummy_video key if new not found
         if res is None:
-            res2, path2 = acquire_resource(self._registry, self._resource_manager, "dummy_video_resource")
+            res2, path2 = acquire_resource(
+                self._registry, self._resource_manager, "dummy_video_resource"
+            )
             if res2 is not None:
                 self._video_resource = res2
                 self._video_resource_path = path2
 
-    def _resolve_video(self, input: Result) -> Optional[str]:
+    def _resolve_video(self, input: Result) -> str | None:
         direct = _resolve_source_video(input)
         if direct:
             return direct
         self._load_video_resource()
         if self._video_resource_path and Path(self._video_resource_path).exists():
             return self._video_resource_path
-        if self._video_resource and self._video_resource.path and Path(str(self._video_resource.path)).exists():
+        if (
+            self._video_resource
+            and self._video_resource.path
+            and Path(str(self._video_resource.path)).exists()
+        ):
             return str(self._video_resource.path)
         return None
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result):
             raise ValueError(f"VideoMergerComponent expects a Result, got {type(input).__name__}")
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
         # Gather audio artifacts (WAVs from TTS)
-        audio_paths: List[str] = []
+        audio_paths: list[str] = []
         for art in input.artifacts:
-            if isinstance(art, str) and Path(art).suffix.lower() in (".wav", ".mp3", ".flac", ".m4a", ".ogg"):
-                if Path(art).exists():
-                    audio_paths.append(art)
+            if (
+                isinstance(art, str)
+                and Path(art).suffix.lower() in (".wav", ".mp3", ".flac", ".m4a", ".ogg")
+                and Path(art).exists()
+            ):
+                audio_paths.append(art)
 
         source_video = self._resolve_video(input)
 
@@ -263,7 +278,9 @@ class VideoMergerComponent(Component):
         if input.segments:
             # Use max end time as total duration, or sum of snapped durations
             try:
-                total_dur = max(s.end for s in input.segments) - min(s.start for s in input.segments)
+                total_dur = max(s.end for s in input.segments) - min(
+                    s.start for s in input.segments
+                )
             except ValueError:
                 total_dur = 2.0
         if total_dur <= 0:
@@ -278,7 +295,9 @@ class VideoMergerComponent(Component):
         # Try real ffmpeg merge if both video and audio available
         merged = False
         if source_video and audio_paths:
-            merged = _try_ffmpeg_merge(source_video, audio_paths, output_path, duration_sec=total_dur)
+            merged = _try_ffmpeg_merge(
+                source_video, audio_paths, output_path, duration_sec=total_dur
+            )
 
         # Fallback: dummy MP4 generation (always succeeds offline)
         if not merged or not output_path.exists():
@@ -286,13 +305,17 @@ class VideoMergerComponent(Component):
             # If audio exists but no video, create dummy video sized to audio duration
             _write_dummy_mp4(output_path, duration_sec=total_dur)
             if source_video:
-                logger.debug("Generated dummy dubbed video (offline fallback) at %s from source %s", output_path, source_video)
+                logger.debug(
+                    "Generated dummy dubbed video (offline fallback) at %s from source %s",
+                    output_path,
+                    source_video,
+                )
             else:
                 logger.debug("Generated dummy video (no source video) at %s", output_path)
 
         # Build output segments: preserve input segments, annotate with video metadata
-        out_segments: List[Segment] = []
-        for idx, seg in enumerate(input.segments):
+        out_segments: list[Segment] = []
+        for _, seg in enumerate(input.segments):
             new_meta = dict(seg.metadata)
             new_meta["dubbed_video"] = str(output_path)
             new_meta["source_video"] = str(source_video) if source_video else "dummy"
@@ -350,7 +373,7 @@ class VideoMergerComponent(Component):
             metadata=new_metadata,
         )
 
-    def degrade(self, input: Union[Result, Resource]) -> Result:
+    def degrade(self, input: Result | Resource) -> Result:
         """Degraded fallback: return input with degraded marker and minimal dummy video."""
         self.output_dir.mkdir(parents=True, exist_ok=True)
         fallback_path = self.output_dir / f"dubbed_video_degraded_{self.version}.mp4"

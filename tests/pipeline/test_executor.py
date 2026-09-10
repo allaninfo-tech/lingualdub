@@ -1,15 +1,15 @@
 """Tests for lingualdub.pipeline.executor."""
 
 import pytest
-from typing import Union
+
 from lingualdub.core.component import Component, ComponentTask, FailureMode
 from lingualdub.core.pipeline import Pipeline
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result, ResultStatus
-from lingualdub.pipeline.executor import PipelineExecutor, PipelineExecutionError
-
+from lingualdub.pipeline.executor import PipelineExecutionError, PipelineExecutor
 
 # --- Mock stages ---
+
 
 class GoodStage(Component):
     name: str = "good_stage"
@@ -19,7 +19,7 @@ class GoodStage(Component):
     provides = ["transcription"]
     on_failure = FailureMode.ABORT
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         return Result(metadata={"stage": "good"})
 
 
@@ -31,7 +31,7 @@ class FailingStage(Component):
     provides = ["transcription"]
     on_failure = FailureMode.ABORT
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         raise RuntimeError("stage failed")
 
 
@@ -48,10 +48,10 @@ class DegradingStage(Component):
     provides = ["transcription"]
     on_failure = FailureMode.DEGRADE
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         raise RuntimeError("primary failed")
 
-    def degrade(self, input: Union[Result, Resource]) -> Result:
+    def degrade(self, input: Result | Resource) -> Result:
         return Result(metadata={"degraded": True})
 
 
@@ -63,7 +63,7 @@ class ProvenanceStage(Component):
     provides = ["transcription"]
     on_failure = FailureMode.ABORT
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         return Result(provenance={"stage_key": "stage_value"})
 
 
@@ -75,11 +75,12 @@ class SecondStage(Component):
     provides = ["translation"]
     on_failure = FailureMode.ABORT
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         return Result(metadata={"second": True})
 
 
 # --- Tests ---
+
 
 def test_executor_runs_successfully():
     pipeline = Pipeline(stages=[GoodStage()], source_language="lug")
@@ -114,6 +115,7 @@ def test_executor_degrade_no_degrade_path():
     class NoDegradePath(FailingStage):
         name: str = "no_degrade"
         on_failure = FailureMode.DEGRADE
+
     pipeline = Pipeline(stages=[NoDegradePath()], source_language="lug")
     executor = PipelineExecutor(pipeline)
     result = executor.run(Result())

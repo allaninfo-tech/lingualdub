@@ -26,7 +26,6 @@ SpeakerSimilarityEvaluator (components/eval/speaker_similarity.py) patterns:
 from __future__ import annotations
 
 import logging
-from typing import Dict, List, Optional, Union
 
 from lingualdub.components.eval.base import EvaluatorComponent
 from lingualdub.core.component import ComponentTask, FailureMode
@@ -56,24 +55,24 @@ class AVSyncEvaluator(EvaluatorComponent):
     name: str = "av_sync_evaluator"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.EVAL
-    supported_languages: List[str] = ["lug", "nyn", "eng", "swa"]
-    requires: List[str] = ["dubbed_video"]
-    provides: List[str] = ["av_sync_metrics"]
+    supported_languages: list[str] = ["lug", "nyn", "eng", "swa"]
+    requires: list[str] = ["dubbed_video"]
+    provides: list[str] = ["av_sync_metrics"]
     on_failure: FailureMode = FailureMode.SKIP
 
     def __init__(
         self,
         tolerance_ms: float = 100.0,
         version: str = "1.0.0",
-        resource_manager: Optional[object] = None,
-        registry: Optional[object] = None,
+        resource_manager: object | None = None,
+        registry: object | None = None,
     ) -> None:
         self.tolerance_ms = tolerance_ms
         self.version = version
         self._resource_manager = resource_manager
         self._registry = registry
-        self._syncnet_resource: Optional[Resource] = None
-        self._syncnet_resource_path: Optional[str] = None
+        self._syncnet_resource: Resource | None = None
+        self._syncnet_resource_path: str | None = None
         self._model = None
 
     def _load_syncnet_resource(self) -> None:
@@ -82,14 +81,12 @@ class AVSyncEvaluator(EvaluatorComponent):
             return
         from lingualdub.utils.resource_helpers import acquire_resource
 
-        res, path = acquire_resource(
-            self._registry, self._resource_manager, "syncnet_dummy_v1"
-        )
+        res, path = acquire_resource(self._registry, self._resource_manager, "syncnet_dummy_v1")
         if res is not None:
             self._syncnet_resource = res
             self._syncnet_resource_path = path
 
-    def _load_syncnet_model(self) -> Optional[object]:
+    def _load_syncnet_model(self) -> object | None:
         """Attempt to load SyncNet model if dependencies available."""
         if self._model is not None:
             return self._model
@@ -121,7 +118,7 @@ class AVSyncEvaluator(EvaluatorComponent):
             self._model = None
             return None
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         """Evaluate a single Result's AV offsets vs its own target_duration.
 
         For M7 Done-When the primary path is evaluate_pair; run() provides
@@ -133,7 +130,7 @@ class AVSyncEvaluator(EvaluatorComponent):
         self._load_syncnet_resource()
         self._load_syncnet_model()
 
-        errors_ms: List[float] = []
+        errors_ms: list[float] = []
         within_count = 0
 
         for seg in input.segments:
@@ -152,11 +149,13 @@ class AVSyncEvaluator(EvaluatorComponent):
         mean_err = (sum(errors_ms) / len(errors_ms)) if errors_ms else 0.0
         pct_within = (within_count / len(input.segments) * 100.0) if input.segments else 100.0
 
-        metrics: Dict[str, float] = {
+        metrics: dict[str, float] = {
             "mean_av_offset_ms": round(float(mean_err), 2),
             "mean_absolute_av_offset_ms": round(float(mean_err), 2),
             "mean_duration_error_ms": round(float(mean_err), 2),
-            "pct_within_100ms": round(float(pct_within), 2) if self.tolerance_ms == 100.0 else round(
+            "pct_within_100ms": round(float(pct_within), 2)
+            if self.tolerance_ms == 100.0
+            else round(
                 (sum(1 for e in errors_ms if e <= 100.0) / max(len(input.segments), 1) * 100.0), 2
             ),
             "pct_within_tolerance": round(float(pct_within), 2),
@@ -178,7 +177,7 @@ class AVSyncEvaluator(EvaluatorComponent):
     def evaluate_pair(
         self,
         hypothesis: Result,
-        reference: Union[Result, Resource],
+        reference: Result | Resource,
     ) -> Result:
         """
         Compare dubbed segment end times against source segment end times.
@@ -198,8 +197,8 @@ class AVSyncEvaluator(EvaluatorComponent):
         self._load_syncnet_resource()
         self._load_syncnet_model()
 
-        source_segs: List[Segment] = reference.segments if isinstance(reference, Result) else []
-        hyp_segs: List[Segment] = hypothesis.segments
+        source_segs: list[Segment] = reference.segments if isinstance(reference, Result) else []
+        hyp_segs: list[Segment] = hypothesis.segments
 
         if not source_segs and not hyp_segs:
             return Result(
@@ -246,14 +245,14 @@ class AVSyncEvaluator(EvaluatorComponent):
 
         has_source_indices = any("source_segment_index" in s.metadata for s in hyp_segs)
 
-        errors_ms: List[float] = []
+        errors_ms: list[float] = []
         within_count = 0
         total_eval_units = max(len(source_segs), 1)
 
         if has_source_indices and source_segs:
             from collections import defaultdict
 
-            grouped: Dict[int, List[Segment]] = defaultdict(list)
+            grouped: dict[int, list[Segment]] = defaultdict(list)
             for h in hyp_segs:
                 s_idx = h.metadata.get("source_segment_index")
                 if s_idx is not None:
@@ -327,11 +326,8 @@ class AVSyncEvaluator(EvaluatorComponent):
         if isinstance(reference, Resource) and "evaluation_protocol" in reference.provenance:
             prov["evaluation_protocol"] = reference.provenance["evaluation_protocol"]
         # Preserve dataset version if present
-        if isinstance(reference, (Result, Resource)):
-            if isinstance(reference, Result) and "dataset_version" in reference.provenance:
-                prov["dataset_version"] = reference.provenance["dataset_version"]
-            elif isinstance(reference, Resource) and "dataset_version" in reference.provenance:
-                prov["dataset_version"] = reference.provenance["dataset_version"]
+        if isinstance(reference, (Result, Resource)) and "dataset_version" in reference.provenance:
+            prov["dataset_version"] = reference.provenance["dataset_version"]
 
         return Result(
             segments=list(hypothesis.segments),

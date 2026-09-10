@@ -10,9 +10,10 @@ mechanism that makes evaluation runs comparable and reproducible.
 """
 
 from __future__ import annotations
+
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 def make_run_id() -> str:
@@ -21,10 +22,10 @@ def make_run_id() -> str:
 
 
 def make_provenance(
-    pipeline_name: Optional[str] = None,
-    component_versions: Optional[Dict[str, str]] = None,
-    dataset_version: Optional[str] = None,
-    run_id: Optional[str] = None,
+    pipeline_name: str | None = None,
+    component_versions: dict[str, str] | None = None,
+    dataset_version: str | None = None,
+    run_id: str | None = None,
     **extra: Any,
 ) -> dict:
     """

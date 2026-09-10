@@ -18,8 +18,6 @@ Satisfies M8.2:
 
 from __future__ import annotations
 
-from typing import List, Optional, Union
-
 from lingualdub.components.asr.base import ASRComponent
 from lingualdub.core.component import ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
@@ -46,9 +44,9 @@ class RunyankoleASRComponent(ASRComponent):
     name: str = "runyankole_asr"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.ASR
-    supported_languages: List[str] = ["nyn"]
-    requires: List[str] = []
-    provides: List[str] = ["transcription", "word_timestamps", "language_detection"]
+    supported_languages: list[str] = ["nyn"]
+    requires: list[str] = []
+    provides: list[str] = ["transcription", "word_timestamps", "language_detection"]
     on_failure: FailureMode = FailureMode.ABORT
 
     def __init__(
@@ -59,7 +57,7 @@ class RunyankoleASRComponent(ASRComponent):
         duration: float = 3.65,
         confidence: float = 0.92,
         use_neural: bool = False,
-        device: Optional[str] = None,
+        device: str | None = None,
         version: str = "1.0.0",
     ) -> None:
         """
@@ -82,9 +80,9 @@ class RunyankoleASRComponent(ASRComponent):
         self.use_neural = use_neural
         self.device = device
         self.version = version
-        self._neural_component: Optional[object] = None
+        self._neural_component: object | None = None
 
-    def _get_neural(self) -> Optional[object]:
+    def _get_neural(self) -> object | None:
         """Lazy-load SunbirdASRComponent for neural execution, if requested."""
         if not self.use_neural:
             return None
@@ -103,7 +101,7 @@ class RunyankoleASRComponent(ASRComponent):
         except Exception:
             return None
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         # Determine source language and attempt neural path if enabled
         source_lang = getattr(input, "language", None) or self.language
         # Ensure we always emit nyn unless overridden by pipeline
@@ -123,8 +121,12 @@ class RunyankoleASRComponent(ASRComponent):
                         seg.source_language = source_lang
                 result.source_language = "nyn"
                 # Tag provenance that family transfer was used
-                result.provenance.setdefault("transfer_basis", "lug->nyn family transfer (SALT Runyankole-Rukiga)")
-                result.provenance["asr_model"] = f"{self.name}@{self.version} (Sunbird {self.model_name_or_path})"
+                result.provenance.setdefault(
+                    "transfer_basis", "lug->nyn family transfer (SALT Runyankole-Rukiga)"
+                )
+                result.provenance["asr_model"] = (
+                    f"{self.name}@{self.version} (Sunbird {self.model_name_or_path})"
+                )
                 return result
             except Exception:
                 # Fall through to deterministic offline fallback
@@ -144,7 +146,10 @@ class RunyankoleASRComponent(ASRComponent):
                     confidence=self.confidence,
                     speaker=s.speaker or "speaker_nyn_01",
                     source_language=source_lang,
-                    provenance={"asr_model": f"{self.name}@{self.version}", "transfer_basis": "lug->nyn"},
+                    provenance={
+                        "asr_model": f"{self.name}@{self.version}",
+                        "transfer_basis": "lug->nyn",
+                    },
                     metadata={
                         **s.metadata,
                         "words": [
@@ -167,10 +172,17 @@ class RunyankoleASRComponent(ASRComponent):
                     language=output_lang,
                     confidence=self.confidence,
                     speaker="speaker_nyn_01",
-                    provenance={"asr_model": f"{self.name}@{self.version}", "transfer_basis": "lug->nyn"},
+                    provenance={
+                        "asr_model": f"{self.name}@{self.version}",
+                        "transfer_basis": "lug->nyn",
+                    },
                     metadata={
                         "words": [
-                            {"word": w, "start": round(i * step, 2), "end": round((i + 1) * step, 2)}
+                            {
+                                "word": w,
+                                "start": round(i * step, 2),
+                                "end": round((i + 1) * step, 2),
+                            }
                             for i, w in enumerate(words)
                         ],
                         "transfer_basis": "lug->nyn family transfer",

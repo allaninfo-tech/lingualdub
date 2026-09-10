@@ -10,9 +10,9 @@ from the input Result or from an attached Resource.
 """
 
 from __future__ import annotations
+
 from abc import abstractmethod
 from enum import Enum
-from typing import Union
 
 from lingualdub.core.component import Component, ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
@@ -40,6 +40,6 @@ class TTSComponent(Component):
     on_failure: FailureMode = FailureMode.DEGRADE
 
     @abstractmethod
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         """Synthesise speech and return a Result with audio artifact links."""
         ...

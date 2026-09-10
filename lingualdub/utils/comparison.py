@@ -9,9 +9,10 @@ compatibility and returning metric deltas.
 """
 
 from __future__ import annotations
+
 import json
 from pathlib import Path
-from typing import Any, Dict, Union
+from typing import Any
 
 from lingualdub.core.result import Result
 
@@ -20,7 +21,7 @@ class ProvenanceMismatchError(Exception):
     """Raised when comparing two runs that do not share the same evaluation baseline."""
 
 
-def _load_result(result_or_path: Union[Result, dict, str, Path]) -> Result:
+def _load_result(result_or_path: Result | dict | str | Path) -> Result:
     """Load or coerce an input to a Result object."""
     if isinstance(result_or_path, Result):
         return result_or_path
@@ -34,10 +35,10 @@ def _load_result(result_or_path: Union[Result, dict, str, Path]) -> Result:
 
 
 def compare_runs(
-    baseline: Union[Result, dict, str, Path],
-    candidate: Union[Result, dict, str, Path],
+    baseline: Result | dict | str | Path,
+    candidate: Result | dict | str | Path,
     require_matching_dataset: bool = True,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Compare two execution results and return a structured dictionary of metric deltas.
 
@@ -83,14 +84,16 @@ def compare_runs(
     base_metrics = res_base.metadata.get("metrics", {})
     cand_metrics = res_cand.metadata.get("metrics", {})
 
-    deltas: Dict[str, Any] = {}
+    deltas: dict[str, Any] = {}
 
     # Word Error Rate (WER): lower is better -> candidate - baseline
     if "wer" in base_metrics and "wer" in cand_metrics:
         b_wer = float(base_metrics["wer"])
         c_wer = float(cand_metrics["wer"])
         deltas["wer_delta"] = round(c_wer - b_wer, 4)
-        deltas["wer_relative_reduction_pct"] = round(((b_wer - c_wer) / b_wer * 100.0) if b_wer > 0 else 0.0, 2)
+        deltas["wer_relative_reduction_pct"] = round(
+            ((b_wer - c_wer) / b_wer * 100.0) if b_wer > 0 else 0.0, 2
+        )
 
     # Character Error Rate (CER): lower is better
     if "cer" in base_metrics and "cer" in cand_metrics:
@@ -124,7 +127,12 @@ def compare_runs(
         c_spk = float(cand_metrics["speaker_similarity"])
         deltas["speaker_similarity_delta"] = round(c_spk - b_spk, 4)
         # Relative improvement
-        deltas["speaker_similarity_relative_pct"] = round(((c_spk - b_spk) / max(b_spk, 1e-9) * 100.0) if b_spk > 0 else (100.0 if c_spk > 0 else 0.0), 2)
+        deltas["speaker_similarity_relative_pct"] = round(
+            ((c_spk - b_spk) / max(b_spk, 1e-9) * 100.0)
+            if b_spk > 0
+            else (100.0 if c_spk > 0 else 0.0),
+            2,
+        )
 
     # AV-sync metrics (M7): mean_av_offset_ms lower is better, pct_within_100ms higher is better
     base_av = res_base.metadata.get("av_sync_metrics", {})
@@ -133,7 +141,9 @@ def compare_runs(
         b_av = float(base_av["mean_av_offset_ms"])
         c_av = float(cand_av["mean_av_offset_ms"])
         deltas["mean_av_offset_ms_delta"] = round(c_av - b_av, 2)
-        deltas["mean_av_offset_ms_relative_reduction_pct"] = round(((b_av - c_av) / b_av * 100.0) if b_av > 0 else 0.0, 2)
+        deltas["mean_av_offset_ms_relative_reduction_pct"] = round(
+            ((b_av - c_av) / b_av * 100.0) if b_av > 0 else 0.0, 2
+        )
     if "pct_within_100ms" in base_av and "pct_within_100ms" in cand_av:
         b_pct = float(base_av["pct_within_100ms"])
         c_pct = float(cand_av["pct_within_100ms"])

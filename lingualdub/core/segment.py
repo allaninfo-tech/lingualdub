@@ -12,8 +12,8 @@ property of the data rather than an annotation added after the fact.
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Optional
 
 
 @dataclass
@@ -38,9 +38,9 @@ class Segment:
     end: float
     text: str
     language: str
-    speaker: Optional[str] = None
-    confidence: Optional[float] = None
-    source_language: Optional[str] = None
+    speaker: str | None = None
+    confidence: float | None = None
+    source_language: str | None = None
     provenance: dict = field(default_factory=dict)
     metadata: dict = field(default_factory=dict)
 
@@ -70,7 +70,7 @@ class Segment:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Segment":
+    def from_dict(cls, data: dict) -> Segment:
         """Deserialize a Segment from a dictionary produced by to_dict()."""
         return cls(
             start=data["start"],
@@ -89,4 +89,3 @@ class Segment:
             f"Segment(start={self.start}, end={self.end}, "
             f"language={self.language!r}, speaker={self.speaker!r})"
         )
-

@@ -1,6 +1,6 @@
 from lingualdub.core.result import Result, ResultStatus
 from lingualdub.core.segment import Segment
-from lingualdub.utils.comparison import compare_runs, ProvenanceMismatchError
+from lingualdub.utils.comparison import ProvenanceMismatchError, compare_runs
 
 
 def test_compare_runs_wer_chrf_deltas():
@@ -30,7 +30,7 @@ def test_compare_runs_provenance_mismatch_raises():
 
     try:
         compare_runs(base, cand, require_matching_dataset=True)
-        assert False, "Expected ProvenanceMismatchError"
+        raise AssertionError("Expected ProvenanceMismatchError")
     except ProvenanceMismatchError as exc:
         assert "baseline dataset" in str(exc)
 
@@ -39,7 +39,7 @@ def test_compare_runs_provenance_mismatch_raises():
     p_cand = Result(provenance={"evaluation_protocol": "PROTO_B"})
     try:
         compare_runs(p_base, p_cand)
-        assert False, "Expected ProvenanceMismatchError on protocol mismatch"
+        raise AssertionError("Expected ProvenanceMismatchError on protocol mismatch")
     except ProvenanceMismatchError as exc:
         assert "evaluation protocol" in str(exc)
 

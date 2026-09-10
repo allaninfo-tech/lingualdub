@@ -10,9 +10,10 @@ Sunbird/salt-asr-luganda).
 """
 
 from __future__ import annotations
+
 import logging
 from pathlib import Path
-from typing import Any, List, Optional, Union
+from typing import Any
 
 from lingualdub.components.asr.base import ASRComponent
 from lingualdub.core.component import ComponentTask, FailureMode
@@ -31,18 +32,18 @@ class WhisperASRComponent(ASRComponent):
     name: str = "whisper_asr"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.ASR
-    supported_languages: List[str] = ["lug", "nyn", "eng", "swa", "fra"]
-    requires: List[str] = []
-    provides: List[str] = ["transcription", "word_timestamps", "language_detection"]
+    supported_languages: list[str] = ["lug", "nyn", "eng", "swa", "fra"]
+    requires: list[str] = []
+    provides: list[str] = ["transcription", "word_timestamps", "language_detection"]
     on_failure: FailureMode = FailureMode.ABORT
 
     def __init__(
         self,
         model_name_or_path: str = "openai/whisper-tiny",
-        device: Optional[str] = None,
-        language: Optional[str] = "lug",
+        device: str | None = None,
+        language: str | None = "lug",
         task: str = "transcribe",
-        return_timestamps: Union[bool, str] = "word",
+        return_timestamps: bool | str = "word",
         version: str = "1.0.0",
     ) -> None:
         self.model_name_or_path = model_name_or_path
@@ -78,19 +79,22 @@ class WhisperASRComponent(ASRComponent):
                 # Using True (chunk-level) which is stable across all versions.
                 return_timestamps=True,
             )
-            
+
             # FIX: Some fine-tuned whisper models have eos_token_id as a list
             # which breaks WhisperTimeStampLogitsProcessor (TypeError: slice indices must be integers)
             gen_config = getattr(self._pipeline.model, "generation_config", None)
-            if gen_config is not None and isinstance(gen_config.eos_token_id, list):
-                if len(gen_config.eos_token_id) > 0:
-                    gen_config.eos_token_id = gen_config.eos_token_id[0]
-                    
+            if (
+                gen_config is not None
+                and isinstance(gen_config.eos_token_id, list)
+                and len(gen_config.eos_token_id) > 0
+            ):
+                gen_config.eos_token_id = gen_config.eos_token_id[0]
+
         return self._pipeline
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         # Determine audio path
-        audio_path: Optional[str] = None
+        audio_path: str | None = None
         source_lang = self.language
 
         if isinstance(input, Resource):
@@ -118,7 +122,7 @@ class WhisperASRComponent(ASRComponent):
         out = pipe(audio_path, generate_kwargs=generate_kwargs)
 
         # Parse output into Segment objects
-        segments: List[Segment] = []
+        segments: list[Segment] = []
         full_text = out.get("text", "").strip()
         chunks = out.get("chunks", [])
 
@@ -126,7 +130,11 @@ class WhisperASRComponent(ASRComponent):
             for chunk in chunks:
                 timestamp = chunk.get("timestamp", (0.0, 0.0))
                 start = float(timestamp[0]) if timestamp[0] is not None else 0.0
-                end = float(timestamp[1]) if (len(timestamp) > 1 and timestamp[1] is not None) else start + 1.0
+                end = (
+                    float(timestamp[1])
+                    if (len(timestamp) > 1 and timestamp[1] is not None)
+                    else start + 1.0
+                )
                 text = chunk.get("text", "").strip()
                 if text:
                     segments.append(

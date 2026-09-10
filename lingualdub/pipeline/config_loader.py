@@ -9,10 +9,11 @@ via the Registry.
 """
 
 from __future__ import annotations
+
 import json
 import logging
 from pathlib import Path
-from typing import Any, Dict, List, Union
+from typing import Any
 
 from lingualdub.core.component import Component, FailureMode
 from lingualdub.core.pipeline import Pipeline
@@ -21,7 +22,7 @@ from lingualdub.registry.registry import Registry
 logger = logging.getLogger(__name__)
 
 
-def _parse_yaml(text: str, filepath: Path) -> Dict[str, Any]:
+def _parse_yaml(text: str, filepath: Path) -> dict[str, Any]:
     """Parse YAML content, requiring PyYAML for non-JSON files."""
     try:
         import yaml  # type: ignore
@@ -52,7 +53,7 @@ class ConfigLoader:
     def __init__(self, registry: Registry) -> None:
         self.registry = registry
 
-    def load_dict(self, config: Dict[str, Any]) -> Pipeline:
+    def load_dict(self, config: dict[str, Any]) -> Pipeline:
         """
         Instantiate a Pipeline from a configuration dictionary.
 
@@ -67,7 +68,9 @@ class ConfigLoader:
             TypeError: If resolved objects are not Components.
         """
         if not isinstance(config, dict):
-            raise ValueError(f"Pipeline configuration must be a mapping, got {type(config).__name__}.")
+            raise ValueError(
+                f"Pipeline configuration must be a mapping, got {type(config).__name__}."
+            )
         source_lang = config.get("source_language", "lug")
         if not isinstance(source_lang, str) or not source_lang:
             raise ValueError("Pipeline configuration 'source_language' must be a non-empty string.")
@@ -88,14 +91,14 @@ class ConfigLoader:
         if not stages_config:
             raise ValueError("Pipeline configuration must define at least one stage in 'stages'.")
 
-        resolved_stages: List[Component] = []
+        resolved_stages: list[Component] = []
         for i, stage_def in enumerate(stages_config):
             if isinstance(stage_def, str):
                 # Simple component key
                 kind = "component"
                 key = stage_def
                 version = None
-                params: Dict[str, Any] = {}
+                params: dict[str, Any] = {}
             elif isinstance(stage_def, dict):
                 kind = stage_def.get("kind", "component")
                 key = stage_def.get("key") or stage_def.get("name")
@@ -157,7 +160,7 @@ class ConfigLoader:
         )
         return pipeline
 
-    def load_file(self, path: Union[str, Path]) -> Pipeline:
+    def load_file(self, path: str | Path) -> Pipeline:
         """
         Load and instantiate a Pipeline from a YAML or JSON file.
 

@@ -13,7 +13,9 @@ def test_dummy_code_switch_classification():
     inp = Result(
         segments=[
             Segment(start=0.0, end=1.5, text="Oli otya nnyabo", language="lug"),
-            Segment(start=1.5, end=3.0, text="good morning can you send me the report", language="lug"),
+            Segment(
+                start=1.5, end=3.0, text="good morning can you send me the report", language="lug"
+            ),
         ],
         source_language="lug",
     )
@@ -57,8 +59,12 @@ def test_heuristic_lid_classification():
     lid = HeuristicLIDComponent(split_segments=False)
     inp = Result(
         segments=[
-            Segment(start=0.0, end=1.5, text="Tusanyuse nnyo okulaba abaana ku ssomero", language="lug"),
-            Segment(start=1.5, end=3.5, text="Please send me the project report today", language="lug"),
+            Segment(
+                start=0.0, end=1.5, text="Tusanyuse nnyo okulaba abaana ku ssomero", language="lug"
+            ),
+            Segment(
+                start=1.5, end=3.5, text="Please send me the project report today", language="lug"
+            ),
         ],
         source_language="lug",
     )

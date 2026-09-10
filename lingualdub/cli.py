@@ -9,15 +9,19 @@ and comparing experiment runs.
 """
 
 from __future__ import annotations
+
 import argparse
 import json
 import logging
 import sys
 from pathlib import Path
-from typing import List, Optional
 
 import lingualdub as ld
-from lingualdub.components.eval.metrics import WEREvaluator, TranslationEvaluator, TemporalAlignmentEvaluator
+from lingualdub.components.eval.metrics import (
+    TemporalAlignmentEvaluator,
+    TranslationEvaluator,
+    WEREvaluator,
+)
 from lingualdub.pipeline.config_loader import ConfigLoader
 from lingualdub.registry.manifest import ManifestScanner
 from lingualdub.utils.comparison import compare_runs
@@ -33,6 +37,7 @@ def get_default_registry() -> ld.Registry:
     # Register built-in languages
     from lingualdub.languages.luganda import LUGANDA
     from lingualdub.languages.runyankole import RUNYANKOLE
+
     registry.register("language", "lug", LUGANDA, version="1.0.0")
     registry.register("language", "nyn", RUNYANKOLE, version="1.0.0")
 
@@ -48,30 +53,39 @@ def get_default_registry() -> ld.Registry:
     # Register real adapters if available
     try:
         from lingualdub.components.asr.sunbird import SunbirdASRComponent
+
         registry.register("component", "sunbird_asr", SunbirdASRComponent, version="1.0.0")
     except Exception:
         pass
 
     try:
         from lingualdub.components.asr.whisper import WhisperASRComponent
+
         registry.register("component", "whisper_asr", WhisperASRComponent, version="1.0.0")
     except Exception:
         pass
 
     try:
         from lingualdub.components.translation.sunbird import SunbirdTranslationComponent
-        registry.register("component", "sunbird_translator", SunbirdTranslationComponent, version="1.0.0")
+
+        registry.register(
+            "component", "sunbird_translator", SunbirdTranslationComponent, version="1.0.0"
+        )
     except Exception:
         pass
 
     try:
         from lingualdub.components.translation.hf_translator import HuggingFaceTranslationComponent
-        registry.register("component", "hf_translator", HuggingFaceTranslationComponent, version="1.0.0")
+
+        registry.register(
+            "component", "hf_translator", HuggingFaceTranslationComponent, version="1.0.0"
+        )
     except Exception:
         pass
 
     try:
         from lingualdub.components.tts.mms_tts import MMSTTSComponent
+
         registry.register("component", "mms_tts", MMSTTSComponent, version="1.0.0")
     except Exception:
         pass
@@ -79,40 +93,53 @@ def get_default_registry() -> ld.Registry:
     # Register code-switch components
     from lingualdub.components.code_switch.dummy import DummyCodeSwitchComponent
     from lingualdub.components.code_switch.heuristic import HeuristicLIDComponent
+
     registry.register("component", "dummy_code_switch", DummyCodeSwitchComponent, version="1.0.0")
     registry.register("component", "heuristic_lid", HeuristicLIDComponent, version="1.0.0")
 
     # Register alignment components (M4)
-    from lingualdub.components.alignment.forced import DummyForcedAlignmentComponent
     from lingualdub.components.alignment.duration import DurationModellingComponent
-    registry.register("component", "dummy_forced_aligner", DummyForcedAlignmentComponent, version="1.0.0")
+    from lingualdub.components.alignment.forced import DummyForcedAlignmentComponent
+
+    registry.register(
+        "component", "dummy_forced_aligner", DummyForcedAlignmentComponent, version="1.0.0"
+    )
     registry.register("component", "duration_modeller", DurationModellingComponent, version="1.0.0")
 
     # Register timing resource for forced aligner (M4.1)
     from lingualdub.resources.eval_sets import DUMMY_TIMING_RESOURCE
+
     registry.register("resource", "dummy_timing_resource", DUMMY_TIMING_RESOURCE, version="1.0.0")
 
     # Register evaluators
     registry.register("component", "wer_evaluator", WEREvaluator, version="1.0.0")
     registry.register("component", "translation_evaluator", TranslationEvaluator, version="1.0.0")
-    registry.register("component", "temporal_alignment_evaluator", TemporalAlignmentEvaluator, version="1.0.0")
+    registry.register(
+        "component", "temporal_alignment_evaluator", TemporalAlignmentEvaluator, version="1.0.0"
+    )
 
     # Register speaker components (M5)
-    from lingualdub.components.speaker.embedding import SpeakerEmbeddingComponent
     from lingualdub.components.eval.speaker_similarity import SpeakerSimilarityEvaluator
+    from lingualdub.components.speaker.embedding import SpeakerEmbeddingComponent
 
     registry.register("component", "speaker_embedding", SpeakerEmbeddingComponent, version="1.0.0")
-    registry.register("component", "speaker_similarity_evaluator", SpeakerSimilarityEvaluator, version="1.0.0")
+    registry.register(
+        "component", "speaker_similarity_evaluator", SpeakerSimilarityEvaluator, version="1.0.0"
+    )
 
     # Register speaker encoder resource
     from lingualdub.resources.eval_sets import SPEAKER_ENCODER_RESOURCE
 
-    registry.register("resource", "speaker_encoder_dummy_v1", SPEAKER_ENCODER_RESOURCE, version="1.0.0")
+    registry.register(
+        "resource", "speaker_encoder_dummy_v1", SPEAKER_ENCODER_RESOURCE, version="1.0.0"
+    )
 
     # Register voice cloning components (M6)
     from lingualdub.components.tts.voice_conditioned import VoiceConditionedTTSComponent
 
-    registry.register("component", "voice_conditioned_tts", VoiceConditionedTTSComponent, version="1.0.0")
+    registry.register(
+        "component", "voice_conditioned_tts", VoiceConditionedTTSComponent, version="1.0.0"
+    )
 
     # Register voice cloning resource
     from lingualdub.resources.eval_sets import VOICE_CLONING_RESOURCE
@@ -159,11 +186,18 @@ def get_default_registry() -> ld.Registry:
     except Exception:
         pass
 
-    from lingualdub.resources.eval_sets import RUNYANKOLE_ASR_EVAL_SET, RUNYANKOLE_ENG_PARALLEL_EVAL_SET
+    from lingualdub.resources.eval_sets import (
+        RUNYANKOLE_ASR_EVAL_SET,
+        RUNYANKOLE_ENG_PARALLEL_EVAL_SET,
+    )
 
     registry.register("resource", "nyn_asr_eval_salt_v1", RUNYANKOLE_ASR_EVAL_SET, version="1.0.0")
-    registry.register("resource", "nyn_eng_parallel_eval_salt_v1", RUNYANKOLE_ENG_PARALLEL_EVAL_SET, version="1.0.0")
-
+    registry.register(
+        "resource",
+        "nyn_eng_parallel_eval_salt_v1",
+        RUNYANKOLE_ENG_PARALLEL_EVAL_SET,
+        version="1.0.0",
+    )
 
     # Scan installed extension manifests
     scanner = ManifestScanner(registry)
@@ -191,7 +225,9 @@ def cmd_experiment_run(args: argparse.Namespace) -> int:
         logger.error("Failed to load pipeline from %s: %s", config_path, exc)
         return 1
 
-    logger.info("Loaded pipeline: %r (stages: %s)", pipeline.name or "unnamed", pipeline.stage_names)
+    logger.info(
+        "Loaded pipeline: %r (stages: %s)", pipeline.name or "unnamed", pipeline.stage_names
+    )
 
     # Prepare input resource or text
     # --input-video is additive; it injects source_video provenance for M7 AV-sync
@@ -286,12 +322,12 @@ def cmd_experiment_run(args: argparse.Namespace) -> int:
 
         # Write experiment summary README
         summary_file = out_dir / "README.md"
-        summary_md = f"""# Experiment Run: {pipeline.name or 'Unnamed'}
+        summary_md = f"""# Experiment Run: {pipeline.name or "Unnamed"}
 
 - **Status**: `{result.status.value.upper()}`
 - **Source Language**: `{pipeline.source_language}`
-- **Target Language**: `{pipeline.target_language or 'N/A'}`
-- **Stages**: `{' -> '.join(pipeline.stage_names)}`
+- **Target Language**: `{pipeline.target_language or "N/A"}`
+- **Stages**: `{" -> ".join(pipeline.stage_names)}`
 - **Segments Count**: {len(result.segments)}
 - **Artifacts**: {len(result.artifacts)}
 
@@ -329,7 +365,7 @@ def cmd_compare(args: argparse.Namespace) -> int:
         return 1
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="lingualdub",
         description="LingualDub — Speech-AI Framework for Low-Resource Languages",
@@ -342,20 +378,30 @@ def main(argv: Optional[List[str]] = None) -> int:
     run_parser = exp_sub.add_parser("run", help="Run a pipeline experiment from config")
     run_parser.add_argument("config", help="Path to pipeline configuration YAML/JSON")
     run_parser.add_argument("--input-audio", "-i", help="Path to input audio file")
-    run_parser.add_argument("--input-video", help="Path to input video file (source video for AV-sync, M7)")
-    run_parser.add_argument("--sample-text", "-t", help="Sample text for direct text pipeline tests")
-    run_parser.add_argument("--output-dir", "-o", help="Output directory to save results and artifacts")
+    run_parser.add_argument(
+        "--input-video", help="Path to input video file (source video for AV-sync, M7)"
+    )
+    run_parser.add_argument(
+        "--sample-text", "-t", help="Sample text for direct text pipeline tests"
+    )
+    run_parser.add_argument(
+        "--output-dir", "-o", help="Output directory to save results and artifacts"
+    )
 
     # lingualdub registry ...
     reg_parser = subparsers.add_parser("registry", help="Registry inspection")
     reg_sub = reg_parser.add_subparsers(dest="reg_subcommand")
     list_parser = reg_sub.add_parser("list", help="List registered components and languages")
-    list_parser.add_argument("--kind", "-k", choices=["language", "component", "resource"], help="Filter by kind")
+    list_parser.add_argument(
+        "--kind", "-k", choices=["language", "component", "resource"], help="Filter by kind"
+    )
 
     # lingualdub compare ...
     cmp_parser = subparsers.add_parser("compare", help="Compare two experiment results")
     cmp_parser.add_argument("--baseline", "-b", required=True, help="Path to baseline results.json")
-    cmp_parser.add_argument("--candidate", "-c", required=True, help="Path to candidate results.json")
+    cmp_parser.add_argument(
+        "--candidate", "-c", required=True, help="Path to candidate results.json"
+    )
 
     args = parser.parse_args(argv)
     if args.subcommand == "experiment" and args.exp_subcommand == "run":

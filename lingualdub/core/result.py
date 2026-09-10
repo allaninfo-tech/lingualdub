@@ -11,9 +11,9 @@ quality rather than treating all outputs identically.
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional
 
 from lingualdub.core.segment import Segment
 
@@ -53,13 +53,13 @@ class Result:
         metadata: Extensible key-value store for component-specific output data.
     """
 
-    segments: List[Segment] = field(default_factory=list)
-    source_language: Optional[str] = None
-    target_language: Optional[str] = None
+    segments: list[Segment] = field(default_factory=list)
+    source_language: str | None = None
+    target_language: str | None = None
     status: ResultStatus = ResultStatus.COMPLETE
-    warnings: List[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
     provenance: dict = field(default_factory=dict)
-    artifacts: List[str] = field(default_factory=list)
+    artifacts: list[str] = field(default_factory=list)
     metadata: dict = field(default_factory=dict)
 
     def add_warning(self, message: str) -> None:
@@ -100,9 +100,10 @@ class Result:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Result":
+    def from_dict(cls, data: dict) -> Result:
         """Deserialize a Result from a dictionary produced by to_dict()."""
         from lingualdub.core.segment import Segment  # avoid circular at module level
+
         return cls(
             segments=[Segment.from_dict(s) for s in data.get("segments", [])],
             source_language=data.get("source_language"),
@@ -120,4 +121,3 @@ class Result:
             f"segments={len(self.segments)}, "
             f"warnings={len(self.warnings)})"
         )
-

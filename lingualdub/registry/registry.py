@@ -11,9 +11,11 @@ the same (kind, key) pair.
 """
 
 from __future__ import annotations
+
+import builtins
 from collections import defaultdict
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 
 def _version_tuple(version_str: str) -> tuple:
@@ -59,7 +61,7 @@ class Registry:
     def __init__(self, conflict_policy: ConflictPolicy = ConflictPolicy.NAMESPACED) -> None:
         self.conflict_policy = conflict_policy
         # Stored as: { kind: { key: [ (version, impl, metadata) ] } }
-        self._store: Dict[str, Dict[str, List[Tuple[str, Any, dict]]]] = defaultdict(
+        self._store: dict[str, dict[str, list[tuple[str, Any, dict]]]] = defaultdict(
             lambda: defaultdict(list)
         )
 
@@ -69,7 +71,7 @@ class Registry:
         key: str,
         impl: Any,
         version: str = "0.0.0",
-        metadata: Optional[dict] = None,
+        metadata: dict | None = None,
     ) -> None:
         """
         Register an implementation under a (kind, key) pair.
@@ -103,7 +105,7 @@ class Registry:
 
         entries.append((version, impl, metadata))
 
-    def resolve(self, kind: str, key: str, version: Optional[str] = None) -> Any:
+    def resolve(self, kind: str, key: str, version: str | None = None) -> Any:
         """
         Resolve a registration by (kind, key) and optionally version.
 
@@ -134,7 +136,7 @@ class Registry:
             f"No registration found for ({kind!r}, {key!r}) at version {version!r}."
         )
 
-    def list(self, kind: str) -> List[Tuple[str, str]]:
+    def list(self, kind: str) -> builtins.list[tuple[str, str]]:
         """
         List all registered keys and latest versions for a given kind.
 

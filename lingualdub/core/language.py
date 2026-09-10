@@ -11,8 +11,9 @@ does not assume every language has identical data or model coverage.
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 
 @dataclass
@@ -40,10 +41,10 @@ class Language:
     name: str
     family: str
     resource_profile: str
-    supported_tasks: List[str] = field(default_factory=list)
-    related_languages: List[str] = field(default_factory=list)
-    resources: List[str] = field(default_factory=list)
-    compatible_components: List[str] = field(default_factory=list)
+    supported_tasks: list[str] = field(default_factory=list)
+    related_languages: list[str] = field(default_factory=list)
+    resources: list[str] = field(default_factory=list)
+    compatible_components: list[str] = field(default_factory=list)
     metadata: dict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -52,7 +53,7 @@ class Language:
         if not self.name:
             raise ValueError("Language.name must not be empty.")
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Serialize this Language to a JSON-compatible dictionary."""
         return {
             "code": self.code,
@@ -67,7 +68,7 @@ class Language:
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "Language":
+    def from_dict(cls, data: dict[str, Any]) -> Language:
         """Deserialize a Language from a dictionary produced by to_dict()."""
         return cls(
             code=data["code"],
@@ -82,5 +83,6 @@ class Language:
         )
 
     def __repr__(self) -> str:
-        return f"Language(code={self.code!r}, name={self.name!r}, profile={self.resource_profile!r})"
-
+        return (
+            f"Language(code={self.code!r}, name={self.name!r}, profile={self.resource_profile!r})"
+        )

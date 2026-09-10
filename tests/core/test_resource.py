@@ -1,6 +1,7 @@
 """Tests for lingualdub.core.resource."""
 
 import pytest
+
 from lingualdub.core.resource import Resource, ResourceKind
 
 
@@ -29,7 +30,10 @@ def test_resource_has_consent_false():
 
 def test_resource_has_consent_true():
     r = Resource(
-        id="lug_v1", kind=ResourceKind.SPEECH, language="lug", version="1.0.0",
+        id="lug_v1",
+        kind=ResourceKind.SPEECH,
+        language="lug",
+        version="1.0.0",
         provenance={"consent_basis": "explicit_written"},
     )
     assert r.has_consent is True
@@ -43,7 +47,10 @@ def test_resource_all_kinds():
 
 def test_resource_quality_flags():
     r = Resource(
-        id="lug_v1", kind=ResourceKind.SPEECH, language="lug", version="1.0.0",
+        id="lug_v1",
+        kind=ResourceKind.SPEECH,
+        language="lug",
+        version="1.0.0",
         quality_flags=["weak_transcripts"],
     )
     assert "weak_transcripts" in r.quality_flags

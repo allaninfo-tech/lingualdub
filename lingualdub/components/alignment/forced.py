@@ -15,8 +15,8 @@ It satisfies M4.1:
 """
 
 from __future__ import annotations
+
 import logging
-from typing import Dict, List, Optional, Union
 
 from lingualdub.components.alignment.base import AlignmentComponent
 from lingualdub.core.component import ComponentTask, FailureMode
@@ -27,9 +27,7 @@ from lingualdub.core.segment import Segment
 logger = logging.getLogger(__name__)
 
 
-def _distribute_word_timestamps(
-    words: List[str], seg_start: float, seg_end: float
-) -> List[Dict]:
+def _distribute_word_timestamps(words: list[str], seg_start: float, seg_end: float) -> list[dict]:
     """
     Distribute word timestamps across [seg_start, seg_end] proportionally
     by character length, ensuring all boundaries are strictly within the parent segment.
@@ -52,11 +50,13 @@ def _distribute_word_timestamps(
         else:
             word_end = round(min(cursor + word_dur, seg_end), 6)
 
-        timestamps.append({
-            "word": word,
-            "start": word_start,
-            "end": word_end,
-        })
+        timestamps.append(
+            {
+                "word": word,
+                "start": word_start,
+                "end": word_end,
+            }
+        )
         cursor = word_end
 
     return timestamps
@@ -74,22 +74,22 @@ class DummyForcedAlignmentComponent(AlignmentComponent):
     name: str = "dummy_forced_aligner"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.ALIGNMENT
-    supported_languages: List[str] = ["lug", "nyn", "eng", "swa"]
-    requires: List[str] = ["transcription"]
-    provides: List[str] = ["aligned_timestamps"]
+    supported_languages: list[str] = ["lug", "nyn", "eng", "swa"]
+    requires: list[str] = ["transcription"]
+    provides: list[str] = ["aligned_timestamps"]
     on_failure: FailureMode = FailureMode.DEGRADE
 
     def __init__(
         self,
-        resource_manager: Optional[object] = None,
-        registry: Optional[object] = None,
+        resource_manager: object | None = None,
+        registry: object | None = None,
         version: str = "1.0.0",
     ) -> None:
         self.version = version
         self._resource_manager = resource_manager
         self._registry = registry
-        self._timing_resource: Optional[Resource] = None
-        self._timing_resource_path: Optional[str] = None
+        self._timing_resource: Resource | None = None
+        self._timing_resource_path: str | None = None
 
     def _load_timing_resource(self) -> None:
         """Acquire timing/pronunciation resource via Registry/ResourceManager."""
@@ -104,8 +104,7 @@ class DummyForcedAlignmentComponent(AlignmentComponent):
             self._timing_resource = res
             self._timing_resource_path = path
 
-
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result):
             raise ValueError(
                 f"DummyForcedAlignmentComponent expects a Result, got {type(input).__name__}"
@@ -113,7 +112,7 @@ class DummyForcedAlignmentComponent(AlignmentComponent):
 
         self._load_timing_resource()
 
-        aligned_segments: List[Segment] = []
+        aligned_segments: list[Segment] = []
         for seg in input.segments:
             words = (seg.text or "").split()
             word_timestamps = _distribute_word_timestamps(words, seg.start, seg.end)

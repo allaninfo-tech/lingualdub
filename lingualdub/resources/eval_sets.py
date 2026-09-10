@@ -11,7 +11,7 @@ These resources provide benchmark evaluation data for:
 """
 
 from __future__ import annotations
-from typing import Dict, List, Optional
+
 from lingualdub.core.resource import Resource, ResourceKind
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -81,7 +81,12 @@ LUGANDA_ENG_PARALLEL_EVAL_SET = Resource(
         "consent_basis": "institutional_open_research_release",
     },
     quality_flags=["human_translated", "sentence_aligned"],
-    compatible_components=["translation_evaluator", "sunbird_translator", "hf_translator", "dummy_translator"],
+    compatible_components=[
+        "translation_evaluator",
+        "sunbird_translator",
+        "hf_translator",
+        "dummy_translator",
+    ],
     metadata={
         "pairs_count": 5,
         "pairs": [
@@ -174,14 +179,14 @@ LUGANDA_ENG_CODESWITCH_EVAL_SET = Resource(
     },
 )
 
-EVAL_RESOURCES: Dict[str, Resource] = {
+EVAL_RESOURCES: dict[str, Resource] = {
     LUGANDA_ASR_EVAL_SET.id: LUGANDA_ASR_EVAL_SET,
     LUGANDA_ENG_PARALLEL_EVAL_SET.id: LUGANDA_ENG_PARALLEL_EVAL_SET,
     LUGANDA_ENG_CODESWITCH_EVAL_SET.id: LUGANDA_ENG_CODESWITCH_EVAL_SET,
 }
 
 
-def get_evaluation_resource(resource_id: str) -> Optional[Resource]:
+def get_evaluation_resource(resource_id: str) -> Resource | None:
     """Retrieve an evaluation resource by its unique identifier."""
     return EVAL_RESOURCES.get(resource_id)
 
@@ -389,7 +394,13 @@ RUNYANKOLE_ASR_EVAL_SET = Resource(
         "transfer_basis": "Bantu Great Lakes lexical ~70-80% cognate with Luganda, identical noun-class morphology",
     },
     quality_flags=["verified_transcripts", "single_speaker_clean", "family_transfer_benchmark"],
-    compatible_components=["wer_evaluator", "runyankole_asr", "dummy_asr", "sunbird_asr", "whisper_asr"],
+    compatible_components=[
+        "wer_evaluator",
+        "runyankole_asr",
+        "dummy_asr",
+        "sunbird_asr",
+        "whisper_asr",
+    ],
     path="data/samples/sample_nyn.wav",
     metadata={
         "split": "test",

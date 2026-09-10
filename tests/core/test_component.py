@@ -1,7 +1,7 @@
 """Tests for lingualdub.core.component (Component base class)."""
 
 import pytest
-from typing import Union
+
 from lingualdub.core.component import Component, ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result
@@ -9,6 +9,7 @@ from lingualdub.core.result import Result
 
 class MockASR(Component):
     """Concrete mock ASR component for testing."""
+
     name: str = "mock_asr"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.ASR
@@ -17,7 +18,7 @@ class MockASR(Component):
     provides = ["transcription", "word_timestamps"]
     on_failure = FailureMode.ABORT
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         return Result()
 
 

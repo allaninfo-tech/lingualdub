@@ -79,11 +79,11 @@ All weights acquired via `ResourceManager` (`~/.cache/lingualdub`, SHA256, `LING
 `lingualdub/languages/runyankole.py:RUNYANKOLE` now reflects:
 
 ```python
-resource_profile="speech-sparse / text-sparse → speech-moderate via Luganda family transfer (SALT 40h Runyankole-Rukiga, audit 2026-09-10)"
-resources=["nyn_asr_eval_salt_v1", "nyn_eng_parallel_eval_salt_v1", ...]
-compatible_components=["runyankole_asr", "dummy_asr", "sunbird_asr", "whisper_asr", ...]
-metadata.audit_completed=True
-metadata.audit_documentation="docs/research/runyankole_audit.md"
+resource_profile = "speech-sparse / text-sparse → speech-moderate via Luganda family transfer (SALT 40h Runyankole-Rukiga, audit 2026-09-10)"
+resources = ["nyn_asr_eval_salt_v1", "nyn_eng_parallel_eval_salt_v1", ...]
+compatible_components = ["runyankole_asr", "dummy_asr", "sunbird_asr", "whisper_asr", ...]
+metadata.audit_completed = True
+metadata.audit_documentation = "docs/research/runyankole_audit.md"
 ```
 
 ---

@@ -10,6 +10,7 @@ Proves:
 """
 
 from pathlib import Path
+
 from lingualdub.components.asr.dummy import DummyASRComponent
 from lingualdub.components.code_switch.heuristic import HeuristicLIDComponent
 from lingualdub.components.translation.dummy import DummyTranslationComponent
@@ -25,14 +26,24 @@ from lingualdub.resources.eval_sets import LUGANDA_ENG_CODESWITCH_EVAL_SET
 
 def test_m3_codeswitch_e2e_dubbing_pipeline(tmp_path):
     """M3.4: Complete mixed-language dubbing pipeline with per-segment routing."""
+
     # 1. Pipeline components
     class MixedAudioASR(DummyASRComponent):
         """Simulates ASR output for a code-switched utterance."""
+
         def run(self, input):
             return Result(
                 segments=[
-                    Segment(start=0.0, end=1.5, text="Oli otya nnyabo", language="lug", confidence=0.95),
-                    Segment(start=1.5, end=3.5, text="can you send me the report today morning?", language="lug", confidence=0.92),
+                    Segment(
+                        start=0.0, end=1.5, text="Oli otya nnyabo", language="lug", confidence=0.95
+                    ),
+                    Segment(
+                        start=1.5,
+                        end=3.5,
+                        text="can you send me the report today morning?",
+                        language="lug",
+                        confidence=0.92,
+                    ),
                 ],
                 source_language="lug",
             )

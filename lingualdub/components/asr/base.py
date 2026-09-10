@@ -11,8 +11,8 @@ code-switch detection) can perform compatibility checks at pipeline assembly.
 """
 
 from __future__ import annotations
+
 from abc import abstractmethod
-from typing import Union
 
 from lingualdub.core.component import Component, ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
@@ -35,6 +35,6 @@ class ASRComponent(Component):
     on_failure: FailureMode = FailureMode.ABORT
 
     @abstractmethod
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         """Transcribe audio and return a Result with Segment objects."""
         ...

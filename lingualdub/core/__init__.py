@@ -9,12 +9,12 @@ Language, Resource, Component, Pipeline, Result — and the shared
 Segment representation that connects them.
 """
 
-from lingualdub.core.language import Language
-from lingualdub.core.resource import Resource
 from lingualdub.core.component import Component, ComponentTask, FailureMode
-from lingualdub.core.segment import Segment
-from lingualdub.core.result import Result, ResultStatus
+from lingualdub.core.language import Language
 from lingualdub.core.pipeline import Pipeline
+from lingualdub.core.resource import Resource
+from lingualdub.core.result import Result, ResultStatus
+from lingualdub.core.segment import Segment
 
 __all__ = [
     "Language",

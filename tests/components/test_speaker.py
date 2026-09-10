@@ -7,21 +7,26 @@ Covers:
 """
 
 import math
-import tempfile
 from pathlib import Path
 
 import pytest
 
-from lingualdub.components.eval.speaker_similarity import SpeakerSimilarityEvaluator, _cosine_similarity
-from lingualdub.components.speaker.embedding import SpeakerEmbeddingComponent, _deterministic_embedding
+from lingualdub.components.eval.speaker_similarity import (
+    SpeakerSimilarityEvaluator,
+    _cosine_similarity,
+)
+from lingualdub.components.speaker.embedding import (
+    SpeakerEmbeddingComponent,
+    _deterministic_embedding,
+)
 from lingualdub.core.resource import Resource, ResourceKind
 from lingualdub.core.result import Result
 from lingualdub.core.segment import Segment
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _make_wav(path: Path, freq: float = 440.0):
     from lingualdub.components.tts.dummy import _write_dummy_wav
@@ -138,12 +143,28 @@ class TestSpeakerEmbeddingComponent:
         wav2 = tmp_path / "b.wav"
         _make_wav(wav1, freq=440)
         _make_wav(wav2, freq=880)
-        res1 = Resource(id="r1", kind=ResourceKind.SPEECH, language="lug", version="1.0.0", path=str(wav1), provenance={"consent_basis": "research"})
-        res2 = Resource(id="r2", kind=ResourceKind.SPEECH, language="lug", version="1.0.0", path=str(wav2), provenance={"consent_basis": "research"})
+        res1 = Resource(
+            id="r1",
+            kind=ResourceKind.SPEECH,
+            language="lug",
+            version="1.0.0",
+            path=str(wav1),
+            provenance={"consent_basis": "research"},
+        )
+        res2 = Resource(
+            id="r2",
+            kind=ResourceKind.SPEECH,
+            language="lug",
+            version="1.0.0",
+            path=str(wav2),
+            provenance={"consent_basis": "research"},
+        )
         comp = SpeakerEmbeddingComponent()
         out1 = comp.run(res1)
         out2 = comp.run(res2)
-        cos = _cosine_similarity(out1.metadata["speaker_embedding"], out2.metadata["speaker_embedding"])
+        cos = _cosine_similarity(
+            out1.metadata["speaker_embedding"], out2.metadata["speaker_embedding"]
+        )
         # Different audio should not be identical (cos < 0.99)
         assert cos < 0.99
 
@@ -152,7 +173,14 @@ class TestSpeakerEmbeddingComponent:
         comp = SpeakerEmbeddingComponent(resource_manager=None, registry=None)
         wav = tmp_path / "audio.wav"
         _make_wav(wav)
-        res = Resource(id="x", kind=ResourceKind.SPEECH, language="lug", version="1.0.0", path=str(wav), provenance={"consent_basis": "research"})
+        res = Resource(
+            id="x",
+            kind=ResourceKind.SPEECH,
+            language="lug",
+            version="1.0.0",
+            path=str(wav),
+            provenance={"consent_basis": "research"},
+        )
         out = comp.run(res)
         assert "speaker_embedding" in out.metadata
 
@@ -163,7 +191,14 @@ class TestSpeakerEmbeddingComponent:
     def test_output_in_result_metadata(self, tmp_path):
         wav = tmp_path / "audio.wav"
         _make_wav(wav)
-        res = Resource(id="x", kind=ResourceKind.SPEECH, language="lug", version="1.0.0", path=str(wav), provenance={"consent_basis": "research"})
+        res = Resource(
+            id="x",
+            kind=ResourceKind.SPEECH,
+            language="lug",
+            version="1.0.0",
+            path=str(wav),
+            provenance={"consent_basis": "research"},
+        )
         comp = SpeakerEmbeddingComponent(embedding_dim=128)
         out = comp.run(res)
         assert out.metadata["speaker_embedding_dim"] == 128
@@ -202,8 +237,18 @@ class TestDeterministicEmbedding:
 class TestSpeakerSimilarityEvaluator:
     def test_identical_embeddings_score_1(self):
         emb = _deterministic_embedding("identical", dim=32)
-        hyp = Result(segments=[Segment(start=0.0, end=1.0, text="a", language="lug")], source_language="lug", provenance={"consent_basis": "research"}, metadata={"speaker_embedding": emb})
-        ref = Result(segments=[Segment(start=0.0, end=1.0, text="b", language="lug")], source_language="lug", provenance={"consent_basis": "research"}, metadata={"speaker_embedding": list(emb)})
+        hyp = Result(
+            segments=[Segment(start=0.0, end=1.0, text="a", language="lug")],
+            source_language="lug",
+            provenance={"consent_basis": "research"},
+            metadata={"speaker_embedding": emb},
+        )
+        ref = Result(
+            segments=[Segment(start=0.0, end=1.0, text="b", language="lug")],
+            source_language="lug",
+            provenance={"consent_basis": "research"},
+            metadata={"speaker_embedding": list(emb)},
+        )
         evaluator = SpeakerSimilarityEvaluator()
         out = evaluator.evaluate_pair(hyp, ref)
         assert out.metadata["metrics"]["speaker_similarity"] == pytest.approx(1.0, abs=1e-6)
@@ -216,8 +261,18 @@ class TestSpeakerSimilarityEvaluator:
         e2 = [0.0] * dim
         e1[0] = 1.0
         e2[1] = 1.0
-        hyp = Result(segments=[Segment(start=0.0, end=1.0, text="a", language="lug")], source_language="lug", provenance={"consent_basis": "research"}, metadata={"speaker_embedding": e1})
-        ref = Result(segments=[Segment(start=0.0, end=1.0, text="b", language="lug")], source_language="lug", provenance={"consent_basis": "research"}, metadata={"speaker_embedding": e2})
+        hyp = Result(
+            segments=[Segment(start=0.0, end=1.0, text="a", language="lug")],
+            source_language="lug",
+            provenance={"consent_basis": "research"},
+            metadata={"speaker_embedding": e1},
+        )
+        ref = Result(
+            segments=[Segment(start=0.0, end=1.0, text="b", language="lug")],
+            source_language="lug",
+            provenance={"consent_basis": "research"},
+            metadata={"speaker_embedding": e2},
+        )
         evaluator = SpeakerSimilarityEvaluator()
         out = evaluator.evaluate_pair(hyp, ref)
         assert out.metadata["metrics"]["speaker_similarity"] == pytest.approx(0.0, abs=1e-6)
@@ -225,8 +280,26 @@ class TestSpeakerSimilarityEvaluator:
 
     def test_provenance_set(self):
         emb = _deterministic_embedding("x", dim=16)
-        hyp = Result(segments=[], source_language="lug", provenance={"consent_basis": "research", "dataset_version": "1.0.0", "evaluation_protocol": "VOICE_RETENTION_MOS_V1"}, metadata={"speaker_embedding": emb})
-        ref = Result(segments=[], source_language="lug", provenance={"consent_basis": "research", "dataset_version": "1.0.0", "evaluation_protocol": "VOICE_RETENTION_MOS_V1"}, metadata={"speaker_embedding": emb})
+        hyp = Result(
+            segments=[],
+            source_language="lug",
+            provenance={
+                "consent_basis": "research",
+                "dataset_version": "1.0.0",
+                "evaluation_protocol": "VOICE_RETENTION_MOS_V1",
+            },
+            metadata={"speaker_embedding": emb},
+        )
+        ref = Result(
+            segments=[],
+            source_language="lug",
+            provenance={
+                "consent_basis": "research",
+                "dataset_version": "1.0.0",
+                "evaluation_protocol": "VOICE_RETENTION_MOS_V1",
+            },
+            metadata={"speaker_embedding": emb},
+        )
         evaluator = SpeakerSimilarityEvaluator()
         out = evaluator.evaluate_pair(hyp, ref)
         assert "evaluator" in out.provenance
@@ -235,8 +308,18 @@ class TestSpeakerSimilarityEvaluator:
         assert out.provenance["evaluation_protocol"] == "VOICE_RETENTION_MOS_V1"
 
     def test_missing_embedding_raises(self):
-        hyp = Result(segments=[], source_language="lug", provenance={"consent_basis": "research"}, metadata={})
-        ref = Result(segments=[], source_language="lug", provenance={"consent_basis": "research"}, metadata={"speaker_embedding": [1.0, 0.0]})
+        hyp = Result(
+            segments=[],
+            source_language="lug",
+            provenance={"consent_basis": "research"},
+            metadata={},
+        )
+        ref = Result(
+            segments=[],
+            source_language="lug",
+            provenance={"consent_basis": "research"},
+            metadata={"speaker_embedding": [1.0, 0.0]},
+        )
         evaluator = SpeakerSimilarityEvaluator()
         with pytest.raises(ValueError, match="hypothesis.*speaker_embedding"):
             evaluator.evaluate_pair(hyp, ref)
@@ -251,8 +334,18 @@ class TestSpeakerSimilarityEvaluator:
         for i in range(5):
             e1 = _deterministic_embedding(f"rand_a_{i}", dim=64)
             e2 = _deterministic_embedding(f"rand_b_{i}", dim=64)
-            hyp = Result(segments=[], source_language="lug", provenance={"consent_basis": "research"}, metadata={"speaker_embedding": e1})
-            ref = Result(segments=[], source_language="lug", provenance={"consent_basis": "research"}, metadata={"speaker_embedding": e2})
+            hyp = Result(
+                segments=[],
+                source_language="lug",
+                provenance={"consent_basis": "research"},
+                metadata={"speaker_embedding": e1},
+            )
+            ref = Result(
+                segments=[],
+                source_language="lug",
+                provenance={"consent_basis": "research"},
+                metadata={"speaker_embedding": e2},
+            )
             out = SpeakerSimilarityEvaluator().evaluate_pair(hyp, ref)
             score = out.metadata["metrics"]["speaker_similarity"]
             assert 0.0 <= score <= 1.0

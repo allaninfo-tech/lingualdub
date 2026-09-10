@@ -11,8 +11,8 @@ before data reaches this component.
 """
 
 from __future__ import annotations
+
 from abc import abstractmethod
-from typing import Union
 
 from lingualdub.core.component import Component, ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
@@ -26,6 +26,6 @@ class SpeakerComponent(Component):
     on_failure: FailureMode = FailureMode.DEGRADE
 
     @abstractmethod
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         """Extract or apply speaker representations and return an updated Result."""
         ...

@@ -11,8 +11,8 @@ mechanism that makes evaluation and reproducibility enforceable across runs.
 """
 
 from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import List, Optional
 from enum import Enum
 
 
@@ -56,9 +56,9 @@ class Resource:
     language: str
     version: str
     provenance: dict = field(default_factory=dict)
-    quality_flags: List[str] = field(default_factory=list)
-    compatible_components: List[str] = field(default_factory=list)
-    path: Optional[str] = None
+    quality_flags: list[str] = field(default_factory=list)
+    compatible_components: list[str] = field(default_factory=list)
+    path: str | None = None
     metadata: dict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -92,7 +92,7 @@ class Resource:
         }
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Resource":
+    def from_dict(cls, data: dict) -> Resource:
         """Deserialize a Resource from a dictionary produced by to_dict()."""
         return cls(
             id=data["id"],
@@ -108,4 +108,3 @@ class Resource:
 
     def __repr__(self) -> str:
         return f"Resource(id={self.id!r}, kind={self.kind.value!r}, language={self.language!r}, version={self.version!r})"
-

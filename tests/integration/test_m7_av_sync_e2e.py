@@ -11,10 +11,7 @@ Verifies M7 Done When criteria:
 
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
-
-import pytest
 
 from lingualdub.components.alignment.duration import DurationModellingComponent
 from lingualdub.components.alignment.forced import DummyForcedAlignmentComponent
@@ -24,15 +21,14 @@ from lingualdub.components.eval.av_sync import AVSyncEvaluator
 from lingualdub.components.translation.dummy import DummyTranslationComponent
 from lingualdub.components.tts.dummy import DummyTTSComponent
 from lingualdub.core.pipeline import Pipeline
-from lingualdub.core.resource import Resource, ResourceKind
 from lingualdub.core.result import Result
 from lingualdub.core.segment import Segment
 from lingualdub.pipeline.executor import PipelineExecutor
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _make_source_result(n: int = 5, with_video_cues: bool = True) -> Result:
     """Build a source Result with n Luganda segments of known timing."""
@@ -41,7 +37,11 @@ def _make_source_result(n: int = 5, with_video_cues: bool = True) -> Result:
         start = i * 2.5
         end = start + 2.5
         segs.append(Segment(start=start, end=end, text=f"Oli otya nnyabo {i}", language="lug"))
-    prov = {"evaluation_protocol": "AV_SYNC_PROTOCOL_V1", "consent_basis": "research", "source_video": "/tmp/dummy_source.mp4"}
+    prov = {
+        "evaluation_protocol": "AV_SYNC_PROTOCOL_V1",
+        "consent_basis": "research",
+        "source_video": "/tmp/dummy_source.mp4",
+    }
     if with_video_cues:
         # Use perfect cues aligned to segment boundaries for deterministic 0 offset
         cues = [i * 2.5 for i in range(n + 1)]
@@ -70,7 +70,9 @@ def _run_av_pipeline(source: Result, tmp_path: Path) -> Result:
     with_dialogue = dialogue.run(with_durations)
     dubbed = tts.run(with_dialogue)
     # Propagate source_video for merger
-    dubbed.provenance["source_video"] = source.provenance.get("source_video", "/tmp/dummy_source.mp4")
+    dubbed.provenance["source_video"] = source.provenance.get(
+        "source_video", "/tmp/dummy_source.mp4"
+    )
     dubbed.provenance["video_cues"] = source.provenance.get("video_cues", [])
     # Create dummy source video file if not exists for merger to find
     dummy_video = Path("/tmp/dummy_source.mp4")
@@ -83,6 +85,7 @@ def _run_av_pipeline(source: Result, tmp_path: Path) -> Result:
 # ─────────────────────────────────────────────────────────────────────────────
 # M7 End-to-End Tests
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestM7AVSyncE2E:
     def test_pipeline_completes_without_error(self, tmp_path):
@@ -193,14 +196,8 @@ class TestM7AVSyncE2E:
             name="m7_executor_test_pipeline",
             on_stage_failure=merger.on_failure,
         )
-        # Input resource with video provenance
-        res = Resource(
-            id="test_video_audio",
-            kind=ResourceKind.SPEECH,
-            language="lug",
-            version="1.0.0",
-            provenance={"consent_basis": "research", "source_video": str(dummy_video), "video_cues": [0.0, 2.5, 5.0]},
-        )
+        # Input resource with video provenance — not used directly since executor
+        # needs Result input; kept for documentation purposes only.
         # Pre-create a Result with segments to simulate ASR output? Pipeline first stage is aligner which expects Result,
         # so we feed a Result directly (executor handles Resource->ASR dummy anyway)
         # Use executor.run with Resource; DummyForcedAligner will fail if given Resource (expects Result)
@@ -208,7 +205,11 @@ class TestM7AVSyncE2E:
         source_result = Result(
             segments=[Segment(start=0, end=2.5, text="Oli otya", language="lug")],
             source_language="lug",
-            provenance={"consent_basis": "research", "source_video": str(dummy_video), "video_cues": [0.0, 2.5]},
+            provenance={
+                "consent_basis": "research",
+                "source_video": str(dummy_video),
+                "video_cues": [0.0, 2.5],
+            },
         )
         executor = PipelineExecutor(pipeline)
         result = executor.run(source_result)
@@ -229,7 +230,11 @@ class TestM7AVSyncE2E:
     def test_evaluate_pair_with_no_source_segments(self, tmp_path):
         source = _make_source_result(n=5)
         dubbed = _run_av_pipeline(source, tmp_path)
-        empty_ref = Result(segments=[], source_language="lug", provenance={"evaluation_protocol": "AV_SYNC_PROTOCOL_V1"})
+        empty_ref = Result(
+            segments=[],
+            source_language="lug",
+            provenance={"evaluation_protocol": "AV_SYNC_PROTOCOL_V1"},
+        )
         evaluator = AVSyncEvaluator()
         result = evaluator.evaluate_pair(dubbed, empty_ref)
         # With empty reference, all hypothesis segments are extra -> penalised

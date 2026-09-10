@@ -9,15 +9,15 @@ populating Segment.language per segment.
 """
 
 from __future__ import annotations
+
 import re
-from typing import Dict, List, Optional, Tuple, Union
 
 from lingualdub.components.code_switch.base import CodeSwitchComponent
+from lingualdub.components.code_switch.lexicons import ENGLISH_LEXICON, LUGANDA_LEXICON
 from lingualdub.core.component import ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result
 from lingualdub.core.segment import Segment
-from lingualdub.components.code_switch.lexicons import ENGLISH_LEXICON, LUGANDA_LEXICON
 
 
 class HeuristicLIDComponent(CodeSwitchComponent):
@@ -29,9 +29,9 @@ class HeuristicLIDComponent(CodeSwitchComponent):
     name: str = "heuristic_lid"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.CODE_SWITCH
-    supported_languages: List[str] = ["lug", "nyn", "eng"]
-    requires: List[str] = ["transcription"]
-    provides: List[str] = ["language_labels", "code_switch_detection"]
+    supported_languages: list[str] = ["lug", "nyn", "eng"]
+    requires: list[str] = ["transcription"]
+    provides: list[str] = ["language_labels", "code_switch_detection"]
     on_failure: FailureMode = FailureMode.DEGRADE
 
     def __init__(
@@ -46,7 +46,7 @@ class HeuristicLIDComponent(CodeSwitchComponent):
         self.confidence_threshold = confidence_threshold
         self.version = version
 
-    def _score_word(self, word: str) -> Tuple[str, float]:
+    def _score_word(self, word: str) -> tuple[str, float]:
         """Score an individual token as 'lug' or 'eng'."""
         clean = re.sub(r"[^\w\s]", "", word.lower().strip())
         if not clean:
@@ -70,13 +70,13 @@ class HeuristicLIDComponent(CodeSwitchComponent):
 
         return self.default_language, 0.5
 
-    def classify_text(self, text: str) -> Tuple[str, float]:
+    def classify_text(self, text: str) -> tuple[str, float]:
         """Classify the dominant language of a text string."""
         tokens = text.strip().split()
         if not tokens:
             return self.default_language, 1.0
 
-        scores: Dict[str, float] = {"lug": 0.0, "eng": 0.0}
+        scores: dict[str, float] = {"lug": 0.0, "eng": 0.0}
         for token in tokens:
             lang, weight = self._score_word(token)
             scores[lang] = scores.get(lang, 0.0) + weight
@@ -90,11 +90,13 @@ class HeuristicLIDComponent(CodeSwitchComponent):
         confidence = winner_weight / total
         return winner_lang, round(confidence, 3)
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result):
-            raise ValueError(f"HeuristicLIDComponent expects a Result input, got {type(input).__name__}")
+            raise ValueError(
+                f"HeuristicLIDComponent expects a Result input, got {type(input).__name__}"
+            )
 
-        processed_segments: List[Segment] = []
+        processed_segments: list[Segment] = []
         code_switch_count = 0
 
         for seg in input.segments:
@@ -108,8 +110,8 @@ class HeuristicLIDComponent(CodeSwitchComponent):
             # Split segment into sub-segments if word timing exists and splitting is requested
             if self.split_segments and has_mixed_languages and seg.metadata.get("words"):
                 words_meta = seg.metadata["words"]
-                current_span: List[dict] = []
-                current_lang: Optional[str] = None
+                current_span: list[dict] = []
+                current_lang: str | None = None
 
                 for w in words_meta:
                     w_text = w.get("word", "")

@@ -14,7 +14,7 @@ provide the same capability is governed by the declared conflict policy
 rather than implicit precedence.
 """
 
+from lingualdub.registry.manifest import ManifestError, ManifestScanner
 from lingualdub.registry.registry import Registry
-from lingualdub.registry.manifest import ManifestScanner, ManifestError
 
 __all__ = ["Registry", "ManifestScanner", "ManifestError"]

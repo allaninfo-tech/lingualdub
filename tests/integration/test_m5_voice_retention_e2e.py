@@ -7,7 +7,6 @@ Verifies M5 Done When:
   - No voice without consent can reach speaker encoder
 """
 
-import tempfile
 from pathlib import Path
 
 import pytest
@@ -40,7 +39,11 @@ class TestM5VoiceRetentionE2E:
             language="lug",
             version="1.0.0",
             path=str(src_wav),
-            provenance={"consent_basis": "research", "dataset_version": "1.0.0", "evaluation_protocol": "VOICE_RETENTION_MOS_V1"},
+            provenance={
+                "consent_basis": "research",
+                "dataset_version": "1.0.0",
+                "evaluation_protocol": "VOICE_RETENTION_MOS_V1",
+            },
         )
         dub_res = Resource(
             id="dub_audio",
@@ -48,7 +51,11 @@ class TestM5VoiceRetentionE2E:
             language="eng",
             version="1.0.0",
             path=str(dub_wav),
-            provenance={"consent_basis": "research", "dataset_version": "1.0.0", "evaluation_protocol": "VOICE_RETENTION_MOS_V1"},
+            provenance={
+                "consent_basis": "research",
+                "dataset_version": "1.0.0",
+                "evaluation_protocol": "VOICE_RETENTION_MOS_V1",
+            },
         )
 
         embedder = SpeakerEmbeddingComponent()
@@ -117,7 +124,9 @@ class TestM5VoiceRetentionE2E:
             target_language="eng",
         )
         executor = PipelineExecutor(pipeline)
-        bad_res = Resource(id="bad", kind=ResourceKind.SPEECH, language="lug", version="1.0.0", provenance={})
+        bad_res = Resource(
+            id="bad", kind=ResourceKind.SPEECH, language="lug", version="1.0.0", provenance={}
+        )
         with pytest.raises(Exception, match="consent_basis"):
             executor.run(bad_res)
 
@@ -152,7 +161,13 @@ class TestM5VoiceRetentionE2E:
             target_language="eng",
         )
         executor = PipelineExecutor(pipeline)
-        good_res = Resource(id="good", kind=ResourceKind.SPEECH, language="lug", version="1.0.0", provenance={"consent_basis": "research"})
+        good_res = Resource(
+            id="good",
+            kind=ResourceKind.SPEECH,
+            language="lug",
+            version="1.0.0",
+            provenance={"consent_basis": "research"},
+        )
         result = executor.run(good_res)
         assert result.is_usable
         assert "speaker_embedding" in result.metadata

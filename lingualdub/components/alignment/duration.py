@@ -14,8 +14,8 @@ It satisfies M4.2:
 """
 
 from __future__ import annotations
+
 import logging
-from typing import List, Union
 
 from lingualdub.components.alignment.base import AlignmentComponent
 from lingualdub.core.component import ComponentTask, FailureMode
@@ -82,22 +82,22 @@ class DurationModellingComponent(AlignmentComponent):
     name: str = "duration_modeller"
     version: str = "1.0.0"
     task: ComponentTask = ComponentTask.ALIGNMENT
-    supported_languages: List[str] = ["lug", "nyn", "eng", "swa"]
-    requires: List[str] = ["translation", "aligned_timestamps"]
-    provides: List[str] = ["duration_target"]
+    supported_languages: list[str] = ["lug", "nyn", "eng", "swa"]
+    requires: list[str] = ["translation", "aligned_timestamps"]
+    provides: list[str] = ["duration_target"]
     on_failure: FailureMode = FailureMode.DEGRADE
 
     def __init__(self, version: str = "1.0.0") -> None:
         self.version = version
 
-    def run(self, input: Union[Result, Resource]) -> Result:
+    def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result):
             raise ValueError(
                 f"DurationModellingComponent expects a Result, got {type(input).__name__}"
             )
 
         target_language = input.target_language or "eng"
-        modelled_segments: List[Segment] = []
+        modelled_segments: list[Segment] = []
 
         for seg in input.segments:
             source_duration = seg.duration  # seconds from source timestamps
@@ -138,7 +138,6 @@ class DurationModellingComponent(AlignmentComponent):
             if source_duration < 0.05:
                 new_meta["zero_duration_source"] = True
                 new_meta["unfit"] = True
-
 
             modelled_seg = Segment(
                 start=seg.start,

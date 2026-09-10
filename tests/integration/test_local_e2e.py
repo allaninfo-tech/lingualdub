@@ -3,10 +3,14 @@ Level 2 Integration Tests: Local end-to-end pipeline execution with zero-depende
 """
 
 from pathlib import Path
+
 from lingualdub.components.asr.dummy import DummyASRComponent
+from lingualdub.components.eval.metrics import (
+    TemporalAlignmentEvaluator,
+    WEREvaluator,
+)
 from lingualdub.components.translation.dummy import DummyTranslationComponent
 from lingualdub.components.tts.dummy import DummyTTSComponent
-from lingualdub.components.eval.metrics import WEREvaluator, TranslationEvaluator, TemporalAlignmentEvaluator
 from lingualdub.core.component import FailureMode
 from lingualdub.core.pipeline import Pipeline
 from lingualdub.core.resource import Resource, ResourceKind
@@ -86,7 +90,9 @@ def test_local_pipeline_degraded_fallback(tmp_path):
     )
 
     executor = PipelineExecutor(pipeline)
-    result = executor.run(Resource(id="sample", kind=ResourceKind.SPEECH, language="lug", version="1.0.0"))
+    result = executor.run(
+        Resource(id="sample", kind=ResourceKind.SPEECH, language="lug", version="1.0.0")
+    )
 
     assert result.status == ResultStatus.DEGRADED
     assert any("degraded" in w.lower() for w in result.warnings)
