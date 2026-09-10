@@ -1,3 +1,6 @@
+# Copyright 2026 LingualDub Authors.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 NLLB language code mappings — single source of truth for translation components.
 

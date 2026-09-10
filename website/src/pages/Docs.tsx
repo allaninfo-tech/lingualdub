@@ -9,7 +9,7 @@ export default function Docs() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-950 border border-brand-800 text-brand-400 text-xs font-semibold uppercase tracking-wider mb-4">
             <Sparkles className="w-3.5 h-3.5" />
-            Developer & API Reference
+            Developer & API Reference • v0.1.0
           </div>
           <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tight leading-tight mb-4">
             Documentation
@@ -20,19 +20,18 @@ export default function Docs() {
         </div>
       </section>
 
-      {/* Under Active Development Banner */}
+      {/* Release Announcement Banner */}
       <section className="py-8 bg-[#0c1220] border-b border-slate-800/80">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-brand-950 border border-brand-800/80 rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-xl">
             <div className="space-y-2">
               <div className="flex items-center gap-2.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse" />
-                <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Framework Specification in Progress</span>
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
+                <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Release v0.1.0 Stable</span>
               </div>
-              <h2 className="text-xl sm:text-2xl font-bold text-white">The LingualDub API & SDK is in Active Development</h2>
+              <h2 className="text-xl sm:text-2xl font-bold text-white">LingualDub v0.1.0 is Live</h2>
               <p className="text-sm text-slate-300 max-w-2xl leading-relaxed">
-                The core Python package, component schemas, and pipeline executor interfaces are currently being formalized.
-                Explore the planned architecture below or contribute to the open specification on GitHub.
+                All foundational milestones (M0–M8) are complete: ASR, MT, TTS, code-switching, temporal alignment, voice retention, cross-lingual voice transfer, audio-visual sync, and Runyankole generalisation proof.
               </p>
             </div>
             <a
@@ -48,12 +47,12 @@ export default function Docs() {
         </div>
       </section>
 
-      {/* Planned SDK Architecture Preview */}
+      {/* Python SDK Quickstart */}
       <section className="py-16 border-b border-slate-800/80">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold text-white mb-2">Planned Python SDK Preview</h2>
+          <h2 className="text-2xl font-bold text-white mb-2">Python SDK: End-to-End Pipeline</h2>
           <p className="text-sm text-slate-400 mb-8 max-w-2xl">
-            Here is a high-level preview of how the composable pipeline and registry API will look when building multilingual speech workflows:
+            Execute a speech dubbing pipeline with declarative configuration, assembly-time capability checking, and full provenance tracking:
           </p>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
@@ -64,63 +63,65 @@ export default function Docs() {
                   <div className="w-3 h-3 rounded-full bg-red-500/80" />
                   <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
                   <div className="w-3 h-3 rounded-full bg-green-500/80" />
-                  <span className="font-mono text-xs text-slate-400 ml-2">pipeline_example.py</span>
+                  <span className="font-mono text-xs text-slate-400 ml-2">quickstart.py</span>
                 </div>
                 <span className="text-[11px] font-mono text-brand-400 font-semibold">Python 3.10+</span>
               </div>
               <pre className="p-5 font-mono text-xs sm:text-sm text-slate-200 overflow-x-auto leading-relaxed">
-{`from lingualdub import Registry, Pipeline
-from lingualdub.core import Language, Resource
+{`import lingualdub as ld
 
-# 1. Resolve Language & Resources
-lang = Registry.get_language("lug")
-voice_ref = Registry.get_resource("speaker_voice_sample")
+# 1. Initialize Registry & discover manifests
+registry = ld.Registry(conflict_policy=ld.ConflictPolicy.HIGHEST_VERSION)
+scanner = ld.ManifestScanner(registry)
+scanner.scan()
 
-# 2. Compose Pipeline with contract validation
-pipeline = Pipeline(
-    stages=[
-        Registry.get_component("asr.whisper_adapted"),
-        Registry.get_component("translate.nllb_transfer"),
-        Registry.get_component("alignment.temporal_sync"),
-        Registry.get_component("tts.vits_luganda"),
-    ],
-    fault_tolerance="degrade",
+# 2. Load declarative pipeline configuration
+loader = ld.ConfigLoader(registry)
+pipeline = loader.load_file("configs/luganda_english_baseline.yaml")
+
+# 3. Create speech resource with recorded consent
+audio = ld.Resource(
+    id="lug_sample_01",
+    kind=ld.ResourceKind.SPEECH,
+    language="lug",
+    version="1.0.0",
+    path="data/samples/sample_lug.wav",
+    provenance={"consent_basis": "research_evaluation"}
 )
 
-# 3. Execute Speech Dubbing Workflow
-result = pipeline.run(
-    audio_path="input_video.wav",
-    target_language=lang,
-    speaker_reference=voice_ref,
-)
+# 4. Execute pipeline with automatic contract checking
+executor = ld.PipelineExecutor(pipeline)
+result = executor.run(audio)
 
-print(result.status)        # Status.COMPLETE
-print(result.output_audio)  # "artifacts/dubbed_audio.wav"`}
+print(f"Status: {result.status.value.upper()}")
+for seg in result.segments:
+    print(f"[{seg.start:.2f}s -> {seg.end:.2f}s] ({seg.language}): {seg.text}")
+print(f"Dubbed Artifacts: {result.artifacts}")`}
               </pre>
             </div>
 
-            {/* API Concepts */}
+            {/* Architecture Highlights */}
             <div className="space-y-4">
               {[
                 {
                   icon: Code2,
                   title: 'Registry & Dynamic Discovery',
-                  desc: 'Discover and load ASR, translation, TTS, and alignment models registered via manifest files without modifying core code.',
+                  desc: 'Discover and load ASR, translation, TTS, and alignment models declared in lingualdub.manifest.json files without modifying core code.',
                 },
                 {
                   icon: Cpu,
-                  title: 'Contract Validation at Assembly',
-                  desc: 'Pipelines verify upstream provides and downstream requires capabilities before runtime to catch mismatched types early.',
+                  title: 'Assembly-Time Capability Validation',
+                  desc: 'Pipelines statically verify stage requires tokens against upstream provides tokens before heavy model weights load.',
                 },
                 {
                   icon: Layers,
-                  title: 'Fault-Tolerant Execution',
-                  desc: 'Selectable failure modes (abort, skip, degrade) ensure audio generation continues even when non-critical stages fail.',
+                  title: 'Multi-Tier Fault Tolerance',
+                  desc: 'Selectable failure modes (ABORT, SKIP, DEGRADE) ensure graceful fallbacks and warning propagation when issues arise.',
                 },
                 {
                   icon: FileCode2,
-                  title: 'Provenance & Consent Validation',
-                  desc: 'Result objects carry cryptographic provenance metadata, ensuring voice consent policies are satisfied.',
+                  title: 'Strict Provenance & Consent Enforcement',
+                  desc: 'Every run records pipeline structure, model versions, dataset provenance, and enforces consent_basis for ethical voice AI.',
                 },
               ].map(({ icon: Icon, title, desc }) => (
                 <div key={title} className="bg-[#0f172a] rounded-xl p-5 border border-slate-800 flex items-start gap-4">
@@ -138,48 +139,48 @@ print(result.output_audio)  # "artifacts/dubbed_audio.wav"`}
         </div>
       </section>
 
-      {/* Planned Modules & Guides */}
+      {/* Core Guides */}
       <section className="py-16 bg-[#0c1220]/40">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold text-white mb-2">Upcoming Documentation Sections</h2>
+          <h2 className="text-2xl font-bold text-white mb-2">Technical Guides & Architecture</h2>
           <p className="text-sm text-slate-400 mb-8">
-            These guides and API references will be published alongside the first public alpha release:
+            Complete technical documentation for building adapters, registering datasets, and evaluating pipelines:
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
             {[
               {
-                title: 'Quickstart Guide',
-                desc: 'Installing the package, configuring audio devices, and running your first speech-to-speech pipeline.',
-                tag: 'Getting Started',
+                title: 'Component Authoring Guide',
+                desc: 'Subclass Component, declare requires/provides capability tokens, and implement run() and degrade() fallback paths.',
+                tag: 'Components',
               },
               {
-                title: 'Custom Component Contract',
-                desc: 'How to implement the Component base class and register external ASR or TTS models via manifest.',
-                tag: 'Extension',
+                title: 'Manifest & Plugin Registry',
+                desc: 'How to write lingualdub.manifest.json files and handle conflict policies (NAMESPACED, HIGHEST_VERSION, EXPLICIT).',
+                tag: 'Registry',
               },
               {
-                title: 'Language Metadata Registry',
-                desc: 'Defining resource scarcity profiles, orthography settings, and language family affinities.',
-                tag: 'Languages',
+                title: 'Code-Switching & Routing',
+                desc: 'Segment-authoritative language tagging and per-segment dynamic routing across heterogeneous model adapters.',
+                tag: 'Code-Switch',
               },
               {
-                title: 'Temporal Alignment API',
-                desc: 'Using duration models and speech rate scaling for video dubbing and audio-visual sync.',
-                tag: 'Research',
+                title: 'Temporal Alignment & Speech Rate',
+                desc: 'Fitting translated speech into source timing envelopes using forced alignment, duration modeling, and rate scaling.',
+                tag: 'Alignment',
               },
               {
-                title: 'Evaluator Metrics',
-                desc: 'Running automated and human evaluation protocols with standardized metric outputs.',
+                title: 'Evaluation & Run Comparison',
+                desc: 'Benchmarking WER, CER, BLEU, chrF, and speaker similarity with provenance-validated compare_runs() utilities.',
                 tag: 'Evaluation',
               },
               {
-                title: 'REST / WebSocket Server',
-                desc: 'Deploying LingualDub pipelines as real-time microservices for production dubbing workloads.',
-                tag: 'Deployment',
+                title: 'Audio-Visual Sync & Video Output',
+                desc: 'Snapping segment boundaries to dialogue visual cues and generating dubbed .mp4 video artifacts with full provenance.',
+                tag: 'AV-Sync',
               },
             ].map(sec => (
-              <div key={sec.title} className="bg-[#0f172a] rounded-xl p-5 border border-slate-800 flex flex-col justify-between">
+              <div key={sec.title} className="bg-[#0f172a] rounded-xl p-5 border border-slate-800 flex flex-col justify-between hover:border-slate-700 transition-colors">
                 <div>
                   <span className="text-[10px] font-bold px-2.5 py-1 rounded bg-slate-800 text-brand-300 border border-slate-700 inline-block mb-3">
                     {sec.tag}
@@ -187,8 +188,8 @@ print(result.output_audio)  # "artifacts/dubbed_audio.wav"`}
                   <h3 className="font-bold text-white text-base mb-1.5">{sec.title}</h3>
                   <p className="text-xs text-slate-400 leading-relaxed">{sec.desc}</p>
                 </div>
-                <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center gap-1 text-[11px] text-slate-400 font-medium">
-                  <BookOpen className="w-3.5 h-3.5 text-brand-400" />
+                <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center gap-1 text-[11px] text-emerald-400 font-medium">
+                  <BookOpen className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Available in v0.1.0</span>
                 </div>
               </div>

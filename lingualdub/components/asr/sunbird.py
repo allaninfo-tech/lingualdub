@@ -1,3 +1,6 @@
+# Copyright 2026 LingualDub Authors.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Sunbird AI ASR component adapter for Ugandan and East African languages.
 

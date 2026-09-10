@@ -1,3 +1,6 @@
+# Copyright 2026 LingualDub Authors.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 AV synchrony evaluator for Milestone 7 — Audio-Visual Synchronisation.
 

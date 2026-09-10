@@ -1,3 +1,6 @@
+# Copyright 2026 LingualDub Authors.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Voice-conditioned TTS component for cross-lingual voice transfer (Milestone 6).
 

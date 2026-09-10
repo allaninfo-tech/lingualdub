@@ -222,15 +222,15 @@ LingualDub provides modular workspaces for key open research problems in low-res
 We follow a milestone-driven development model. Progress is tracked in [docs/milestones.md](docs/milestones.md):
 
 - [x] **M0 — Foundation & Core Stabilization** (Serialization, Registry, Manifests, Resource Manager, Test Suite, CI)
-- [ ] **M1 — First Real Dubbing Pipeline** (Luganda $\to$ English baseline with real model adapters)
-- [ ] **M2 — Evaluation Infrastructure** (WER, CER, BLEU, chrF, run comparison utilities)
-- [ ] **M3 — Code-Switching** (Per-segment language identification and routing)
-- [ ] **M4 — Temporal Alignment** (Forced alignment & speech-rate adaptation)
-- [ ] **M5 — Voice-Retention Evaluation** (Speaker embeddings & MOS protocol)
-- [ ] **M6 — Cross-Lingual Voice Transfer** (Voice-conditioned TTS with consent checks)
-- [ ] **M7 — Audio-Visual Synchronisation** (SyncNet alignment & video artifact export)
-- [ ] **M8 — Generalisation Proof** (Runyankole language transfer validation)
-- [ ] **M9 — Stable v0.1.0 Release** (Public PyPI package & full documentation)
+- [x] **M1 — First Real Dubbing Pipeline** (Luganda $\to$ English baseline with real model adapters)
+- [x] **M2 — Evaluation Infrastructure** (WER, CER, BLEU, chrF, run comparison utilities)
+- [x] **M3 — Code-Switching** (Per-segment language identification and routing)
+- [x] **M4 — Temporal Alignment** (Forced alignment & speech-rate adaptation)
+- [x] **M5 — Voice-Retention Evaluation** (Speaker embeddings & MOS protocol)
+- [x] **M6 — Cross-Lingual Voice Transfer** (Voice-conditioned TTS with consent checks)
+- [x] **M7 — Audio-Visual Synchronisation** (SyncNet alignment & video artifact export)
+- [x] **M8 — Generalisation Proof** (Runyankole language transfer validation)
+- [x] **M9 — Stable v0.1.0 Release** (Public PyPI package & full documentation)
 
 ---
 
@@ -275,7 +275,7 @@ If you use LingualDub in your research, please cite:
   author = {LingualDub Authors and Contributors},
   title = {LingualDub: A Composable, Registry-Based Speech-AI Framework for Low-Resource Languages},
   url = {https://github.com/allaninfo-tech/lingualdub},
-  version = {0.1.0-dev},
+  version = {0.1.0},
   year = {2026}
 }
 ```

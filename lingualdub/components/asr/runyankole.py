@@ -1,3 +1,6 @@
+# Copyright 2026 LingualDub Authors.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Runyankole ASR component via language-family transfer (Milestone 8.2).
 

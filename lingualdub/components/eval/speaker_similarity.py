@@ -1,3 +1,6 @@
+# Copyright 2026 LingualDub Authors.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Speaker similarity evaluator for voice-retention (Milestone 5).
 

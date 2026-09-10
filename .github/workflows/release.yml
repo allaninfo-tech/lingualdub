@@ -39,3 +39,9 @@ jobs:
         with:
           files: dist/*
           generate_release_notes: true
+
+      - name: Publish package distribution to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
+

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lingualdub"
-version = "0.1.0-dev"
+version = "0.1.0"
 description = "A composable, registry-based speech-AI framework for low-resource languages."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -29,7 +29,7 @@ keywords = [
     "nlp",
 ]
 classifiers = [
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Science/Research",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: Apache Software License",

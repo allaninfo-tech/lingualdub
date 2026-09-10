@@ -1,3 +1,6 @@
+# Copyright 2026 LingualDub Authors.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 Shared TTS utilities — single source of truth for dummy synthesis and fitting strategies.
 

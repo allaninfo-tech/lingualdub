@@ -1,3 +1,6 @@
+# Copyright 2026 LingualDub Authors.
+# SPDX-License-Identifier: Apache-2.0
+
 """
 LingualDub — Low-Resource Speech AI Framework.
 
@@ -23,7 +26,7 @@ from lingualdub.utils.resource_manager import (
     ResourceNotFoundError,
 )
 
-__version__ = "0.1.0-dev"
+__version__ = "0.1.0"
 
 __all__ = [
     "__version__",

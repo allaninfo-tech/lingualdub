@@ -82,4 +82,4 @@ Audit: `docs/research/runyankole_audit.md` (speech ~40h SALT, text Hansard/JW.or
 
 All model weights are acquired via `lingualdub.utils.ResourceManager` (SHA256 verified, `~/.cache/lingualdub`, `LINGUALDUB_CACHE_DIR` override) and versioned in `Result.provenance`.
 
-*Last updated: 2026-09-05 — versioned with LingualDub `0.1.0-dev`.*
+*Last updated: 2026-09-10 — versioned with LingualDub `0.1.0`.*

@@ -657,68 +657,68 @@ building it.
 
 ### 9.1 — Licence
 
-- [ ] A licence is chosen and applied (Apache 2.0 recommended for research frameworks)
-- [ ] The licence file is updated from its current placeholder
-- [ ] The project metadata reflects the chosen licence
-- [ ] All source files carry the correct licence identifier
+- [x] A licence is chosen and applied (Apache 2.0 recommended for research frameworks)
+- [x] The licence file is updated from its current placeholder
+- [x] The project metadata reflects the chosen licence
+- [x] All source files carry the correct licence identifier
 
 ---
 
 ### 9.2 — PyPI publication
 
-- [ ] All project metadata is complete: name, version, description, classifiers, keywords, authors, URLs
-- [ ] The package builds cleanly
-- [ ] It is published to TestPyPI and installs correctly from there
-- [ ] It is published to PyPI
-- [ ] Installation via `pip install lingualdub` works on a clean machine
-- [ ] A release CI workflow publishes automatically on a version tag push
+- [x] All project metadata is complete: name, version, description, classifiers, keywords, authors, URLs
+- [x] The package builds cleanly
+- [x] It is published to TestPyPI and installs correctly from there
+- [x] It is published to PyPI
+- [x] Installation via `pip install lingualdub` works on a clean machine
+- [x] A release CI workflow publishes automatically on a version tag push
 
 ---
 
 ### 9.3 — Contribution guide
 
-- [ ] How to set up a development environment from scratch
-- [ ] How to run the test suite and check coverage
-- [ ] How to implement a new component from scratch with a working minimal example
-- [ ] How to write and publish a manifest file
-- [ ] How to register a new language
-- [ ] How to register a dataset as a Resource
-- [ ] Code style requirements: type annotations on all public APIs, docstrings on all public classes and methods, line length, formatting tool
-- [ ] Pull request and review process
-- [ ] A contributor outside the core team has followed the guide from scratch and confirmed it works
+- [x] How to set up a development environment from scratch
+- [x] How to run the test suite and check coverage
+- [x] How to implement a new component from scratch with a working minimal example
+- [x] How to write and publish a manifest file
+- [x] How to register a new language
+- [x] How to register a dataset as a Resource
+- [x] Code style requirements: type annotations on all public APIs, docstrings on all public classes and methods, line length, formatting tool
+- [x] Pull request and review process
+- [x] A contributor outside the core team has followed the guide from scratch and confirmed it works
 
 ---
 
 ### 9.4 — Documentation site
 
-- [ ] Home page: project purpose, quickstart, links to PyPI and GitHub
-- [ ] Getting Started: real working example based on the M1 pipeline (install → configure → run → inspect Result)
-- [ ] Architecture overview
-- [ ] Component authoring guide: how to subclass a component base, declare capability tokens, implement run() and degrade()
-- [ ] Registry and manifest guide: how to write a manifest, how the scanner works, how versioning works
-- [ ] Research modules status page: current status of M3 through M7 with their done-when conditions
-- [ ] Evaluation guide: how to register an evaluation set, run an evaluator, and compare runs
-- [ ] API reference generated from docstrings
-- [ ] All pages are accurate and reflect the current released version
+- [x] Home page: project purpose, quickstart, links to PyPI and GitHub
+- [x] Getting Started: real working example based on the M1 pipeline (install → configure → run → inspect Result)
+- [x] Architecture overview
+- [x] Component authoring guide: how to subclass a component base, declare capability tokens, implement run() and degrade()
+- [x] Registry and manifest guide: how to write a manifest, how the scanner works, how versioning works
+- [x] Research modules status page: current status of M3 through M7 with their done-when conditions
+- [x] Evaluation guide: how to register an evaluation set, run an evaluator, and compare runs
+- [x] API reference generated from docstrings
+- [x] All pages are accurate and reflect the current released version
 
 ---
 
 ### 9.5 — Test coverage
 
-- [ ] Test coverage on the core package is ≥ 85 %
-- [ ] End-to-end integration tests for the M1, M2, and M3 pipelines pass in CI
-- [ ] Every test skip in CI has a documented reason in the test file
-- [ ] `pytest` passes with the coverage threshold enforced as a hard failure
+- [x] Test coverage on the core package is ≥ 85 %
+- [x] End-to-end integration tests for the M1, M2, and M3 pipelines pass in CI
+- [x] Every test skip in CI has a documented reason in the test file
+- [x] `pytest` passes with the coverage threshold enforced as a hard failure
 
 ---
 
 ### M9 — Done When
 
-- [ ] `pip install lingualdub` works from PyPI
-- [ ] A contributor outside the core team can follow the contribution guide and publish a working component
-- [ ] All documentation pages are live and accurate for the released version
-- [ ] CI passes with ≥ 85 % coverage on every push to main
-- [ ] The licence is applied and the repository is legally usable
+- [x] `pip install lingualdub` works from PyPI
+- [x] A contributor outside the core team can follow the contribution guide and publish a working component
+- [x] All documentation pages are live and accurate for the released version
+- [x] CI passes with ≥ 85 % coverage on every push to main
+- [x] The licence is applied and the repository is legally usable
 
 ---
 
