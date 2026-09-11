@@ -36,5 +36,4 @@ class AlignmentComponent(Component):
         Marks the result as degraded so consumers are aware timing is not adjusted.
         """
         result = input if isinstance(input, Result) else Result()
-        result.mark_degraded("Alignment skipped; returning unaligned output.")
-        return result
+        return result.mark_degraded("Alignment skipped; returning unaligned output.")

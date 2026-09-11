@@ -209,5 +209,4 @@ class DummyTTSComponent(TTSComponent):
             artifacts=artifacts,
             metadata={"tts_degraded": True},
         )
-        res.mark_degraded("TTS synthesis degraded to fallback tone")
-        return res
+        return res.mark_degraded("TTS synthesis degraded to fallback tone")

@@ -121,18 +121,24 @@ class RunyankoleASRComponent(ASRComponent):
                 # neural Sunbird component handles Resource/File; it declares sunbird supports nyn
                 # We delegate and then enforce output language = nyn
                 result: Result = neural.run(input)
-                # Enforce language scoping: rewrite segments to nyn
+                # Enforce language scoping: rewrite segments to nyn via immutable replace
+                new_segments = []
                 for seg in result.segments:
                     if seg.language != "nyn":
-                        seg.language = "nyn"
-                        seg.source_language = source_lang
-                result.source_language = "nyn"
-                # Tag provenance that family transfer was used
-                result.provenance.setdefault(
+                        new_seg = seg.replace(language="nyn", source_language=source_lang)
+                        new_segments.append(new_seg)
+                    else:
+                        new_segments.append(seg)
+                # Immutable Result: produce new via replace
+                new_prov = dict(result.provenance)
+                new_prov.setdefault(
                     "transfer_basis", "lug->nyn family transfer (SALT Runyankole-Rukiga)"
                 )
-                result.provenance["asr_model"] = (
+                new_prov["asr_model"] = (
                     f"{self.name}@{self.version} (Sunbird {self.model_name_or_path})"
+                )
+                result = result.replace(
+                    segments=new_segments, source_language="nyn", provenance=new_prov
                 )
                 return result
             except Exception:

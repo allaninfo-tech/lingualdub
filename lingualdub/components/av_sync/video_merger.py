@@ -393,7 +393,9 @@ class VideoMergerComponent(Component):
             artifacts=artifacts,
             metadata={"dubbed_video_degraded": True, "dubbed_video": str(fallback_path)},
         )
-        res.provenance["video_merger"] = f"{self.name}@{self.version}"
-        res.provenance["dubbed_video"] = str(fallback_path)
-        res.mark_degraded("Video merging degraded to dummy placeholder")
-        return res
+        # Immutable: use replace for provenance updates
+        new_prov = dict(res.provenance)
+        new_prov["video_merger"] = f"{self.name}@{self.version}"
+        new_prov["dubbed_video"] = str(fallback_path)
+        res = res.replace(provenance=new_prov)
+        return res.mark_degraded("Video merging degraded to dummy placeholder")

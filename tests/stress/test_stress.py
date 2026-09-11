@@ -202,8 +202,7 @@ class FlakyStage(Component):
         if not self.has_degrade:
             raise NotImplementedError()
         res = input if isinstance(input, Result) else Result()
-        res.mark_degraded(f"Fallback path active for {self.name}")
-        return res
+        return res.mark_degraded(f"Fallback path active for {self.name}")
 
 
 def test_mixed_failure_cascade_pipeline():

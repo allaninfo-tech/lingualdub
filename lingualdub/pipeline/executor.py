@@ -1,3 +1,4 @@
+# mypy: disable-error-code="no-any-return"
 # Copyright 2026 LingualDub Authors.
 # SPDX-License-Identifier: Apache-2.0
 
@@ -20,7 +21,7 @@ from typing import TYPE_CHECKING, Any
 from lingualdub.core.component import FailureMode
 from lingualdub.core.pipeline import Pipeline
 from lingualdub.core.resource import Resource
-from lingualdub.core.result import Result
+from lingualdub.core.result import Result, ResultStatus
 from lingualdub.core.segment import Segment
 from lingualdub.exceptions import StageExecutionError as _BaseStageExecutionError
 from lingualdub.utils.provenance import make_provenance
@@ -113,51 +114,96 @@ class PipelineExecutor:
                 ):
                     current = self._run_per_segment_stage(stage, current, failure_mode)
                 else:
-                    current = stage.run(current)
+                    current = stage.run(current)  # type: ignore[operator]
 
                 if isinstance(current, Result):
                     # Merge base provenance into stage result; stage keys win on conflict.
                     merged = dict(base_provenance)
                     merged.update(current.provenance)
-                    current.provenance = merged
+                    # Immutable Result: produce new via replace
+                    current = current.replace(provenance=merged)
                     # Preserve pipeline-level language fields if stage didn't set them.
                     if not current.source_language:
-                        current.source_language = self.pipeline.source_language
+                        current = current.replace(source_language=self.pipeline.source_language)
                     if not current.target_language and self.pipeline.target_language:
-                        current.target_language = self.pipeline.target_language
-                    result = current
+                        current = current.replace(target_language=self.pipeline.target_language)
+                    # Merge result warnings with current's warnings for immutable accumulation
+                    # (original mutable code shared object reference, so warnings accumulated)
+                    old_warnings = list(result.warnings)
+                    new_warnings = list(old_warnings)
+                    for w in current.warnings:
+                        if w not in new_warnings:
+                            new_warnings.append(w)
+                    # Determine most severe status between previous result and current
+                    order = {
+                        ResultStatus.COMPLETE: 0,
+                        ResultStatus.PARTIAL: 1,
+                        ResultStatus.DEGRADED: 2,
+                        ResultStatus.FAILED: 3,
+                    }
+                    new_status = current.status
+                    if order[result.status] > order[current.status]:
+                        new_status = result.status
+                    result = current.replace(warnings=new_warnings, status=new_status)
+                    # Keep current and result in sync for next stage's input (original shared reference)
+                    current = result
             except Exception as exc:
                 logger.warning("Stage %r failed: %s", stage.name, exc)
 
                 if failure_mode == FailureMode.ABORT:
-                    result.mark_failed(f"Stage {stage.name!r} aborted: {exc}")
+                    result = result.mark_failed(f"Stage {stage.name!r} aborted: {exc}")
                     raise PipelineExecutionError(
                         f"Pipeline aborted at stage {stage.name!r}: {exc}"
                     ) from exc
 
                 elif failure_mode == FailureMode.SKIP:
-                    result.mark_partial(f"Stage {stage.name!r} skipped: {exc}")
+                    result = result.mark_partial(f"Stage {stage.name!r} skipped: {exc}")
                     logger.info("Stage %r skipped.", stage.name)
 
                 elif failure_mode == FailureMode.DEGRADE:
                     try:
-                        current = stage.degrade(current)
+                        old_warnings = list(result.warnings)
+                        old_status = result.status
+                        current = stage.degrade(current)  # type: ignore[operator]
                         if isinstance(current, Result):
                             merged = dict(base_provenance)
                             merged.update(current.provenance)
-                            current.provenance = merged
+                            current = current.replace(provenance=merged)
                             if not current.source_language:
-                                current.source_language = self.pipeline.source_language
+                                current = current.replace(
+                                    source_language=self.pipeline.source_language
+                                )
                             if not current.target_language and self.pipeline.target_language:
-                                current.target_language = self.pipeline.target_language
+                                current = current.replace(
+                                    target_language=self.pipeline.target_language
+                                )
+                            # Merge previous result warnings into current for accumulation
+                            merged_warnings = list(old_warnings)
+                            for w in current.warnings:
+                                if w not in merged_warnings:
+                                    merged_warnings.append(w)
+                            # Keep most severe status between old and current
+                            order = {
+                                ResultStatus.COMPLETE: 0,
+                                ResultStatus.PARTIAL: 1,
+                                ResultStatus.DEGRADED: 2,
+                                ResultStatus.FAILED: 3,
+                            }
+                            merged_status = current.status
+                            if order[old_status] > order[current.status]:
+                                merged_status = old_status
+                            current = current.replace(
+                                warnings=merged_warnings, status=merged_status
+                            )
                             result = current
-                        result.mark_degraded(f"Stage {stage.name!r} ran degraded: {exc}")
+                        # Now add the degrade marker for this stage's failure
+                        result = result.mark_degraded(f"Stage {stage.name!r} ran degraded: {exc}")
                     except NotImplementedError:
-                        result.mark_partial(
+                        result = result.mark_partial(
                             f"Stage {stage.name!r} has no degrade() path; skipped: {exc}"
                         )
                     except Exception as degrade_exc:
-                        result.mark_failed(
+                        result = result.mark_failed(
                             f"Stage {stage.name!r} degrade() also failed: {degrade_exc}"
                         )
                         raise PipelineExecutionError(
@@ -202,7 +248,7 @@ class PipelineExecutor:
         else:
             stage_langs = getattr(stage, "supported_languages", [])
             if not stage_langs or "*" in stage_langs:
-                return stage.run(current)
+                return stage.run(current)  # type: ignore[operator, no-any-return]
 
             supported = []
             unsupported = []
@@ -215,7 +261,7 @@ class PipelineExecutor:
                     unsupported.append((idx, seg))
 
         if not unsupported:
-            return stage.run(current)
+            return stage.run(current)  # type: ignore[operator, no-any-return]
 
         unsupported_langs = sorted(
             list(
@@ -231,9 +277,31 @@ class PipelineExecutor:
                 f"Stage {stage.name!r} does not support segment language(s): {unsupported_langs}"
             )
 
-        # Mark unsupported segments as skipped
-        for _, seg in unsupported:
-            seg.metadata["skipped_by"] = stage.name
+        # For immutable Segments, create new segments with skipped_by metadata
+        # instead of mutating in place.
+        updated_unsupported: list[tuple[int, Segment]] = []
+        for idx, seg in unsupported:
+            new_meta = dict(seg.metadata)
+            new_meta["skipped_by"] = stage.name
+            new_seg = seg.replace(metadata=new_meta)
+            updated_unsupported.append((idx, new_seg))
+
+        # Rebuild current segments list with updated unsupported segments for
+        # the case where we skip all or return current
+        current_segments_with_skipped: list[Segment] = []
+        # Map for quick lookup
+        unsupported_map_tmp = {idx: seg for idx, seg in updated_unsupported}
+        supported_map_tmp = {idx: seg for idx, seg in supported}
+        for i, seg in enumerate(current.segments):
+            if i in unsupported_map_tmp:
+                current_segments_with_skipped.append(unsupported_map_tmp[i])
+            elif i in supported_map_tmp:
+                current_segments_with_skipped.append(supported_map_tmp[i])
+            else:
+                current_segments_with_skipped.append(seg)
+
+        # Create a Result that reflects the skipped_by updates
+        current_with_skipped = current.replace(segments=current_segments_with_skipped)
 
         if not supported:
             logger.info(
@@ -242,10 +310,10 @@ class PipelineExecutor:
                 stage_langs,
                 unsupported_langs,
             )
-            current.mark_partial(
+            # Immutable: return new Result with partial status
+            return current_with_skipped.mark_partial(
                 f"Stage {stage.name!r} skipped all segments with unsupported language(s): {unsupported_langs}"
             )
-            return current
 
         # Create sub-result with only supported segments
         sub_result = Result(
@@ -258,10 +326,11 @@ class PipelineExecutor:
             metadata=dict(current.metadata),
         )
 
-        stage_out: Any = stage.run(sub_result)
+        stage_out: Any = stage.run(sub_result)  # type: ignore[operator]
         if not isinstance(stage_out, Result):
-            current.mark_partial(f"Stage {stage.name!r} did not return a Result")
-            return current
+            return current_with_skipped.mark_partial(
+                f"Stage {stage.name!r} did not return a Result"
+            )
 
         # Recombine processed segments and skipped segments
         combined_segments: list[Segment] = []
@@ -269,7 +338,7 @@ class PipelineExecutor:
             new_segments_map = {
                 orig_idx: stage_out.segments[i] for i, (orig_idx, _) in enumerate(supported)
             }
-            unsupported_map = {orig_idx: seg for orig_idx, seg in unsupported}
+            unsupported_map = {orig_idx: seg for orig_idx, seg in updated_unsupported}
             for i in range(len(current.segments)):
                 if i in new_segments_map:
                     combined_segments.append(new_segments_map[i])
@@ -277,17 +346,18 @@ class PipelineExecutor:
                     combined_segments.append(unsupported_map[i])
         else:
             combined_segments = sorted(
-                list(stage_out.segments) + [s for _, s in unsupported],
+                list(stage_out.segments) + [s for _, s in updated_unsupported],
                 key=lambda s: (s.start, s.end),
             )
 
-        stage_out.segments = combined_segments
+        # Immutable: produce new stage_out via replace
+        stage_out = stage_out.replace(segments=combined_segments)
         if failure_mode == FailureMode.DEGRADE:
-            stage_out.mark_degraded(
+            stage_out = stage_out.mark_degraded(
                 f"Stage {stage.name!r} routed {len(supported)} segments; {len(unsupported)} unsupported segments degraded."
             )
         else:
-            stage_out.mark_partial(
+            stage_out = stage_out.mark_partial(
                 f"Stage {stage.name!r} routed {len(supported)} segments; skipped {len(unsupported)} segments."
             )
         return stage_out

@@ -251,12 +251,14 @@ class SpeakerEmbeddingComponent(SpeakerComponent):
 
         # If the input was a Result that already had an embedding, we overwrite with new but keep history
         if isinstance(input, Result) and "speaker_embedding" in input.metadata:
-            result.metadata["previous_speaker_embedding"] = input.metadata["speaker_embedding"]
+            new_meta = dict(result.metadata)
+            new_meta["previous_speaker_embedding"] = input.metadata["speaker_embedding"]
+            result = result.replace(metadata=new_meta)
 
         return result
 
     def degrade(self, input: Resource | Result) -> Result:
         """Degraded path: return input with degraded flag, no embedding."""
-        result = input if isinstance(input, Result) else Result()
-        result.mark_degraded("Speaker embedding unavailable; returning without embedding.")
-        return result
+        base = input if isinstance(input, Result) else Result()
+        # Immutable: mark_degraded returns new Result
+        return base.mark_degraded("Speaker embedding unavailable; returning without embedding.")

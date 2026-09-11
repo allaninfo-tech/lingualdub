@@ -39,7 +39,6 @@ class CodeSwitchComponent(Component):
         uniformly to all segments (single-language-assumed processing).
         """
         result = input if isinstance(input, Result) else Result()
-        result.mark_degraded(
+        return result.mark_degraded(
             "Code-switch detection unavailable; treating all segments as source language."
         )
-        return result

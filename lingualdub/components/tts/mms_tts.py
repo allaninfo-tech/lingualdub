@@ -205,7 +205,6 @@ class MMSTTSComponent(TTSComponent):
 
         dummy = DummyTTSComponent(output_dir=str(self.output_dir))
         res = dummy.degrade(input)
-        res.mark_degraded(
+        return res.mark_degraded(
             f"MMSTTSComponent ({self.model_name_or_path}) failed; fell back to dummy audio"
         )
-        return res
