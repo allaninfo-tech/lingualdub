@@ -5,6 +5,9 @@
 > **This is a future roadmap, not a code review.** Tasks describe what must be *built or established*, not what is currently broken.
 >
 > **Task discipline:** Complete one task at a time — Understand → Implement → Test → Verify → Commit → Push → STOP.
+>
+> **Deep Codebase Analysis & Dynamic Discovery Principle:**
+> While this roadmap outlines the primary architectural milestones, each phase requires active empirical analysis of the existing codebase before and during execution. Any concrete technical gaps, missing typing constructs, unspoken assumptions, or edge cases discovered through deep analysis of the codebase must be added into that phase's task list (e.g., FND-007, FND-008, FND-009) and satisfied to achieve genuine production quality.
 
 ---
 
@@ -294,6 +297,123 @@ Grep confirms no `result.field = ...` assignments remain in framework code.
 
 **Definition of Done:**
 `Result` and `Segment` are immutable. `replace()` factories exist. All fields documented with invariants. Tests pass. No direct mutation in framework code.
+
+---
+
+### FND-007 — Centralized Common Types and Aliases
+
+**Area:** Abstraction / API & Contracts
+**Phase:** 1
+**Priority:** High
+
+**Goal:**
+Create a dedicated `lingualdub/types.py` module defining centralized type aliases and common data contracts across all framework components, avoiding duplicated and inconsistent type annotations.
+
+**What should be built/improved:**
+- Create `lingualdub/types.py` with standard type definitions:
+  - `PathLike = str | os.PathLike[str] | Path`
+  - `LanguageCode = str` (BCP-47 or ISO 639-3 format)
+  - `MetadataDict = dict[str, Any]`
+  - `ProvenanceDict = dict[str, Any]`
+  - `AudioTensor = Any`
+  - `TimestampInterval = tuple[float, float]`
+- Re-export common types from `lingualdub/__init__.py`.
+- Update core models (`Resource`, `Result`, `Segment`, `Component`) to use these centralized types.
+
+**Why it matters:**
+Ad-hoc typing (`str | None`, `dict`, `Any`) across 15+ component files leads to recurring mypy regressions and subtle type mismatches at pipeline integration boundaries.
+
+**Dependencies:** FND-001, FND-004
+
+**Expected outcome:**
+All component interfaces consistently use `PathLike`, `MetadataDict`, `LanguageCode`, and `ProvenanceDict` without ad-hoc type aliases scattered across files.
+
+**Tests required:**
+- Test that all exported types in `types.py` are importable from `lingualdub`.
+- Type check with `mypy lingualdub` to verify consistency.
+
+**Verification required:**
+`mypy lingualdub` passes with zero errors against `types.py`.
+
+**Definition of Done:**
+`types.py` exists with all canonical type aliases. Core abstractions updated. Exports updated. Tests and mypy pass.
+
+---
+
+### FND-008 — Robust Serialization and Deserialization Contracts
+
+**Area:** API & Contracts / Reliability
+**Phase:** 1
+**Priority:** High
+
+**Goal:**
+Standardize and harden `to_dict()` and `from_dict()` across `Result`, `Segment`, `Resource`, and `Language` with explicit schema validation, handling missing/corrupted fields, and providing round-trip idempotency guarantees.
+
+**What should be built/improved:**
+- Enhance `Segment.from_dict()` and `Result.from_dict()`:
+  - Validate required keys with specific descriptive exceptions (`SerializationError` or `ConfigurationValidationError`).
+  - Validate data types (e.g. `start` must be numeric and `>= 0`).
+  - Gracefully handle schema evolution (e.g. unknown keys preserved in metadata rather than crashing).
+- Add `Resource.to_dict()` and `Resource.from_dict()`.
+- Add `Language.to_dict()` and `Language.from_dict()`.
+- Ensure round-trip idempotence: `cls.from_dict(obj.to_dict()) == obj`.
+
+**Why it matters:**
+Pipelines serialize results and segments to disk and across network/process boundaries. Malformed inputs currently trigger unhandled `KeyError` or `TypeError` crashes during deserialization.
+
+**Dependencies:** FND-002, FND-005, FND-006
+
+**Expected outcome:**
+Passing malformed JSON or a dict with missing required keys to `Segment.from_dict()` raises a clear `SerializationError` stating exactly which field was invalid. Valid instances serialize and deserialize with 100% round-trip equality.
+
+**Tests required:**
+- Round-trip serialization tests for `Result`, `Segment`, `Resource`, `Language`.
+- Error tests verifying that missing or invalid keys raise `SerializationError`.
+- Backward-compatibility tests verifying that legacy or extra metadata fields are safely retained.
+
+**Verification required:**
+Tests verify round-trip fidelity and error messages on malformed dictionaries.
+
+**Definition of Done:**
+`to_dict()` and `from_dict()` implemented and hardened across all four core classes. Schema errors raise structured framework exceptions. Round-trip tests pass.
+
+---
+
+### FND-009 — Manifest Schema Enforcement & Scanner Validation
+
+**Area:** Extensibility / Configuration
+**Phase:** 1
+**Priority:** High
+
+**Goal:**
+Enforce strict JSON schema validation and early integrity verification on `lingualdub.manifest.json` via `ManifestScanner`, catching malformed components, invalid task names, and duplicate registrations before execution.
+
+**What should be built/improved:**
+- Create `lingualdub/registry/manifest_schema.json` (or inline JSON Schema) formalizing the manifest structure.
+- In `ManifestScanner`:
+  - Validate manifest JSON against schema during `scan_file()` and `scan_installed()`.
+  - Validate that declared `task` matches a valid `ComponentTask` enum.
+  - Verify that declared `entrypoint` classes actually exist and are importable when requested.
+  - Raise `ManifestError` with the file path, section, and specific violation.
+
+**Why it matters:**
+Manifests are the backbone of dynamic component discovery. A typo in a manifest currently fails silently or causes a late runtime crash when a pipeline is executed.
+
+**Dependencies:** FND-002, FND-004
+
+**Expected outcome:**
+A manifest with an invalid task string like `"audio_processing"` fails with `ManifestError: Invalid task 'audio_processing' for component 'foo'; must be one of ComponentTask values` immediately during scan.
+
+**Tests required:**
+- Test valid manifest passes validation.
+- Test manifest with invalid task fails with `ManifestError`.
+- Test manifest with missing required fields fails with `ManifestError`.
+
+**Verification required:**
+Existing `lingualdub.manifest.json` passes schema validation.
+
+**Definition of Done:**
+Manifest schema defined and enforced in `ManifestScanner`. Detailed error messages on invalid manifests. Tests pass.
 
 ---
 
@@ -1661,6 +1781,9 @@ Caching implemented for three hot paths. Invalidation correct. Config-controlled
 | FND-004 | Define Component Contract Protocol | 1 | High |
 | FND-005 | Establish Input Validation Utilities | 1 | High |
 | FND-006 | Establish Stable Result and Segment Contracts | 1 | High |
+| FND-007 | Centralized Common Types and Aliases | 1 | High |
+| FND-008 | Robust Serialization and Deserialization Contracts | 1 | High |
+| FND-009 | Manifest Schema Enforcement & Scanner Validation | 1 | High |
 | LCY-001 | Define Framework Lifecycle Model | 2 | Critical |
 | LCY-002 | Implement Application Startup Hooks | 2 | High |
 | LCY-003 | Implement Shutdown Hooks and Deterministic Teardown | 2 | High |
@@ -1705,7 +1828,10 @@ Caching implemented for three hot paths. Invalidation correct. Config-controlled
 FND-001 --> FND-002 --> FND-003 --> LCY-001 --> LCY-002 --> LCY-003 --> LCY-004
          |          |
          v          v
-      FND-004     FND-005 --> FND-006
+      FND-004     FND-005 --> FND-006 --> FND-008
+         |          |
+         v          v
+      FND-007    FND-009
          |
          v
       EXE-001 --> EXE-002 --> EXE-003 --> EXE-004
