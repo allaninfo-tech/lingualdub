@@ -15,15 +15,18 @@ initial implementation. Non-linear DAG execution is a planned extension.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from lingualdub.core.component import Component, FailureMode
+from lingualdub.core.component import FailureMode
 from lingualdub.core.pipeline import Pipeline
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result
 from lingualdub.core.segment import Segment
 from lingualdub.exceptions import StageExecutionError as _BaseStageExecutionError
 from lingualdub.utils.provenance import make_provenance
+
+if TYPE_CHECKING:
+    from lingualdub.core.protocols import ComponentProtocol
 
 logger = logging.getLogger(__name__)
 
@@ -165,7 +168,7 @@ class PipelineExecutor:
 
     def _run_per_segment_stage(
         self,
-        stage: Component,
+        stage: ComponentProtocol,
         current: Result,
         failure_mode: FailureMode,
     ) -> Result:
@@ -176,19 +179,40 @@ class PipelineExecutor:
         to the stage if the segment's language is supported by that stage.
         Unsupported segments are skipped, degraded, or cause an abort based on failure_mode.
         """
-        stage_langs = getattr(stage, "supported_languages", [])
-        if not stage_langs or "*" in stage_langs:
-            return stage.run(current)
+        # Prefer structural can_handle() if available (duck-typed protocol),
+        # else fall back to supported_languages list.
+        can_handle = getattr(stage, "can_handle", None)
+        if callable(can_handle):
+            supported: list[tuple[int, Segment]] = []
+            unsupported: list[tuple[int, Segment]] = []
+            for idx, seg in enumerate(current.segments):
+                seg_lang = seg.language or current.source_language or self.pipeline.source_language
+                try:
+                    handles = bool(can_handle(seg_lang))  # type: ignore[operator]
+                except Exception:
+                    # Fallback to language list if can_handle raises
+                    stage_langs_fb = getattr(stage, "supported_languages", [])
+                    handles = not stage_langs_fb or seg_lang in stage_langs_fb
+                if handles:
+                    supported.append((idx, seg))
+                else:
+                    unsupported.append((idx, seg))
+            # For universal components, can_handle returns True for all -> no unsupported
+            stage_langs: list[str] = getattr(stage, "supported_languages", [])
+        else:
+            stage_langs = getattr(stage, "supported_languages", [])
+            if not stage_langs or "*" in stage_langs:
+                return stage.run(current)
 
-        supported: list[tuple[int, Segment]] = []
-        unsupported: list[tuple[int, Segment]] = []
+            supported = []
+            unsupported = []
 
-        for idx, seg in enumerate(current.segments):
-            seg_lang = seg.language or current.source_language or self.pipeline.source_language
-            if seg_lang in stage_langs:
-                supported.append((idx, seg))
-            else:
-                unsupported.append((idx, seg))
+            for idx, seg in enumerate(current.segments):
+                seg_lang = seg.language or current.source_language or self.pipeline.source_language
+                if seg_lang in stage_langs:
+                    supported.append((idx, seg))
+                else:
+                    unsupported.append((idx, seg))
 
         if not unsupported:
             return stage.run(current)

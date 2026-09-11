@@ -15,8 +15,12 @@ in lingualdub.pipeline. This module defines the pipeline's structure and contrac
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
-from lingualdub.core.component import Component, FailureMode
+from lingualdub.core.component import FailureMode
+
+if TYPE_CHECKING:
+    from lingualdub.core.protocols import ComponentProtocol
 
 
 @dataclass
@@ -37,7 +41,7 @@ class Pipeline:
         description: Optional description of this pipeline's purpose.
     """
 
-    stages: list[Component]
+    stages: list[ComponentProtocol]
     source_language: str
     target_language: str | None = None
     per_segment_language: bool = False
@@ -65,14 +69,21 @@ class Pipeline:
         """
         accumulated_provides: list[str] = []
         for stage in self.stages:
-            missing = stage.check_compatibility(accumulated_provides)
+            # Support both classic Component (check_compatibility method) and
+            # minimal Protocol duck types that only expose ``requires``.
+            checker = getattr(stage, "check_compatibility", None)
+            if callable(checker):
+                missing = checker(accumulated_provides)  # type: ignore[operator]
+            else:
+                requires = getattr(stage, "requires", [])
+                missing = [cap for cap in requires if cap not in accumulated_provides]
             if missing:
                 raise ValueError(
                     f"Pipeline compatibility error: stage {stage.name!r} "
                     f"requires {missing!r} but upstream provides {accumulated_provides!r}."
                 )
             # Accumulate this stage's capabilities for downstream stages.
-            for cap in stage.provides:
+            for cap in getattr(stage, "provides", []):
                 if cap not in accumulated_provides:
                     accumulated_provides.append(cap)
 
@@ -120,7 +131,7 @@ class Pipeline:
         }
 
     @classmethod
-    def from_dict(cls, data: dict, resolved_stages: list[Component]) -> Pipeline:
+    def from_dict(cls, data: dict, resolved_stages: list[ComponentProtocol]) -> Pipeline:
         """
         Deserialize a Pipeline from a dictionary produced by to_dict().
 

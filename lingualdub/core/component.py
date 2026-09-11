@@ -110,6 +110,15 @@ class Component(ABC):
         """Returns True if this component supports the given language code."""
         return not self.supported_languages or language_code in self.supported_languages
 
+    def can_handle(self, language: str) -> bool:
+        """Return True if this component can handle the given language code.
+
+        Structural alias for :meth:`supports_language` to satisfy
+        :class:`lingualdub.core.protocols.ComponentProtocol` without breaking
+        existing callers that use ``supports_language``.
+        """
+        return self.supports_language(language)
+
     def check_compatibility(self, upstream_provides: list[str]) -> list[str]:
         """
         Returns a list of missing capability tokens that this component requires

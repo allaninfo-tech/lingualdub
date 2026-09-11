@@ -29,6 +29,13 @@ The top-level `lingualdub` package exposes the following stable symbols:
 | `ResultStatus` | Enum | Execution quality status (`COMPLETE`, `PARTIAL`, `DEGRADED`, `FAILED`) |
 | `Segment` | Class | Atomic temporal unit carrying timing, text, per-segment language, speaker, and metadata |
 
+### Protocols (Structural Contracts)
+| Symbol | Type | Description |
+|---|---|---|
+| `ComponentProtocol` | Protocol | Structural contract for pipeline components (`run`, `degrade`, `can_handle`) — duck-typing, `runtime_checkable` |
+| `EvaluatorProtocol` | Protocol | Structural contract for evaluators extending `ComponentProtocol` with `evaluate_pair` |
+| `RegistrableProtocol` | Protocol | Minimal contract for registry entries (requires `version`) |
+
 ### Pipeline & Execution
 | Symbol | Type | Description |
 |---|---|---|

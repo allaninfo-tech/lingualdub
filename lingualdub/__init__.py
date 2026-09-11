@@ -12,6 +12,7 @@ from lingualdub.config import FrameworkConfig, load_config
 from lingualdub.core.component import Component, ComponentTask, FailureMode
 from lingualdub.core.language import Language
 from lingualdub.core.pipeline import Pipeline
+from lingualdub.core.protocols import ComponentProtocol, EvaluatorProtocol, RegistrableProtocol
 from lingualdub.core.resource import Resource, ResourceKind
 from lingualdub.core.result import Result, ResultStatus
 from lingualdub.core.segment import Segment
@@ -61,6 +62,10 @@ __all__ = [
     "Result",
     "ResultStatus",
     "Segment",
+    # Protocols (structural contracts)
+    "ComponentProtocol",
+    "EvaluatorProtocol",
+    "RegistrableProtocol",
     # Configuration
     "FrameworkConfig",
     "load_config",

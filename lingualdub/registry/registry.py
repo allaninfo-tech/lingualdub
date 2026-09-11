@@ -15,9 +15,12 @@ from __future__ import annotations
 import builtins
 from collections import defaultdict
 from enum import Enum
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from lingualdub.exceptions import RegistryError as _BaseRegistryError
+
+if TYPE_CHECKING:
+    from lingualdub.core.protocols import ComponentProtocol, RegistrableProtocol
 
 
 def _version_tuple(version_str: str) -> tuple:
@@ -71,7 +74,7 @@ class Registry:
         self,
         kind: str,
         key: str,
-        impl: Any,
+        impl: ComponentProtocol | RegistrableProtocol | Any,
         version: str = "0.0.0",
         metadata: dict | None = None,
     ) -> None:
@@ -107,7 +110,9 @@ class Registry:
 
         entries.append((version, impl, metadata))
 
-    def resolve(self, kind: str, key: str, version: str | None = None) -> Any:
+    def resolve(
+        self, kind: str, key: str, version: str | None = None
+    ) -> ComponentProtocol | RegistrableProtocol | Any:
         """
         Resolve a registration by (kind, key) and optionally version.
 

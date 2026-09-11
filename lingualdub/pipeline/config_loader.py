@@ -15,8 +15,9 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from lingualdub.core.component import Component, FailureMode
+from lingualdub.core.component import FailureMode
 from lingualdub.core.pipeline import Pipeline
+from lingualdub.core.protocols import ComponentProtocol
 from lingualdub.registry.registry import Registry
 
 logger = logging.getLogger(__name__)
@@ -97,7 +98,7 @@ class ConfigLoader:
         if not stages_config:
             raise ValueError("Pipeline configuration must define at least one stage in 'stages'.")
 
-        resolved_stages: list[Component] = []
+        resolved_stages: list[ComponentProtocol] = []
         for i, stage_def in enumerate(stages_config):
             key: str
             if isinstance(stage_def, str):
@@ -128,7 +129,7 @@ class ConfigLoader:
                     raise TypeError(
                         f"Failed to instantiate component ({kind!r}, {key!r}) with params {params!r}: {exc}"
                     ) from exc
-            elif isinstance(impl, Component):
+            elif isinstance(impl, ComponentProtocol):
                 if params:
                     logger.warning(
                         "Stage #%d (%s/%s) resolved to an instance but params %r were supplied and will be ignored.",
@@ -150,7 +151,7 @@ class ConfigLoader:
                 else:
                     instance = impl
 
-            if not isinstance(instance, Component):
+            if not isinstance(instance, ComponentProtocol):
                 raise TypeError(
                     f"Resolved object for ({kind!r}, {key!r}) is {type(instance).__name__}, "
                     f"must be a Component instance."
