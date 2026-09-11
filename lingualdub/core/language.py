@@ -61,7 +61,11 @@ class Language:
         require_non_empty_string(self.resource_profile, "resource_profile")
 
     def to_dict(self) -> dict[str, Any]:
-        """Serialize this Language to a JSON-compatible dictionary."""
+        """Serialize this Language to a JSON-compatible dictionary.
+
+        The returned dictionary is a deep copy suitable for JSON serialization
+        and round-trip via :meth:`from_dict`.
+        """
         return {
             "code": self.code,
             "name": self.name,
@@ -76,17 +80,108 @@ class Language:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Language:
-        """Deserialize a Language from a dictionary produced by to_dict()."""
+        """Deserialize a Language from a dictionary produced by :meth:`to_dict`.
+
+        Validation is explicit and schema-aware:
+
+        * ``data`` must be a ``dict`` — otherwise :class:`SerializationError`.
+        * Required keys ``code``, ``name``, ``family``, ``resource_profile`` must
+          be present — otherwise ``SerializationError`` naming the missing field.
+        * Field types are validated (e.g. ``code`` must be a valid language code
+          and ``supported_tasks`` must be a list).  Failures raise
+          :class:`SerializationError` or :class:`ConfigurationValidationError`
+          with the offending field in ``context``.
+        * Unknown keys are preserved in ``metadata`` rather than crashing, to
+          allow forward-compatible schema evolution.
+
+        Round-trip idempotence is guaranteed: ``cls.from_dict(obj.to_dict()) == obj``
+        for any valid ``obj``.
+
+        Args:
+            data: Dictionary to decode — typically produced by :meth:`to_dict`.
+
+        Raises:
+            SerializationError: If ``data`` is not a dict, required keys are
+                missing, or a field has the wrong type.
+            ConfigurationValidationError: If a field value fails domain validation
+                (e.g. invalid language code format).
+        """
+        from lingualdub.exceptions import SerializationError
+
+        if not isinstance(data, dict):
+            raise SerializationError(
+                f"Language.from_dict expects a dict, got {type(data).__name__}: {data!r}.",
+                field="data",
+                code="LANG_DESER_001",
+            )
+
+        known_keys = {
+            "code",
+            "name",
+            "family",
+            "resource_profile",
+            "supported_tasks",
+            "related_languages",
+            "resources",
+            "compatible_components",
+            "metadata",
+        }
+        required_keys = ("code", "name", "family", "resource_profile")
+        for key in required_keys:
+            if key not in data:
+                raise SerializationError(
+                    f"Missing required field '{key}' for Language.",
+                    field=key,
+                    code="LANG_DESER_002",
+                    context={"data_keys": list(data.keys())},
+                )
+
+        # Validate optional collection types explicitly before construction so the
+        # error is a clear SerializationError naming the field rather than a
+        # cryptic TypeError deeper in the stack.
+        optional_lists = (
+            "supported_tasks",
+            "related_languages",
+            "resources",
+            "compatible_components",
+        )
+        for key in optional_lists:
+            if key in data and data[key] is not None and not isinstance(data[key], list):
+                raise SerializationError(
+                    f"Field '{key}' must be a list, got {type(data[key]).__name__}: {data[key]!r}.",
+                    field=key,
+                    code="LANG_DESER_003",
+                )
+
+        if (
+            "metadata" in data
+            and data["metadata"] is not None
+            and not isinstance(data["metadata"], dict)
+        ):
+            raise SerializationError(
+                f"Field 'metadata' must be a dict, got {type(data['metadata']).__name__}: {data['metadata']!r}.",
+                field="metadata",
+                code="LANG_DESER_003",
+            )
+
+        # Preserve unknown keys in metadata for forward compatibility
+        base_metadata = dict(data.get("metadata") or {})
+        unknown = {k: v for k, v in data.items() if k not in known_keys}
+        merged_metadata = {**base_metadata, **unknown} if unknown else base_metadata
+
+        # Construction delegates string/code validation to __post_init__
+        # (which raises ConfigurationValidationError).  We let that propagate
+        # because it is the correct hierarchy for domain validation.
         return cls(
             code=data["code"],
             name=data["name"],
             family=data["family"],
             resource_profile=data["resource_profile"],
-            supported_tasks=data.get("supported_tasks", []),
-            related_languages=data.get("related_languages", []),
-            resources=data.get("resources", []),
-            compatible_components=data.get("compatible_components", []),
-            metadata=data.get("metadata", {}),
+            supported_tasks=list(data.get("supported_tasks") or []),
+            related_languages=list(data.get("related_languages") or []),
+            resources=list(data.get("resources") or []),
+            compatible_components=list(data.get("compatible_components") or []),
+            metadata=merged_metadata,
         )
 
     def __repr__(self) -> str:

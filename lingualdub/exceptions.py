@@ -43,6 +43,7 @@ Hierarchy
     │   ├── ResourceNotFoundError
     │   ├── ResourceLoadError
     │   └── ConsentViolationError
+    ├── SerializationError
     └── InternalError
 """
 
@@ -74,6 +75,8 @@ __all__: list[str] = [
     "ResourceNotFoundError",
     "ResourceLoadError",
     "ConsentViolationError",
+    # Serialization
+    "SerializationError",
     # Internal
     "InternalError",
 ]
@@ -459,6 +462,42 @@ class ConsentViolationError(ResourceError):
             ctx["resource_id"] = resource_id
         super().__init__(message, code=code, context=ctx)
         self.resource_id: str | None = resource_id
+
+
+# ---------------------------------------------------------------------------
+# Serialization
+# ---------------------------------------------------------------------------
+
+
+class SerializationError(LingualDubError):
+    """Raised when (de)serialisation of a framework object fails.
+
+    This is the structured error for ``to_dict`` / ``from_dict`` schema
+    violations — missing required keys, wrong types, or corrupt payloads.
+    The ``field`` attribute (when present in ``context``) identifies the
+    offending field.
+
+    Args:
+        message: Human-readable description, naming the offending field when
+            possible.
+        field: Optional field name that triggered the failure.
+        code: Optional machine-readable code.
+        context: Optional structured details.
+    """
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        field: str | None = None,
+        code: str | None = None,
+        context: dict[str, object] | None = None,
+    ) -> None:
+        ctx: dict[str, object] = dict(context or {})
+        if field is not None:
+            ctx["field"] = field
+        super().__init__(message, code=code, context=ctx)
+        self.field: str | None = field
 
 
 # ---------------------------------------------------------------------------

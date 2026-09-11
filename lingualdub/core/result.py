@@ -211,7 +211,11 @@ class Result:
         return self.status != ResultStatus.FAILED
 
     def to_dict(self) -> dict:
-        """Serialize this Result to a JSON-compatible dictionary."""
+        """Serialize this Result to a JSON-compatible dictionary.
+
+        The returned dictionary is a deep copy suitable for JSON serialization
+        and round-trip via :meth:`from_dict`.
+        """
         return {
             "segments": [s.to_dict() for s in self.segments],
             "source_language": self.source_language,
@@ -225,18 +229,151 @@ class Result:
 
     @classmethod
     def from_dict(cls, data: dict) -> Result:
-        """Deserialize a Result from a dictionary produced by to_dict()."""
-        from lingualdub.core.segment import Segment  # avoid circular at module level
+        """Deserialize a Result from a dictionary produced by :meth:`to_dict`.
 
+        Validation mirrors :meth:`Segment.from_dict` — explicit type checks,
+        descriptive ``SerializationError`` for schema violations, and
+        forward-compatible preservation of unknown keys in ``metadata``.
+
+        All fields are optional except ``segments`` (defaults to ``[]``) and
+        ``status`` (defaults to ``COMPLETE`` when missing).
+
+        Raises:
+            SerializationError: If ``data`` is not a dict, a field has the wrong
+                type, or ``status`` is not a valid :class:`ResultStatus` value,
+                or any contained segment fails to deserialize.
+            ConfigurationValidationError: If a language code is malformed.
+        """
+        from lingualdub.core.segment import Segment  # avoid circular at module level
+        from lingualdub.exceptions import SerializationError
+
+        if not isinstance(data, dict):
+            raise SerializationError(
+                f"Result.from_dict expects a dict, got {type(data).__name__}: {data!r}.",
+                field="data",
+                code="RESU_DESER_001",
+            )
+
+        known_keys = {
+            "segments",
+            "source_language",
+            "target_language",
+            "status",
+            "warnings",
+            "provenance",
+            "artifacts",
+            "metadata",
+        }
+
+        # --- segments --------------------------------------------------------
+        raw_segments = data.get("segments", [])
+        if raw_segments is not None and not isinstance(raw_segments, list):
+            raise SerializationError(
+                f"Field 'segments' must be a list, got {type(raw_segments).__name__}: {raw_segments!r}.",
+                field="segments",
+                code="RESU_DESER_003",
+            )
+        segments: list[Segment] = []
+        for idx, seg_data in enumerate(raw_segments or []):
+            if not isinstance(seg_data, dict):
+                raise SerializationError(
+                    f"Segment at index {idx} must be a dict, got {type(seg_data).__name__}: {seg_data!r}.",
+                    field=f"segments[{idx}]",
+                    code="RESU_DESER_003",
+                )
+            try:
+                segments.append(Segment.from_dict(seg_data))
+            except SerializationError as e:
+                # Re-wrap with index context for clearer diagnostics
+                raise SerializationError(
+                    f"Invalid segment at index {idx}: {e.message}",
+                    field=f"segments[{idx}].{e.field}" if e.field else f"segments[{idx}]",
+                    code=e.code,
+                    context={**e.context, "segment_index": idx},
+                ) from e
+            except Exception as e:
+                # ConfigurationValidationError from language-code validation etc.
+                # is a LingualDubError subclass — preserve its type if possible,
+                # otherwise wrap as SerializationError with field info.
+                from lingualdub.exceptions import LingualDubError
+
+                if isinstance(e, LingualDubError):
+                    raise
+                raise SerializationError(
+                    f"Invalid segment at index {idx}: {e}",
+                    field=f"segments[{idx}]",
+                    code="RESU_DESER_003",
+                    context={"segment_index": idx},
+                ) from e
+
+        # --- source_language / target_language --------------------------------
+        for key in ("source_language", "target_language"):
+            if key in data and data[key] is not None and not isinstance(data[key], str):
+                raise SerializationError(
+                    f"Field '{key}' must be a string or None, got {type(data[key]).__name__}: {data[key]!r}.",
+                    field=key,
+                    code="RESU_DESER_003",
+                )
+
+        # --- status ---------------------------------------------------------
+        raw_status = data.get("status", ResultStatus.COMPLETE.value)
+        if raw_status is None:
+            raw_status = ResultStatus.COMPLETE.value
+        if not isinstance(raw_status, str):
+            raise SerializationError(
+                f"Field 'status' must be a string, got {type(raw_status).__name__}: {raw_status!r}.",
+                field="status",
+                code="RESU_DESER_003",
+            )
+        valid_statuses = [s.value for s in ResultStatus]
+        if raw_status not in valid_statuses:
+            raise SerializationError(
+                f"Field 'status' must be one of {valid_statuses!r}, got {raw_status!r}.",
+                field="status",
+                code="RESU_DESER_003",
+            )
+        status = ResultStatus(raw_status)
+
+        # --- warnings / artifacts / provenance / metadata -------------------
+        for key in ("warnings", "artifacts"):
+            if key in data and data[key] is not None and not isinstance(data[key], list):
+                raise SerializationError(
+                    f"Field '{key}' must be a list, got {type(data[key]).__name__}: {data[key]!r}.",
+                    field=key,
+                    code="RESU_DESER_003",
+                )
+            if key in data and isinstance(data[key], list):
+                for i, item in enumerate(data[key]):  # type: ignore[union-attr]
+                    if not isinstance(item, str):
+                        raise SerializationError(
+                            f"Field '{key}[{i}]' must be a string, got {type(item).__name__}: {item!r}.",
+                            field=f"{key}[{i}]",
+                            code="RESU_DESER_003",
+                        )
+
+        for key in ("provenance", "metadata"):
+            if key in data and data[key] is not None and not isinstance(data[key], dict):
+                raise SerializationError(
+                    f"Field '{key}' must be a dict, got {type(data[key]).__name__}: {data[key]!r}.",
+                    field=key,
+                    code="RESU_DESER_003",
+                )
+
+        # Preserve unknown keys in metadata for schema evolution
+        base_metadata = dict(data.get("metadata") or {})
+        unknown = {k: v for k, v in data.items() if k not in known_keys}
+        merged_metadata = {**base_metadata, **unknown} if unknown else base_metadata
+
+        # Construction delegates language-code validation to __post_init__
         return cls(
-            segments=[Segment.from_dict(s) for s in data.get("segments", [])],
+            segments=segments,
             source_language=data.get("source_language"),
             target_language=data.get("target_language"),
-            status=ResultStatus(data.get("status", ResultStatus.COMPLETE.value)),
-            warnings=data.get("warnings", []),
-            provenance=data.get("provenance", {}),
-            artifacts=data.get("artifacts", []),
-            metadata=data.get("metadata", {}),
+            status=status,
+            warnings=list(data.get("warnings") or []),
+            provenance=dict(data.get("provenance") or {}),
+            artifacts=list(data.get("artifacts") or []),
+            metadata=merged_metadata,
         )
 
     def __repr__(self) -> str:

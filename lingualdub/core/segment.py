@@ -175,7 +175,11 @@ class Segment:
         return self.end - self.start
 
     def to_dict(self) -> dict:
-        """Serialize this Segment to a JSON-compatible dictionary."""
+        """Serialize this Segment to a JSON-compatible dictionary.
+
+        The returned dictionary is a deep copy suitable for JSON serialization
+        and round-trip via :meth:`from_dict`.
+        """
         return {
             "start": self.start,
             "end": self.end,
@@ -190,17 +194,168 @@ class Segment:
 
     @classmethod
     def from_dict(cls, data: dict) -> Segment:
-        """Deserialize a Segment from a dictionary produced by to_dict()."""
+        """Deserialize a Segment from a dictionary produced by :meth:`to_dict`.
+
+        Validation mirrors :meth:`Language.from_dict` — required keys are checked
+        explicitly, types are validated before construction, and unknown keys are
+        preserved in ``metadata`` for forward compatibility.
+
+        Required keys: ``start``, ``end``, ``text``, ``language``.
+
+        Raises:
+            SerializationError: If ``data`` is not a dict, required keys are
+                missing, or a field has the wrong type / violates invariants
+                (e.g. ``start`` not numeric, ``end < start``, ``confidence``
+                out of range).
+            ConfigurationValidationError: If a language code is malformed
+                (propagated from the central validator).
+        """
+        from lingualdub.exceptions import SerializationError
+
+        if not isinstance(data, dict):
+            raise SerializationError(
+                f"Segment.from_dict expects a dict, got {type(data).__name__}: {data!r}.",
+                field="data",
+                code="SEG_DESER_001",
+            )
+
+        known_keys = {
+            "start",
+            "end",
+            "text",
+            "language",
+            "speaker",
+            "confidence",
+            "source_language",
+            "provenance",
+            "metadata",
+        }
+        for key in ("start", "end", "text", "language"):
+            if key not in data:
+                raise SerializationError(
+                    f"Missing required field '{key}' for Segment.",
+                    field=key,
+                    code="SEG_DESER_002",
+                    context={"data_keys": list(data.keys())},
+                )
+
+        # Validate numeric types for start / end before construction so the
+        # error is a clear SerializationError naming the field rather than a
+        # bare TypeError from ``<`` comparison on a string.
+        for key in ("start", "end"):
+            val = data[key]
+            if isinstance(val, bool) or not isinstance(val, (int, float)):
+                raise SerializationError(
+                    f"Field '{key}' must be a number, got {type(val).__name__}: {val!r}.",
+                    field=key,
+                    code="SEG_DESER_003",
+                )
+
+        start = float(data["start"])
+        end = float(data["end"])
+        if start < 0:
+            raise SerializationError(
+                f"Field 'start' must be >= 0, got {start!r}.",
+                field="start",
+                code="SEG_DESER_003",
+            )
+        if end < start:
+            raise SerializationError(
+                f"Field 'end' must be >= start ({start!r}), got {end!r}.",
+                field="end",
+                code="SEG_DESER_003",
+            )
+
+        text = data["text"]
+        if not isinstance(text, str):
+            raise SerializationError(
+                f"Field 'text' must be a string, got {type(text).__name__}: {text!r}.",
+                field="text",
+                code="SEG_DESER_003",
+            )
+
+        language = data["language"]
+        if not isinstance(language, str):
+            raise SerializationError(
+                f"Field 'language' must be a string, got {type(language).__name__}: {language!r}.",
+                field="language",
+                code="SEG_DESER_003",
+            )
+
+        # Optional field type checks
+        if (
+            "speaker" in data
+            and data["speaker"] is not None
+            and not isinstance(data["speaker"], str)
+        ):
+            raise SerializationError(
+                f"Field 'speaker' must be a string or None, got {type(data['speaker']).__name__}: {data['speaker']!r}.",
+                field="speaker",
+                code="SEG_DESER_003",
+            )
+        if "confidence" in data and data["confidence"] is not None:
+            conf = data["confidence"]
+            if isinstance(conf, bool) or not isinstance(conf, (int, float)):
+                raise SerializationError(
+                    f"Field 'confidence' must be a number in [0, 1] or None, got {type(conf).__name__}: {conf!r}.",
+                    field="confidence",
+                    code="SEG_DESER_003",
+                )
+            if not (0.0 <= float(conf) <= 1.0):
+                raise SerializationError(
+                    f"Field 'confidence' must be in [0, 1], got {conf!r}.",
+                    field="confidence",
+                    code="SEG_DESER_003",
+                )
+        if (
+            "source_language" in data
+            and data["source_language"] is not None
+            and not isinstance(data["source_language"], str)
+        ):
+            raise SerializationError(
+                f"Field 'source_language' must be a string or None, got {type(data['source_language']).__name__}: {data['source_language']!r}.",
+                field="source_language",
+                code="SEG_DESER_003",
+            )
+        if (
+            "provenance" in data
+            and data["provenance"] is not None
+            and not isinstance(data["provenance"], dict)
+        ):
+            raise SerializationError(
+                f"Field 'provenance' must be a dict, got {type(data['provenance']).__name__}: {data['provenance']!r}.",
+                field="provenance",
+                code="SEG_DESER_003",
+            )
+        if (
+            "metadata" in data
+            and data["metadata"] is not None
+            and not isinstance(data["metadata"], dict)
+        ):
+            raise SerializationError(
+                f"Field 'metadata' must be a dict, got {type(data['metadata']).__name__}: {data['metadata']!r}.",
+                field="metadata",
+                code="SEG_DESER_003",
+            )
+
+        # Preserve unknown keys in metadata for schema evolution
+        base_metadata = dict(data.get("metadata") or {})
+        unknown = {k: v for k, v in data.items() if k not in known_keys}
+        merged_metadata = {**base_metadata, **unknown} if unknown else base_metadata
+
+        # Construction delegates language-code and confidence invariants to
+        # __post_init__ / validators (ConfigurationValidationError).  We pass
+        # the already-validated numeric fields as floats to keep types stable.
         return cls(
-            start=data["start"],
-            end=data["end"],
-            text=data["text"],
-            language=data["language"],
+            start=start,
+            end=end,
+            text=text,
+            language=language,
             speaker=data.get("speaker"),
             confidence=data.get("confidence"),
             source_language=data.get("source_language"),
-            provenance=data.get("provenance", {}),
-            metadata=data.get("metadata", {}),
+            provenance=dict(data.get("provenance") or {}),
+            metadata=merged_metadata,
         )
 
     def __repr__(self) -> str:

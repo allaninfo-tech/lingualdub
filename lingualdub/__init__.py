@@ -31,6 +31,7 @@ from lingualdub.exceptions import (
     ResolutionError,
     ResourceError,
     ResourceLoadError,
+    SerializationError,
     ShutdownError,
     StageCompatibilityError,
     StageExecutionError,
@@ -119,5 +120,6 @@ __all__ = [
     "ResourceError",
     "ResourceLoadError",
     "ConsentViolationError",
+    "SerializationError",
     "InternalError",
 ]

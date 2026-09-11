@@ -86,7 +86,14 @@ class Resource:
         return isinstance(val, str) and bool(val.strip())
 
     def to_dict(self) -> dict:
-        """Serialize this Resource to a JSON-compatible dictionary."""
+        """Serialize this Resource to a JSON-compatible dictionary.
+
+        ``path`` is always serialized as a string (or ``None``) so that
+        ``pathlib.Path`` values round-trip correctly through JSON.
+        """
+        # PathLike may be a pathlib.Path — serialize to string for JSON
+        path_val: str | None = None if self.path is None else str(self.path)
+
         return {
             "id": self.id,
             "kind": self.kind.value,
@@ -95,23 +102,125 @@ class Resource:
             "provenance": dict(self.provenance),
             "quality_flags": list(self.quality_flags),
             "compatible_components": list(self.compatible_components),
-            "path": self.path,
+            "path": path_val,
             "metadata": dict(self.metadata),
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> Resource:
-        """Deserialize a Resource from a dictionary produced by to_dict()."""
+        """Deserialize a Resource from a dictionary produced by :meth:`to_dict`.
+
+        Behaviour mirrors :meth:`Language.from_dict` — explicit schema validation,
+        typed errors, and forward-compatible preservation of unknown keys in
+        ``metadata``.
+
+        Required keys: ``id``, ``kind``, ``language``, ``version``.
+        """
+        from pathlib import Path as _Path
+
+        from lingualdub.exceptions import SerializationError
+
+        if not isinstance(data, dict):
+            raise SerializationError(
+                f"Resource.from_dict expects a dict, got {type(data).__name__}: {data!r}.",
+                field="data",
+                code="RES_DESER_001",
+            )
+
+        known_keys = {
+            "id",
+            "kind",
+            "language",
+            "version",
+            "provenance",
+            "quality_flags",
+            "compatible_components",
+            "path",
+            "metadata",
+        }
+        for key in ("id", "kind", "language", "version"):
+            if key not in data:
+                raise SerializationError(
+                    f"Missing required field '{key}' for Resource.",
+                    field=key,
+                    code="RES_DESER_002",
+                    context={"data_keys": list(data.keys())},
+                )
+
+        # Validate kind is a recognised enum value — provide clear error rather
+        # than bare ValueError from Enum(value)
+        raw_kind = data["kind"]
+        if not isinstance(raw_kind, str):
+            raise SerializationError(
+                f"Field 'kind' must be a string, got {type(raw_kind).__name__}: {raw_kind!r}.",
+                field="kind",
+                code="RES_DESER_003",
+            )
+        valid_kinds = [k.value for k in ResourceKind]
+        if raw_kind not in valid_kinds:
+            raise SerializationError(
+                f"Field 'kind' must be one of {valid_kinds!r}, got {raw_kind!r}.",
+                field="kind",
+                code="RES_DESER_003",
+            )
+
+        # Type checks for optional collections
+        if (
+            "provenance" in data
+            and data["provenance"] is not None
+            and not isinstance(data["provenance"], dict)
+        ):
+            raise SerializationError(
+                f"Field 'provenance' must be a dict, got {type(data['provenance']).__name__}: {data['provenance']!r}.",
+                field="provenance",
+                code="RES_DESER_003",
+            )
+        for key in ("quality_flags", "compatible_components"):
+            if key in data and data[key] is not None and not isinstance(data[key], list):
+                raise SerializationError(
+                    f"Field '{key}' must be a list, got {type(data[key]).__name__}: {data[key]!r}.",
+                    field=key,
+                    code="RES_DESER_003",
+                )
+        if (
+            "metadata" in data
+            and data["metadata"] is not None
+            and not isinstance(data["metadata"], dict)
+        ):
+            raise SerializationError(
+                f"Field 'metadata' must be a dict, got {type(data['metadata']).__name__}: {data['metadata']!r}.",
+                field="metadata",
+                code="RES_DESER_003",
+            )
+
+        # Path may be string, Path, os.PathLike or None — normalize to
+        # string/None; to_dict will normalise again.  Any other type is a schema
+        # error so we surface SerializationError instead of a later cryptic failure.
+        import os as _os
+
+        raw_path = data.get("path")
+        if raw_path is not None and not isinstance(raw_path, (str, _Path, _os.PathLike)):
+            raise SerializationError(
+                f"Field 'path' must be a string, path-like, or None, got {type(raw_path).__name__}: {raw_path!r}.",
+                field="path",
+                code="RES_DESER_003",
+            )
+
+        # Preserve unknown keys in metadata for schema evolution
+        base_metadata = dict(data.get("metadata") or {})
+        unknown = {k: v for k, v in data.items() if k not in known_keys}
+        merged_metadata = {**base_metadata, **unknown} if unknown else base_metadata
+
         return cls(
             id=data["id"],
-            kind=ResourceKind(data["kind"]),
+            kind=ResourceKind(raw_kind),
             language=data["language"],
             version=data["version"],
-            provenance=data.get("provenance", {}),
-            quality_flags=data.get("quality_flags", []),
-            compatible_components=data.get("compatible_components", []),
-            path=data.get("path"),
-            metadata=data.get("metadata", {}),
+            provenance=dict(data.get("provenance") or {}),
+            quality_flags=list(data.get("quality_flags") or []),
+            compatible_components=list(data.get("compatible_components") or []),
+            path=str(raw_path) if isinstance(raw_path, _Path) else raw_path,
+            metadata=merged_metadata,
         )
 
     def __repr__(self) -> str:
