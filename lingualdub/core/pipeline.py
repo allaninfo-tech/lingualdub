@@ -18,6 +18,7 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from lingualdub.core.component import FailureMode
+from lingualdub.types import LanguageCode
 from lingualdub.utils.validation import (
     require_non_empty_string,
     require_not_none,
@@ -47,8 +48,8 @@ class Pipeline:
     """
 
     stages: list[ComponentProtocol]
-    source_language: str
-    target_language: str | None = None
+    source_language: LanguageCode
+    target_language: LanguageCode | None = None
     per_segment_language: bool = False
     on_stage_failure: FailureMode = FailureMode.ABORT
     name: str | None = None

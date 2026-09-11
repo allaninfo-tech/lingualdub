@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from lingualdub.core.segment import Segment
+from lingualdub.types import LanguageCode, MetadataDict, ProvenanceDict
 
 
 class ResultStatus(str, Enum):
@@ -84,13 +85,13 @@ class Result:
     """
 
     segments: list[Segment] = field(default_factory=list)
-    source_language: str | None = None
-    target_language: str | None = None
+    source_language: LanguageCode | None = None
+    target_language: LanguageCode | None = None
     status: ResultStatus = ResultStatus.COMPLETE
     warnings: list[str] = field(default_factory=list)
-    provenance: dict = field(default_factory=dict)
+    provenance: ProvenanceDict = field(default_factory=dict)
     artifacts: list[str] = field(default_factory=list)
-    metadata: dict = field(default_factory=dict)
+    metadata: MetadataDict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         # Validate language fields when present

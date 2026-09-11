@@ -39,6 +39,14 @@ from lingualdub.pipeline.config_loader import ConfigLoader
 from lingualdub.pipeline.executor import PipelineExecutionError, PipelineExecutor
 from lingualdub.registry.manifest import ManifestError, ManifestScanner
 from lingualdub.registry.registry import ConflictPolicy, Registry, RegistryError
+from lingualdub.types import (
+    AudioTensor,
+    LanguageCode,
+    MetadataDict,
+    PathLike,
+    ProvenanceDict,
+    TimestampInterval,
+)
 from lingualdub.utils.comparison import ProvenanceMismatchError, compare_runs
 from lingualdub.utils.provenance import make_provenance, make_run_id
 from lingualdub.utils.resource_manager import (
@@ -66,6 +74,13 @@ __all__ = [
     "ComponentProtocol",
     "EvaluatorProtocol",
     "RegistrableProtocol",
+    # Centralized Types
+    "LanguageCode",
+    "MetadataDict",
+    "ProvenanceDict",
+    "PathLike",
+    "AudioTensor",
+    "TimestampInterval",
     # Configuration
     "FrameworkConfig",
     "load_config",

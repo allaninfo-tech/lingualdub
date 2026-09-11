@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from lingualdub.types import LanguageCode, MetadataDict, ProvenanceDict
 from lingualdub.utils.validation import (
     require_non_empty_string,
     validate_language_code,
@@ -53,12 +54,12 @@ class Segment:
     start: float
     end: float
     text: str
-    language: str
+    language: LanguageCode
     speaker: str | None = None
     confidence: float | None = None
-    source_language: str | None = None
-    provenance: dict = field(default_factory=dict)
-    metadata: dict = field(default_factory=dict)
+    source_language: LanguageCode | None = None
+    provenance: ProvenanceDict = field(default_factory=dict)
+    metadata: MetadataDict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         # Use centralized validators; keep original semantics but raise

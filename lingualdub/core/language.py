@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from lingualdub.types import LanguageCode, MetadataDict
 from lingualdub.utils.validation import require_non_empty_string, validate_language_code
 
 
@@ -39,15 +40,15 @@ class Language:
         compatible_components: Names of components verified to support this language.
     """
 
-    code: str
+    code: LanguageCode
     name: str
     family: str
     resource_profile: str
     supported_tasks: list[str] = field(default_factory=list)
-    related_languages: list[str] = field(default_factory=list)
+    related_languages: list[LanguageCode] = field(default_factory=list)
     resources: list[str] = field(default_factory=list)
     compatible_components: list[str] = field(default_factory=list)
-    metadata: dict = field(default_factory=dict)
+    metadata: MetadataDict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         require_non_empty_string(self.code, "code")

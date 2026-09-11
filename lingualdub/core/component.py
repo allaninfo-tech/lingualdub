@@ -21,6 +21,7 @@ from enum import Enum
 
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result
+from lingualdub.types import LanguageCode
 
 
 class ComponentTask(str, Enum):
@@ -72,7 +73,7 @@ class Component(ABC):
     name: str
     version: str
     task: ComponentTask
-    supported_languages: list[str] = []
+    supported_languages: list[LanguageCode] = []
     requires: list[str] = []
     provides: list[str] = []
     on_failure: FailureMode | None = None
@@ -119,11 +120,11 @@ class Component(ABC):
         """
         raise NotImplementedError(f"Component {self.name!r} does not define a degrade() path.")
 
-    def supports_language(self, language_code: str) -> bool:
+    def supports_language(self, language_code: LanguageCode) -> bool:
         """Returns True if this component supports the given language code."""
         return not self.supported_languages or language_code in self.supported_languages
 
-    def can_handle(self, language: str) -> bool:
+    def can_handle(self, language: LanguageCode) -> bool:
         """Return True if this component can handle the given language code.
 
         Structural alias for :meth:`supports_language` to satisfy

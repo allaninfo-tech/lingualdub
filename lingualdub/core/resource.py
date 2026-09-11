@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 
+from lingualdub.types import LanguageCode, MetadataDict, PathLike, ProvenanceDict
 from lingualdub.utils.validation import (
     require_non_empty_string,
     validate_language_code,
@@ -59,13 +60,13 @@ class Resource:
 
     id: str
     kind: ResourceKind
-    language: str
+    language: LanguageCode
     version: str
-    provenance: dict = field(default_factory=dict)
+    provenance: ProvenanceDict = field(default_factory=dict)
     quality_flags: list[str] = field(default_factory=list)
     compatible_components: list[str] = field(default_factory=list)
-    path: str | None = None
-    metadata: dict = field(default_factory=dict)
+    path: PathLike | None = None
+    metadata: MetadataDict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         require_non_empty_string(self.id, "id")
