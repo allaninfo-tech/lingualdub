@@ -9,3 +9,11 @@ built-in implementations shipped with the framework. Third-party eval
 implementations are registered through the extension manifest system
 and do not need to live in this package.
 """
+
+from lingualdub.components.eval.av_sync import AVSyncEvaluator
+from lingualdub.components.eval.base import EvaluatorComponent
+
+__all__: list[str] = [
+    "EvaluatorComponent",
+    "AVSyncEvaluator",
+]
