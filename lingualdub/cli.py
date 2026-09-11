@@ -235,6 +235,7 @@ def cmd_experiment_run(args: argparse.Namespace) -> int:
     # resource is primary but provenance carries source_video for dialogue_timing /
     # video_merger stages. When only --input-video is given a VIDEO resource is used.
     input_video_path = getattr(args, "input_video", None)
+    input_obj: ld.Resource | ld.Result
 
     if args.input_audio and input_video_path:
         input_obj = ld.Resource(

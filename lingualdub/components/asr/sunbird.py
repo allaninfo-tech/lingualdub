@@ -59,7 +59,7 @@ class SunbirdASRComponent(ASRComponent):
         self.use_api = use_api
         self.device = device
         self.version = version
-        self._pipeline = None
+        self._pipeline: Any = None
 
     def _get_hf_pipeline(self) -> Any:
         """Lazy load Sunbird model checkpoint via Hugging Face pipeline."""

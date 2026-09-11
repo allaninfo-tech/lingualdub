@@ -52,7 +52,7 @@ class WhisperASRComponent(ASRComponent):
         self.asr_task = task
         self.return_timestamps = return_timestamps
         self.version = version
-        self._pipeline = None
+        self._pipeline: Any = None
 
     def _get_pipeline(self) -> Any:
         """Lazy load transformers pipeline only when run() is called."""

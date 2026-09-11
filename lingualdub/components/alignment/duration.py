@@ -30,13 +30,13 @@ logger = logging.getLogger(__name__)
 # eng CPS calibrated to 11.0 so that typical Luganda->English translations
 # (e.g. "hello madam, how are you" ~26 chars) estimate ~2.37s vs 2.5s source
 # keeping within 200ms temporal envelope for M4 Done-When (80% threshold).
-_CHARS_PER_SECOND: dict = {
+_CHARS_PER_SECOND: dict[str, float] = {
     "eng": 11.0,
     "lug": 12.0,
     "nyn": 12.0,
     "swa": 13.0,
 }
-_WORDS_PER_SECOND: dict = {
+_WORDS_PER_SECOND: dict[str, float] = {
     "eng": 2.5,
     "lug": 2.2,
     "nyn": 2.2,
@@ -65,7 +65,7 @@ def _estimate_speech_duration(text: str, language: str) -> float:
     word_estimate = len(words) / wps
     # Blended estimate giving primary weight to character count for morphology robustness
     dur = 0.7 * char_estimate + 0.3 * word_estimate
-    return max(dur, 0.3)
+    return float(max(dur, 0.3))
 
 
 class DurationModellingComponent(AlignmentComponent):

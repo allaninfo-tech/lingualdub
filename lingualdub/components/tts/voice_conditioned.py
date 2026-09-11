@@ -102,7 +102,7 @@ def _freq_from_embedding(embedding: list[float], base: float = 440.0) -> float:
     h = hashlib.sha256(",".join(f"{x:.6f}" for x in embedding[:8]).encode()).digest()
     (u,) = struct.unpack(">I", h[:4])
     offset = (u / 0xFFFFFFFF) * 200.0 - 100.0  # [-100,100]
-    return max(80.0, base + offset)
+    return float(max(80.0, base + offset))
 
 
 def _ensure_consent_for_speaker(
@@ -187,7 +187,7 @@ class VoiceConditionedTTSComponent(TTSComponent):
             self._voice_resource = res
             self._voice_resource_path = path
 
-    def _load_model(self) -> object | None:
+    def _load_model(self) -> Any:
         """Lazy-load neural voice cloning model if available."""
         if self._model is not None:
             return self._model
@@ -228,7 +228,7 @@ class VoiceConditionedTTSComponent(TTSComponent):
             try:
                 # Try to get embedding via speaker component if reference has path
                 res_emb = tmp_comp.run(self.speaker_reference)
-                return res_emb.metadata["speaker_embedding"]
+                return [float(x) for x in res_emb.metadata["speaker_embedding"]]
             except Exception:
                 # Fallback: hash the reference id
                 return _deterministic_embedding(

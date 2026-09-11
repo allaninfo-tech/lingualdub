@@ -84,7 +84,7 @@ class RunyankoleASRComponent(ASRComponent):
         self.version = version
         self._neural_component: Any = None
 
-    def _get_neural(self) -> object | None:
+    def _get_neural(self) -> Any:
         """Lazy-load SunbirdASRComponent for neural execution, if requested."""
         if not self.use_neural:
             return None
@@ -120,7 +120,7 @@ class RunyankoleASRComponent(ASRComponent):
             try:
                 # neural Sunbird component handles Resource/File; it declares sunbird supports nyn
                 # We delegate and then enforce output language = nyn
-                result: Result = neural.run(input)  # type: ignore[union-attr]
+                result: Result = neural.run(input)
                 # Enforce language scoping: rewrite segments to nyn
                 for seg in result.segments:
                     if seg.language != "nyn":

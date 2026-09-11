@@ -119,7 +119,7 @@ class SpeakerEmbeddingComponent(SpeakerComponent):
             self._speaker_resource = res
             self._speaker_resource_path = path
 
-    def _load_neural_model(self) -> object | None:
+    def _load_neural_model(self) -> Any:
         """Attempt to load neural speaker encoder if dependencies available."""
         if self._model is not None:
             return self._model
@@ -199,24 +199,24 @@ class SpeakerEmbeddingComponent(SpeakerComponent):
             embedding = _deterministic_embedding(key, self.embedding_dim)
 
         # Build Result with embedding in metadata and provenance
+        source_lang: str | None = None
+        target_lang: str | None = None
         if isinstance(input, Resource):
             source_lang = input.language
             target_lang = None
             warnings = []
             provenance = dict(input.provenance)
             artifacts = [str(input.path)] if input.path else []
-            segments: list[Segment] = []
-            # Create a single segment representing the utterance
-            segments.append(
+            segments: list[Segment] = [
                 Segment(
                     start=0.0,
                     end=1.0,
                     text=f"speaker embedding for {input.id}",
-                    language=source_lang,
+                    language=input.language or "und",
                     provenance={"speaker_encoder": f"{self.name}@{self.version}"},
                     metadata={"speaker_embedding_source": input.id},
                 )
-            )
+            ]
         else:
             source_lang = input.source_language
             target_lang = input.target_language

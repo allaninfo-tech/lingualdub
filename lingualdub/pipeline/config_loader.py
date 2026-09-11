@@ -99,6 +99,7 @@ class ConfigLoader:
 
         resolved_stages: list[Component] = []
         for i, stage_def in enumerate(stages_config):
+            key: str
             if isinstance(stage_def, str):
                 # Simple component key
                 kind = "component"
@@ -106,10 +107,13 @@ class ConfigLoader:
                 version = None
                 params: dict[str, Any] = {}
             elif isinstance(stage_def, dict):
-                kind = stage_def.get("kind", "component")
-                key = stage_def.get("key") or stage_def.get("name")
-                if not key:
-                    raise ValueError(f"Stage #{i} in config must specify 'key' or 'name'.")
+                kind = str(stage_def.get("kind", "component"))
+                raw_key = stage_def.get("key") or stage_def.get("name")
+                if not raw_key or not isinstance(raw_key, str):
+                    raise ValueError(
+                        f"Stage #{i} in config must specify 'key' or 'name' as a string."
+                    )
+                key = raw_key
                 version = stage_def.get("version")
                 params = stage_def.get("params", {})
             else:

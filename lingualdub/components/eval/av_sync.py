@@ -87,7 +87,7 @@ class AVSyncEvaluator(EvaluatorComponent):
             self._syncnet_resource = res
             self._syncnet_resource_path = path
 
-    def _load_syncnet_model(self) -> object | None:
+    def _load_syncnet_model(self) -> Any:
         """Attempt to load SyncNet model if dependencies available."""
         if self._model is not None:
             return self._model
