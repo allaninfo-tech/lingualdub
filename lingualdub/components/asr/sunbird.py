@@ -54,6 +54,8 @@ class SunbirdASRComponent(ASRComponent):
         version: str = "1.0.0",
     ) -> None:
         self.model_name_or_path = model_name_or_path
+        # justified: external provider API key (SUNBIRD_API_KEY) is not framework config;
+        # read directly for backward compat with existing deployments.
         self.api_key = api_key or os.environ.get("SUNBIRD_API_KEY")
         self.language = language
         self.use_api = use_api
@@ -68,7 +70,7 @@ class SunbirdASRComponent(ASRComponent):
                 import torch
                 from transformers import pipeline
             except ImportError as exc:
-                raise RuntimeError(
+                raise RuntimeError(  # justified: missing optional heavy dependency (torch/transformers) — not a framework error
                     "SunbirdASRComponent local execution requires 'transformers' and 'torch'. "
                     "Install with: pip install torch transformers"
                 ) from exc
@@ -118,7 +120,7 @@ class SunbirdASRComponent(ASRComponent):
     def _run_api(self, audio_path: str) -> Result:
         """Execute transcription via Sunbird AI cloud API."""
         if not self.api_key:
-            raise ValueError(
+            raise ValueError(  # justified: component input validation — not a framework config error
                 "Sunbird API transcription requires an API key. Set SUNBIRD_API_KEY environment variable."
             )
 
@@ -167,7 +169,7 @@ class SunbirdASRComponent(ASRComponent):
                 audio_path = input.artifacts[0]
 
         if not audio_path or not Path(audio_path).exists():
-            raise FileNotFoundError(
+            raise FileNotFoundError(  # justified: standard library file not found — caller expects built-in
                 f"Sunbird ASR audio path {audio_path!r} does not exist or was not specified."
             )
 

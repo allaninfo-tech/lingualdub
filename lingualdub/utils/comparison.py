@@ -30,7 +30,9 @@ def _load_result(result_or_path: Result | dict | str | Path) -> Result:
         return Result.from_dict(result_or_path)
     path = Path(result_or_path)
     if not path.exists():
-        raise FileNotFoundError(f"Result file not found: {path}")
+        raise FileNotFoundError(  # justified: built-in file error
+            f"Result file not found: {path}"
+        )  # justified: standard library file not found — caller expects built-in
     data = json.loads(path.read_text(encoding="utf-8"))
     return Result.from_dict(data)
 

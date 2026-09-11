@@ -21,9 +21,13 @@ from lingualdub.core.result import Result
 def _cosine_similarity(vec_a: list[float], vec_b: list[float]) -> float:
     """Compute cosine similarity between two vectors (range [-1, 1])."""
     if len(vec_a) != len(vec_b):
-        raise ValueError(f"Embedding dimension mismatch: {len(vec_a)} vs {len(vec_b)}")
+        raise ValueError(  # justified: component input validation
+            f"Embedding dimension mismatch: {len(vec_a)} vs {len(vec_b)}"
+        )  # justified: component input validation — not a framework config error
     if not vec_a:
-        raise ValueError("Empty embedding vector")
+        raise ValueError(  # justified: component input validation
+            "Empty embedding vector"
+        )  # justified: component input validation — not a framework config error
     dot = sum(a * b for a, b in zip(vec_a, vec_b, strict=True))
     norm_a = math.sqrt(sum(a * a for a in vec_a))
     norm_b = math.sqrt(sum(b * b for b in vec_b))
@@ -92,7 +96,7 @@ class SpeakerSimilarityEvaluator(EvaluatorComponent):
         # Extract hypothesis embedding
         hyp_emb = hypothesis.metadata.get("speaker_embedding")
         if hyp_emb is None:
-            raise ValueError(
+            raise ValueError(  # justified: component input validation — not a framework config error
                 "SpeakerSimilarityEvaluator: hypothesis Result missing metadata['speaker_embedding']. "
                 "Run SpeakerEmbeddingComponent on both source and dubbed audio first."
             )
@@ -101,7 +105,7 @@ class SpeakerSimilarityEvaluator(EvaluatorComponent):
         if isinstance(reference, Result):
             ref_emb = reference.metadata.get("speaker_embedding")
             if ref_emb is None:
-                raise ValueError(
+                raise ValueError(  # justified: component input validation — not a framework config error
                     "SpeakerSimilarityEvaluator: reference Result missing metadata['speaker_embedding']. "
                     "Run SpeakerEmbeddingComponent on the reference audio first."
                 )
@@ -110,17 +114,21 @@ class SpeakerSimilarityEvaluator(EvaluatorComponent):
             # Resource may carry embedding in metadata (pre-computed) or we error
             ref_emb = reference.metadata.get("speaker_embedding")
             if ref_emb is None:
-                raise ValueError(
+                raise ValueError(  # justified: component input validation — not a framework config error
                     f"SpeakerSimilarityEvaluator: reference Resource {reference.id!r} missing speaker_embedding. "
                     "Provide a Result with embedding or a Resource with metadata['speaker_embedding']."
                 )
             ref_provenance = reference.provenance
         else:
-            raise ValueError(f"Unsupported reference type: {type(reference).__name__}")
+            raise ValueError(  # justified: component input validation
+                f"Unsupported reference type: {type(reference).__name__}"
+            )  # justified: component input validation — not a framework config error
 
         # Validate types
         if not isinstance(hyp_emb, list) or not isinstance(ref_emb, list):
-            raise ValueError("Embeddings must be lists of floats")
+            raise ValueError(  # justified: component input validation
+                "Embeddings must be lists of floats"
+            )  # justified: component input validation — not a framework config error
 
         cosine = _cosine_similarity(ref_emb, hyp_emb)
         score_01 = _to_01_score(cosine)

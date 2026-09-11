@@ -15,12 +15,10 @@ from __future__ import annotations
 import builtins
 from collections import defaultdict
 from enum import Enum
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
+from lingualdub.core.protocols import ComponentProtocol, RegistrableProtocol
 from lingualdub.exceptions import RegistryError as _BaseRegistryError
-
-if TYPE_CHECKING:
-    from lingualdub.core.protocols import ComponentProtocol, RegistrableProtocol
 
 
 def _version_tuple(version_str: str) -> tuple:

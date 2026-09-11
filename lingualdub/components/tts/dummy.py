@@ -66,7 +66,7 @@ class DummyTTSComponent(TTSComponent):
 
     def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result):
-            raise ValueError(
+            raise ValueError(  # justified: component input validation — not a framework config error
                 f"DummyTTSComponent expects a Result input, got {type(input).__name__}"
             )
         # Enforce consent for voice synthesis (M5/M6)

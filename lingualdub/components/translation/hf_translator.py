@@ -58,7 +58,7 @@ class HuggingFaceTranslationComponent(TranslationComponent):
                 import torch
                 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
             except ImportError as exc:
-                raise RuntimeError(
+                raise RuntimeError(  # justified: missing optional heavy dependency (torch/transformers) — not a framework error
                     "HuggingFaceTranslationComponent requires 'transformers' and 'torch'. "
                     "Install with: pip install torch transformers"
                 ) from exc
@@ -75,7 +75,7 @@ class HuggingFaceTranslationComponent(TranslationComponent):
 
     def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result):
-            raise ValueError(
+            raise ValueError(  # justified: component input validation — not a framework config error
                 f"HuggingFaceTranslationComponent expects a Result input, got {type(input).__name__}"
             )
 

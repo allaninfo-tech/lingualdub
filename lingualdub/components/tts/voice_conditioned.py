@@ -114,7 +114,7 @@ def _ensure_consent_for_speaker(
     we check that the embedding provenance elsewhere had consent (handled at run()).
     """
     if speaker_resource is not None and not has_valid_consent(speaker_resource.provenance):
-        raise ValueError(
+        raise ValueError(  # justified: component input validation — not a framework config error
             f"VoiceConditionedTTSComponent: speaker reference Resource {speaker_resource.id!r} lacks valid 'consent_basis'. "
             "Cross-lingual voice cloning requires explicit consent. "
             "Add provenance={'consent_basis': '...'} to the speaker reference."
@@ -252,7 +252,7 @@ class VoiceConditionedTTSComponent(TTSComponent):
 
     def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result):
-            raise ValueError(
+            raise ValueError(  # justified: component input validation — not a framework config error
                 f"VoiceConditionedTTSComponent expects a Result input, got {type(input).__name__}"
             )
         # Enforce consent for voice synthesis — both input voice data and speaker reference
@@ -268,7 +268,9 @@ class VoiceConditionedTTSComponent(TTSComponent):
         speaker_emb = self._resolve_speaker_embedding(input)
         # Validate embedding
         if not isinstance(speaker_emb, list) or len(speaker_emb) == 0:
-            raise ValueError("VoiceConditionedTTSComponent: invalid speaker embedding")
+            raise ValueError(  # justified: component input validation
+                "VoiceConditionedTTSComponent: invalid speaker embedding"
+            )  # justified: component input validation — not a framework config error
 
         # Determine conditioning frequency
         cond_freq = _freq_from_embedding(speaker_emb, base=440.0)

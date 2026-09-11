@@ -211,8 +211,11 @@ class PipelineError(LingualDubError):
     """Raised for any pipeline-level error."""
 
 
-class StageCompatibilityError(PipelineError):
+class StageCompatibilityError(PipelineError, ValueError):
     """Raised when two consecutive pipeline stages are incompatible.
+
+    Inherits from ``ValueError`` for backward compatibility — callers that
+    ``except ValueError`` for pipeline assembly errors continue to work.
 
     For example, when a stage that provides ``\"text\"`` is followed by one
     that requires ``\"audio\"``.

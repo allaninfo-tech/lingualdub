@@ -83,7 +83,7 @@ class MMSTTSComponent(TTSComponent):
                 import torch
                 from transformers import AutoTokenizer, VitsModel
             except ImportError as exc:
-                raise RuntimeError(
+                raise RuntimeError(  # justified: missing optional heavy dependency (torch/transformers) — not a framework error
                     "MMSTTSComponent requires 'transformers', 'torch', and 'scipy'. "
                     "Install with: pip install torch transformers scipy soundfile"
                 ) from exc
@@ -98,7 +98,9 @@ class MMSTTSComponent(TTSComponent):
 
     def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result):
-            raise ValueError(f"MMSTTSComponent expects a Result input, got {type(input).__name__}")
+            raise ValueError(  # justified: component input validation
+                f"MMSTTSComponent expects a Result input, got {type(input).__name__}"
+            )  # justified: component input validation — not a framework config error
         ensure_consent(input, self.__class__.__name__)
 
         if not input.segments:

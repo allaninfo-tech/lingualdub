@@ -16,18 +16,16 @@ initial implementation. Non-linear DAG execution is a planned extension.
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from lingualdub.core.component import FailureMode
 from lingualdub.core.pipeline import Pipeline
+from lingualdub.core.protocols import ComponentProtocol
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result, ResultStatus
 from lingualdub.core.segment import Segment
 from lingualdub.exceptions import StageExecutionError as _BaseStageExecutionError
 from lingualdub.utils.provenance import make_provenance
-
-if TYPE_CHECKING:
-    from lingualdub.core.protocols import ComponentProtocol
 
 logger = logging.getLogger(__name__)
 

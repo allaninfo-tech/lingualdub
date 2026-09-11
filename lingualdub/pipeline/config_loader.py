@@ -25,6 +25,8 @@ logger = logging.getLogger(__name__)
 
 def _parse_yaml(text: str, filepath: Path) -> dict[str, Any]:
     """Parse YAML content, requiring PyYAML for non-JSON files."""
+    from lingualdub.exceptions import ConfigurationValidationError
+
     try:
         import yaml  # type: ignore
 
@@ -32,8 +34,9 @@ def _parse_yaml(text: str, filepath: Path) -> dict[str, Any]:
         if data is None:
             return {}
         if not isinstance(data, dict):
-            raise ValueError(
-                f"Configuration file {filepath} must contain a top-level mapping, got {type(data).__name__}."
+            raise ConfigurationValidationError(
+                f"Configuration file {filepath} must contain a top-level mapping, got {type(data).__name__}.",
+                field="config",
             )
         return data
     except ImportError as exc:
@@ -41,9 +44,13 @@ def _parse_yaml(text: str, filepath: Path) -> dict[str, Any]:
             f"PyYAML is required to load YAML config {filepath}. Install with `pip install pyyaml` "
             f"or `pip install lingualdub[dev]`. (Original error: {exc})"
         ) from exc
+    except ConfigurationValidationError:
+        raise
     except Exception as exc:
-        # yaml.YAMLError or ValueError from above
-        raise ValueError(f"Failed to parse YAML configuration {filepath}: {exc}") from exc
+        # yaml.YAMLError
+        raise ConfigurationValidationError(
+            f"Failed to parse YAML configuration {filepath}: {exc}", field="config"
+        ) from exc
 
 
 class ConfigLoader:
@@ -68,35 +75,53 @@ class ConfigLoader:
             ValueError: If config is malformed or stage definitions are invalid.
             TypeError: If resolved objects are not Components.
         """
+        from lingualdub.exceptions import ConfigurationValidationError
+
         if not isinstance(config, dict):
-            raise ValueError(
-                f"Pipeline configuration must be a mapping, got {type(config).__name__}."
+            raise ConfigurationValidationError(
+                f"Pipeline configuration must be a mapping, got {type(config).__name__}.",
+                field="config",
             )
         source_lang = config.get("source_language", "lug")
         if not isinstance(source_lang, str) or not source_lang:
-            raise ValueError("Pipeline configuration 'source_language' must be a non-empty string.")
+            raise ConfigurationValidationError(
+                "Pipeline configuration 'source_language' must be a non-empty string.",
+                field="source_language",
+            )
         target_lang = config.get("target_language")
         if target_lang is not None and not isinstance(target_lang, str):
-            raise ValueError("Pipeline configuration 'target_language' must be a string or null.")
+            raise ConfigurationValidationError(
+                "Pipeline configuration 'target_language' must be a string or null.",
+                field="target_language",
+            )
         per_segment = bool(config.get("per_segment_language", False))
         failure_mode_str = str(config.get("on_stage_failure", "abort")).lower()
         try:
             failure_mode = FailureMode(failure_mode_str)
         except ValueError as exc:
-            raise ValueError(
-                f"Invalid on_stage_failure {failure_mode_str!r}: must be one of {[e.value for e in FailureMode]}."
+            raise ConfigurationValidationError(
+                f"Invalid on_stage_failure {failure_mode_str!r}: must be one of {[e.value for e in FailureMode]}.",
+                field="on_stage_failure",
             ) from exc
         name = config.get("name")
         if name is not None and not isinstance(name, str):
-            raise ValueError("Pipeline configuration 'name' must be a string or null.")
+            raise ConfigurationValidationError(
+                "Pipeline configuration 'name' must be a string or null.", field="name"
+            )
         description = config.get("description")
         if description is not None and not isinstance(description, str):
-            raise ValueError("Pipeline configuration 'description' must be a string or null.")
+            raise ConfigurationValidationError(
+                "Pipeline configuration 'description' must be a string or null.",
+                field="description",
+            )
         metadata = config.get("metadata", {})
 
         stages_config = config.get("stages", [])
         if not stages_config:
-            raise ValueError("Pipeline configuration must define at least one stage in 'stages'.")
+            raise ConfigurationValidationError(
+                "Pipeline configuration must define at least one stage in 'stages'.",
+                field="stages",
+            )
 
         resolved_stages: list[ComponentProtocol] = []
         for i, stage_def in enumerate(stages_config):
@@ -111,14 +136,22 @@ class ConfigLoader:
                 kind = str(stage_def.get("kind", "component"))
                 raw_key = stage_def.get("key") or stage_def.get("name")
                 if not raw_key or not isinstance(raw_key, str):
-                    raise ValueError(
-                        f"Stage #{i} in config must specify 'key' or 'name' as a string."
+                    from lingualdub.exceptions import ConfigurationValidationError
+
+                    raise ConfigurationValidationError(
+                        f"Stage #{i} in config must specify 'key' or 'name' as a string.",
+                        field=f"stages[{i}].key",
                     )
                 key = raw_key
                 version = stage_def.get("version")
                 params = stage_def.get("params", {})
             else:
-                raise ValueError(f"Invalid stage definition #{i}: {stage_def!r}")
+                from lingualdub.exceptions import ConfigurationValidationError
+
+                raise ConfigurationValidationError(
+                    f"Invalid stage definition #{i}: {stage_def!r}",
+                    field=f"stages[{i}]",
+                )
 
             impl = self.registry.resolve(kind, key, version=version)
             if isinstance(impl, type):
@@ -126,8 +159,11 @@ class ConfigLoader:
                 try:
                     instance = impl(**params) if params else impl()
                 except TypeError as exc:
-                    raise TypeError(
-                        f"Failed to instantiate component ({kind!r}, {key!r}) with params {params!r}: {exc}"
+                    from lingualdub.exceptions import ComponentContractError
+
+                    raise ComponentContractError(
+                        f"Failed to instantiate component ({kind!r}, {key!r}) with params {params!r}: {exc}",
+                        component=key,
                     ) from exc
             elif isinstance(impl, ComponentProtocol):
                 if params:
@@ -145,16 +181,22 @@ class ConfigLoader:
                     try:
                         instance = impl(**params)  # type: ignore[operator]
                     except Exception as exc:
-                        raise TypeError(
-                            f"Resolved object for ({kind!r}, {key!r}) with params {params!r} failed: {exc}"
+                        from lingualdub.exceptions import ComponentContractError
+
+                        raise ComponentContractError(
+                            f"Resolved object for ({kind!r}, {key!r}) with params {params!r} failed: {exc}",
+                            component=key,
                         ) from exc
                 else:
                     instance = impl
 
             if not isinstance(instance, ComponentProtocol):
-                raise TypeError(
+                from lingualdub.exceptions import ComponentContractError
+
+                raise ComponentContractError(
                     f"Resolved object for ({kind!r}, {key!r}) is {type(instance).__name__}, "
-                    f"must be a Component instance."
+                    f"must be a Component instance.",
+                    component=key,
                 )
 
             resolved_stages.append(instance)
@@ -183,14 +225,20 @@ class ConfigLoader:
         """
         filepath = Path(path)
         if not filepath.exists():
-            raise FileNotFoundError(f"Configuration file not found: {filepath}")
+            raise FileNotFoundError(  # justified: built-in file error
+                f"Configuration file not found: {filepath}"
+            )  # justified: standard library file not found — caller expects built-in
 
         content = filepath.read_text(encoding="utf-8")
         if filepath.suffix.lower() == ".json":
             try:
                 config = json.loads(content)
             except json.JSONDecodeError as exc:
-                raise ValueError(f"Failed to parse JSON configuration {filepath}: {exc}") from exc
+                from lingualdub.exceptions import ConfigurationValidationError
+
+                raise ConfigurationValidationError(
+                    f"Failed to parse JSON configuration {filepath}: {exc}", field="config"
+                ) from exc
         elif filepath.suffix.lower() in (".yaml", ".yml"):
             config = _parse_yaml(content, filepath)
         else:
@@ -201,8 +249,11 @@ class ConfigLoader:
                 try:
                     config = json.loads(content)
                 except json.JSONDecodeError as exc:
-                    raise ValueError(
-                        f"Configuration file {filepath} is not valid YAML or JSON: {exc}"
+                    from lingualdub.exceptions import ConfigurationValidationError
+
+                    raise ConfigurationValidationError(
+                        f"Configuration file {filepath} is not valid YAML or JSON: {exc}",
+                        field="config",
                     ) from exc
 
         return self.load_dict(config)

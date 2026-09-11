@@ -152,6 +152,14 @@ class Language:
                     field=key,
                     code="LANG_DESER_003",
                 )
+            if key in data and isinstance(data[key], list):
+                for i, item in enumerate(data[key]):  # type: ignore[union-attr]
+                    if not isinstance(item, str):
+                        raise SerializationError(
+                            f"Field '{key}[{i}]' must be a string, got {type(item).__name__}: {item!r}.",
+                            field=f"{key}[{i}]",
+                            code="LANG_DESER_003",
+                        )
 
         if (
             "metadata" in data

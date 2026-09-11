@@ -77,7 +77,7 @@ class DummyTranslationComponent(TranslationComponent):
 
     def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result):
-            raise ValueError(
+            raise ValueError(  # justified: component input validation — not a framework config error
                 f"DummyTranslationComponent expects a Result input, got {type(input).__name__}"
             )
 

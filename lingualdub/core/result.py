@@ -135,7 +135,9 @@ class Result:
         valid_fields = set(self.__dataclass_fields__.keys())
         for k in changes:
             if k not in valid_fields:
-                raise TypeError(f"Result.replace() got unexpected field {k!r}")
+                raise TypeError(  # justified: Python type contract for unexpected replace field
+                    f"Result.replace() got unexpected field {k!r}"
+                )
 
         # dataclasses.replace bypasses frozen __setattr__ via object.__setattr__
         new_obj = dc_replace(self, **changes)

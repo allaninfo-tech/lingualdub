@@ -328,17 +328,9 @@ class ManifestScanner:
                         f"'{entry['module']}' has no attribute '{entry['attr']}': {exc}"
                     ) from exc
             else:
-                # Schema-only mode — use a lightweight placeholder for registration
-                # The actual impl will be resolved lazily by the caller.
-                try:
-                    # Still attempt to store a reference string so registry is not empty;
-                    # but we skip import errors. Use a sentinel object.
-                    module = importlib.import_module(entry["module"])
-                    impl = getattr(module, entry["attr"])
-                except Exception:
-                    # In schema-only mode we tolerate missing imports — store the
-                    # entry's module path as a placeholder string.
-                    impl = f"{entry['module']}:{entry['attr']}"
+                # Schema-only mode — do not import; store a stable placeholder string
+                # so the registry entry exists for validation without executing code.
+                impl = f"{entry['module']}:{entry['attr']}"
 
             self.registry.register(
                 kind=entry["kind"],
@@ -379,6 +371,13 @@ class ManifestScanner:
     def scan(self, search_paths: list[Path] | None = None, verify_imports: bool = True) -> int:
         """
         Discover and load all extension manifests from installed packages.
+
+        This is a best-effort discovery: malformed manifests (invalid JSON or
+        schema violations when loaded via this path) are logged at ``WARNING``
+        and skipped, so a single bad extension does not block discovery of
+        others. For strict validation that raises :class:`ManifestError`
+        immediately (e.g. invalid ``task``), use :meth:`load` or
+        :meth:`scan_file`.
 
         Searches sys.path (or the provided search_paths) for directories
         containing a lingualdub.manifest.json file.

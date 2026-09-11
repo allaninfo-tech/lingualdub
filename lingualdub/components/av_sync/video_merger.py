@@ -257,7 +257,9 @@ class VideoMergerComponent(Component):
 
     def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result):
-            raise ValueError(f"VideoMergerComponent expects a Result, got {type(input).__name__}")
+            raise ValueError(  # justified: component input validation
+                f"VideoMergerComponent expects a Result, got {type(input).__name__}"
+            )  # justified: component input validation — not a framework config error
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
 

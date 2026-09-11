@@ -61,7 +61,7 @@ class WhisperASRComponent(ASRComponent):
                 import torch
                 from transformers import pipeline
             except ImportError as exc:
-                raise RuntimeError(
+                raise RuntimeError(  # justified: missing optional heavy dependency (torch/transformers) — not a framework error
                     "WhisperASRComponent requires 'transformers' and 'torch'. "
                     "Install with: pip install torch transformers"
                 ) from exc
@@ -108,7 +108,7 @@ class WhisperASRComponent(ASRComponent):
                 audio_path = input.artifacts[0]
 
         if not audio_path or not Path(audio_path).exists():
-            raise FileNotFoundError(
+            raise FileNotFoundError(  # justified: standard library file not found — caller expects built-in
                 f"ASR audio path {audio_path!r} does not exist or was not specified."
             )
 

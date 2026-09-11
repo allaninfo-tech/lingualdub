@@ -92,7 +92,7 @@ class HeuristicLIDComponent(CodeSwitchComponent):
 
     def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result):
-            raise ValueError(
+            raise ValueError(  # justified: component input validation — not a framework config error
                 f"HeuristicLIDComponent expects a Result input, got {type(input).__name__}"
             )
 

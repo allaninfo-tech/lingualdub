@@ -92,7 +92,7 @@ class DurationModellingComponent(AlignmentComponent):
 
     def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result):
-            raise ValueError(
+            raise ValueError(  # justified: component input validation — not a framework config error
                 f"DurationModellingComponent expects a Result, got {type(input).__name__}"
             )
 

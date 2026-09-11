@@ -15,18 +15,15 @@ in lingualdub.pipeline. This module defines the pipeline's structure and contrac
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
 
 from lingualdub.core.component import FailureMode
-from lingualdub.types import LanguageCode
+from lingualdub.core.protocols import ComponentProtocol
+from lingualdub.types import LanguageCode, MetadataDict
 from lingualdub.utils.validation import (
     require_non_empty_string,
     require_not_none,
     validate_language_code,
 )
-
-if TYPE_CHECKING:
-    from lingualdub.core.protocols import ComponentProtocol
 
 
 @dataclass
@@ -54,7 +51,7 @@ class Pipeline:
     on_stage_failure: FailureMode = FailureMode.ABORT
     name: str | None = None
     description: str | None = None
-    metadata: dict = field(default_factory=dict)
+    metadata: MetadataDict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         require_not_none(self.stages, "stages")
@@ -74,8 +71,8 @@ class Pipeline:
     def _validate_stage_compatibility(self) -> None:
         """
         Walk the stage list and verify that each stage's required capabilities
-        are provided by any upstream stage in the pipeline. Raises ValueError
-        on mismatch.
+        are provided by any upstream stage in the pipeline. Raises
+        :class:`StageCompatibilityError` on mismatch.
 
         Capabilities accumulate across stages: if Stage 1 provides "transcription"
         and Stage 2 provides "translation", Stage 3 can require either or both.
@@ -92,9 +89,13 @@ class Pipeline:
                 requires = getattr(stage, "requires", [])
                 missing = [cap for cap in requires if cap not in accumulated_provides]
             if missing:
-                raise ValueError(
+                from lingualdub.exceptions import StageCompatibilityError
+
+                raise StageCompatibilityError(
                     f"Pipeline compatibility error: stage {stage.name!r} "
-                    f"requires {missing!r} but upstream provides {accumulated_provides!r}."
+                    f"requires {missing!r} but upstream provides {accumulated_provides!r}.",
+                    upstream=str(accumulated_provides),
+                    downstream=stage.name,
                 )
             # Accumulate this stage's capabilities for downstream stages.
             for cap in getattr(stage, "provides", []):
@@ -114,10 +115,14 @@ class Pipeline:
                     pipeline_langs.add(self.target_language)
                 # Also include any metadata-declared pipeline languages?
                 if not pipeline_langs.intersection(set(langs)):
-                    raise ValueError(
+                    from lingualdub.exceptions import StageCompatibilityError
+
+                    raise StageCompatibilityError(
                         f"Pipeline language error: stage {stage.name!r} supports {langs!r} "
                         f"but pipeline languages are {sorted(pipeline_langs)!r}. "
-                        f"Use per_segment_language=True for code-switch routing or adjust stage languages."
+                        f"Use per_segment_language=True for code-switch routing or adjust stage languages.",
+                        upstream=str(sorted(pipeline_langs)),
+                        downstream=stage.name,
                     )
 
     @property
@@ -132,6 +137,7 @@ class Pipeline:
         Note: stages are serialized as (name, version) pairs only. Full
         round-trip deserialization requires resolving component names through
         a Registry (see Pipeline.from_dict). No component logic is serialized.
+        The returned dict is a deep copy suitable for round-trip.
         """
         return {
             "source_language": self.source_language,
@@ -147,7 +153,10 @@ class Pipeline:
     @classmethod
     def from_dict(cls, data: dict, resolved_stages: list[ComponentProtocol]) -> Pipeline:
         """
-        Deserialize a Pipeline from a dictionary produced by to_dict().
+        Deserialize a Pipeline from a dictionary produced by :meth:`to_dict`.
+
+        Validation mirrors core models — required keys are checked, types are
+        validated, and unknown keys are preserved in ``metadata``.
 
         Args:
             data: Dictionary from to_dict().
@@ -157,16 +166,108 @@ class Pipeline:
 
         Returns:
             A live Pipeline object.
+
+        Raises:
+            SerializationError: If ``data`` is not a dict or required keys are
+                missing / have wrong types.
         """
+        from lingualdub.exceptions import SerializationError
+
+        if not isinstance(data, dict):
+            raise SerializationError(
+                f"Pipeline.from_dict expects a dict, got {type(data).__name__}: {data!r}.",
+                field="data",
+                code="PIPE_DESER_001",
+            )
+
+        known_keys = {
+            "source_language",
+            "target_language",
+            "per_segment_language",
+            "on_stage_failure",
+            "name",
+            "description",
+            "metadata",
+            "stages",
+        }
+
+        # source_language is required; other fields have defaults for backward compat
+        if "source_language" not in data:
+            raise SerializationError(
+                "Missing required field 'source_language' for Pipeline.",
+                field="source_language",
+                code="PIPE_DESER_002",
+                context={"data_keys": list(data.keys())},
+            )
+
+        # Type checks for optional fields
+        if (
+            "target_language" in data
+            and data["target_language"] is not None
+            and not isinstance(data["target_language"], str)
+        ):
+            raise SerializationError(
+                f"Field 'target_language' must be a string or None, got {type(data['target_language']).__name__}: {data['target_language']!r}.",
+                field="target_language",
+                code="PIPE_DESER_003",
+            )
+        if "per_segment_language" in data and not isinstance(data["per_segment_language"], bool):
+            raise SerializationError(
+                f"Field 'per_segment_language' must be a bool, got {type(data['per_segment_language']).__name__}: {data['per_segment_language']!r}.",
+                field="per_segment_language",
+                code="PIPE_DESER_003",
+            )
+        if "on_stage_failure" in data and data["on_stage_failure"] is not None:
+            raw_fm = data["on_stage_failure"]
+            if not isinstance(raw_fm, str):
+                raise SerializationError(
+                    f"Field 'on_stage_failure' must be a string, got {type(raw_fm).__name__}: {raw_fm!r}.",
+                    field="on_stage_failure",
+                    code="PIPE_DESER_003",
+                )
+            valid_fm = [e.value for e in FailureMode]
+            if raw_fm not in valid_fm:
+                raise SerializationError(
+                    f"Field 'on_stage_failure' must be one of {valid_fm!r}, got {raw_fm!r}.",
+                    field="on_stage_failure",
+                    code="PIPE_DESER_003",
+                )
+        for key in ("name", "description"):
+            if key in data and data[key] is not None and not isinstance(data[key], str):
+                raise SerializationError(
+                    f"Field '{key}' must be a string or None, got {type(data[key]).__name__}: {data[key]!r}.",
+                    field=key,
+                    code="PIPE_DESER_003",
+                )
+        if (
+            "metadata" in data
+            and data["metadata"] is not None
+            and not isinstance(data["metadata"], dict)
+        ):
+            raise SerializationError(
+                f"Field 'metadata' must be a dict, got {type(data['metadata']).__name__}: {data['metadata']!r}.",
+                field="metadata",
+                code="PIPE_DESER_003",
+            )
+
+        # Preserve unknown keys in metadata
+        base_metadata = dict(data.get("metadata") or {})
+        unknown = {k: v for k, v in data.items() if k not in known_keys}
+        merged_metadata = {**base_metadata, **unknown} if unknown else base_metadata
+
+        # Resolve on_stage_failure with default
+        raw_fm_val = data.get("on_stage_failure", FailureMode.ABORT.value)
+        failure_mode = FailureMode(raw_fm_val) if isinstance(raw_fm_val, str) else FailureMode.ABORT
+
         return cls(
             stages=resolved_stages,
             source_language=data["source_language"],
             target_language=data.get("target_language"),
-            per_segment_language=data.get("per_segment_language", False),
-            on_stage_failure=FailureMode(data.get("on_stage_failure", FailureMode.ABORT.value)),
+            per_segment_language=bool(data.get("per_segment_language", False)),
+            on_stage_failure=failure_mode,
             name=data.get("name"),
             description=data.get("description"),
-            metadata=data.get("metadata", {}),
+            metadata=merged_metadata,
         )
 
     def __repr__(self) -> str:

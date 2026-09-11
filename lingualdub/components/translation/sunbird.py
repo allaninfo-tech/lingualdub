@@ -61,6 +61,7 @@ class SunbirdTranslationComponent(TranslationComponent):
         self.model_name_or_path = model_name_or_path
         self.source_language = source_language
         self.target_language = target_language
+        # justified: external provider API key (SUNBIRD_API_KEY) is not framework config; read directly for backward compat.
         self.api_key = api_key or os.environ.get("SUNBIRD_API_KEY")
         self.use_api = use_api
         self.device = device
@@ -75,7 +76,7 @@ class SunbirdTranslationComponent(TranslationComponent):
                 import torch
                 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
             except ImportError as exc:
-                raise RuntimeError(
+                raise RuntimeError(  # justified: missing optional heavy dependency (torch/transformers) — not a framework error
                     "SunbirdTranslationComponent requires 'transformers' and 'torch'. "
                     "Install with: pip install torch transformers"
                 ) from exc
@@ -107,7 +108,9 @@ class SunbirdTranslationComponent(TranslationComponent):
     def _translate_api(self, texts: list[str]) -> list[str]:
         """Translate via Sunbird AI cloud API."""
         if not self.api_key:
-            raise ValueError("Sunbird API translation requires an API key in SUNBIRD_API_KEY.")
+            raise ValueError(  # justified: component input validation
+                "Sunbird API translation requires an API key in SUNBIRD_API_KEY."
+            )  # justified: component input validation — not a framework config error
 
         api_url = "https://api.sunbird.ai/tasks/nmt"
         headers = {
@@ -134,7 +137,7 @@ class SunbirdTranslationComponent(TranslationComponent):
 
     def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result):
-            raise ValueError(
+            raise ValueError(  # justified: component input validation — not a framework config error
                 f"SunbirdTranslationComponent expects a Result input, got {type(input).__name__}"
             )
 

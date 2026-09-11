@@ -48,7 +48,7 @@ def ensure_consent(input_obj: Resource | Result, component_name: str) -> None:
     """
     if isinstance(input_obj, Resource):
         if not has_valid_consent(input_obj.provenance):
-            raise ValueError(
+            raise ValueError(  # justified: component input validation — not a framework config error
                 f"{component_name}: Resource {input_obj.id!r} lacks a valid 'consent_basis' "
                 "in provenance. Voice data must carry a recorded consent basis to be processed. "
                 "Add provenance={'consent_basis': '...'} to the Resource."
@@ -68,7 +68,7 @@ def ensure_consent(input_obj: Resource | Result, component_name: str) -> None:
                     has_consent = True
                     break
         if has_voice and not has_consent:
-            raise ValueError(
+            raise ValueError(  # justified: component input validation — not a framework config error
                 f"{component_name}: Result lacks valid 'consent_basis' in provenance. "
                 "Voice-derived Results must carry provenance={'consent_basis': '...'} "
                 "to be processed. Ensure the source Resource had consent and that "

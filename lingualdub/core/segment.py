@@ -119,7 +119,9 @@ class Segment:
         valid_fields = set(self.__dataclass_fields__.keys())
         for k in changes:
             if k not in valid_fields:
-                raise TypeError(f"Segment.replace() got unexpected field {k!r}")
+                raise TypeError(  # justified: Python type contract for unexpected replace field
+                    f"Segment.replace() got unexpected field {k!r}"
+                )
 
         # Use dataclasses.replace which bypasses frozen __setattr__ via object.__setattr__
         new_obj = dc_replace(self, **changes)

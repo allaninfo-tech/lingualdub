@@ -70,12 +70,18 @@ class ResourceManager:
     @staticmethod
     def _sanitize_part(value: str, label: str) -> str:
         """Validate a path part does not contain traversal or separators."""
+        from lingualdub.exceptions import ConfigurationValidationError
+
         if not value or not value.strip():
-            raise ValueError(f"{label} must be a non-empty string.")
+            raise ConfigurationValidationError(f"{label} must be a non-empty string.", field=label)
         if "/" in value or "\\" in value or ".." in value:
-            raise ValueError(f"{label} {value!r} must not contain path separators or '..'.")
+            raise ConfigurationValidationError(
+                f"{label} {value!r} must not contain path separators or '..'.", field=label
+            )
         if Path(value).is_absolute():
-            raise ValueError(f"{label} {value!r} must not be absolute.")
+            raise ConfigurationValidationError(
+                f"{label} {value!r} must not be absolute.", field=label
+            )
         return value
 
     def get(
@@ -120,8 +126,11 @@ class ResourceManager:
         try:
             local_path.resolve().relative_to(self.cache_dir.resolve())
         except ValueError as exc:
-            raise ValueError(
-                f"Resolved path {local_path!r} escapes cache directory {self.cache_dir!r}."
+            from lingualdub.exceptions import ConfigurationValidationError
+
+            raise ConfigurationValidationError(
+                f"Resolved path {local_path!r} escapes cache directory {self.cache_dir!r}.",
+                field="cache_dir",
             ) from exc
 
         # Fast path: already cached and verified
@@ -182,7 +191,10 @@ class ResourceManager:
         try:
             p.resolve().relative_to(self.cache_dir.resolve())
         except ValueError as exc:
-            raise ValueError(
-                f"Resolved path {p!r} escapes cache directory {self.cache_dir!r}."
+            from lingualdub.exceptions import ConfigurationValidationError
+
+            raise ConfigurationValidationError(
+                f"Resolved path {p!r} escapes cache directory {self.cache_dir!r}.",
+                field="cache_dir",
             ) from exc
         return p
