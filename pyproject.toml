@@ -111,7 +111,7 @@ where = ["."]
 include = ["lingualdub*"]
 
 [tool.setuptools.package-data]
-lingualdub = ["py.typed", "lingualdub.manifest.json"]
+lingualdub = ["py.typed", "lingualdub.manifest.json", "registry/manifest_schema.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

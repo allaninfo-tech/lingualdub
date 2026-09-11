@@ -1,0 +1,90 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://lingualdub.pages.dev/schemas/manifest.json",
+  "title": "LingualDub Extension Manifest",
+  "description": "Schema for lingualdub.manifest.json — extension registration manifest.",
+  "type": "object",
+  "required": ["name", "version", "entries"],
+  "additionalProperties": true,
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Extension package name (e.g. \"lingualdub-core\", \"my-plugin\").",
+      "pattern": "^[a-zA-Z0-9._-]+$"
+    },
+    "version": {
+      "type": "string",
+      "description": "Extension version as MAJOR.MINOR.PATCH (e.g. \"1.0.0\").",
+      "pattern": "^\\d+\\.\\d+(\\.\\d+)?$"
+    },
+    "description": {
+      "type": "string"
+    },
+    "author": {
+      "type": "string"
+    },
+    "entries": {
+      "type": "array",
+      "description": "List of registrations contributed by this extension.",
+      "items": {
+        "type": "object",
+        "required": ["kind", "key", "module", "attr", "version"],
+        "additionalProperties": false,
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["component", "language", "resource", "evaluator"],
+            "description": "Registration category."
+          },
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Unique key within kind (e.g. \"whisper_asr\", \"lug\")."
+          },
+          "module": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Dotted Python module path (e.g. \"lingualdub.components.asr.whisper\").",
+            "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*(\\.[a-zA-Z_][a-zA-Z0-9_]*)*$"
+          },
+          "attr": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Attribute name within module (e.g. \"WhisperASRComponent\").",
+            "pattern": "^[a-zA-Z_][a-zA-Z0-9_]*$"
+          },
+          "version": {
+            "type": "string",
+            "description": "Registration version as MAJOR.MINOR.PATCH.",
+            "pattern": "^\\d+\\.\\d+(\\.\\d+)?$"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "Optional free-form metadata. For components, 'task' must be a valid ComponentTask when present.",
+            "additionalProperties": true,
+            "properties": {
+              "task": {
+                "type": "string",
+                "enum": [
+                  "asr",
+                  "translation",
+                  "tts",
+                  "alignment",
+                  "speaker",
+                  "code_switch",
+                  "adaptation",
+                  "eval",
+                  "preprocessing",
+                  "video",
+                  "other"
+                ],
+                "description": "Component task. Must be a valid ComponentTask value."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

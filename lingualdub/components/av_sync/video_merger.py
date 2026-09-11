@@ -191,7 +191,7 @@ class VideoMergerComponent(Component):
 
     name: str = "video_merger"
     version: str = "1.0.0"
-    task: ComponentTask = ComponentTask.OTHER
+    task: ComponentTask = ComponentTask.VIDEO
     supported_languages: list[str] = ["lug", "nyn", "eng", "swa"]
     requires: list[str] = ["synthesised_audio"]
     provides: list[str] = ["dubbed_video"]

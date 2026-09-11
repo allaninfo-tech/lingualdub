@@ -36,6 +36,7 @@ class ComponentTask(str, Enum):
     ADAPTATION = "adaptation"
     EVAL = "eval"
     PREPROCESSING = "preprocessing"
+    VIDEO = "video"
     OTHER = "other"
 
 

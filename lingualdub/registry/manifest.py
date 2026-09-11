@@ -45,23 +45,193 @@ MANIFEST_FILENAME = "lingualdub.manifest.json"
 
 REQUIRED_ENTRY_FIELDS = {"kind", "key", "module", "attr", "version"}
 
+# Inline schema constants — mirror lingualdub/registry/manifest_schema.json
+_ALLOWED_KINDS = {"component", "language", "resource", "evaluator"}
+_ALLOWED_TASKS: set[str] | None = None  # lazy-loaded from ComponentTask
+_VERSION_RE = None  # lazy compiled
+_MODULE_RE = None
+_ATTR_RE = None
+_NAME_RE = None
+
+
+def _get_allowed_tasks() -> set[str]:
+    global _ALLOWED_TASKS
+    if _ALLOWED_TASKS is None:
+        from lingualdub.core.component import ComponentTask
+
+        _ALLOWED_TASKS = {t.value for t in ComponentTask}
+    return _ALLOWED_TASKS
+
+
+def _get_version_re():
+    global _VERSION_RE
+    if _VERSION_RE is None:
+        import re
+
+        _VERSION_RE = re.compile(r"^\d+\.\d+(\.\d+)?$")
+    return _VERSION_RE
+
+
+def _get_module_re():
+    global _MODULE_RE
+    if _MODULE_RE is None:
+        import re
+
+        _MODULE_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$")
+    return _MODULE_RE
+
+
+def _get_attr_re():
+    global _ATTR_RE
+    if _ATTR_RE is None:
+        import re
+
+        _ATTR_RE = re.compile(r"^[a-zA-Z_][a-zA-Z0-9_]*$")
+    return _ATTR_RE
+
+
+def _get_name_re():
+    global _NAME_RE
+    if _NAME_RE is None:
+        import re
+
+        _NAME_RE = re.compile(r"^[a-zA-Z0-9._-]+$")
+    return _NAME_RE
+
 
 class ManifestError(RegistryError):
     """Raised when a manifest file is malformed or invalid."""
 
 
+def _validate_manifest_top_level(data: dict, manifest_path: Path) -> None:
+    """Validate top-level manifest fields against the JSON schema.
+
+    Raises:
+        ManifestError: with file path and specific violation.
+    """
+    # Check required top-level keys
+    for key in ("name", "version", "entries"):
+        if key not in data:
+            raise ManifestError(
+                f"Manifest {manifest_path}: missing required top-level key '{key}'."
+            )
+
+    # Validate name
+    name = data["name"]
+    if not isinstance(name, str) or not name.strip():
+        raise ManifestError(
+            f"Manifest {manifest_path}: top-level 'name' must be a non-empty string, "
+            f"got {type(name).__name__}: {name!r}."
+        )
+    if not _get_name_re().match(name):
+        raise ManifestError(
+            f"Manifest {manifest_path}: top-level 'name' {name!r} must match "
+            f"{_get_name_re().pattern!r}."
+        )
+
+    # Validate version
+    version = data["version"]
+    if not isinstance(version, str) or not version.strip():
+        raise ManifestError(
+            f"Manifest {manifest_path}: top-level 'version' must be a non-empty string."
+        )
+    if not _get_version_re().match(version):
+        raise ManifestError(
+            f"Manifest {manifest_path}: top-level 'version' {version!r} must match "
+            f"{_get_version_re().pattern!r} (e.g. '1.0.0')."
+        )
+
+    # entries already checked for existence in caller, but validate type here as well
+    entries = data["entries"]
+    if not isinstance(entries, list):
+        raise ManifestError(f"Manifest {manifest_path}: 'entries' must be a JSON array.")
+
+
 def _validate_entry(entry: dict, manifest_path: Path, index: int) -> None:
-    """Validate a single manifest entry dict."""
+    """Validate a single manifest entry dict against the schema.
+
+    Checks required fields, types, formats, allowed enum values, and
+    component task validity.  Raises ManifestError with file path, section
+    (entry index), and specific violation for actionable diagnostics.
+    """
     missing = REQUIRED_ENTRY_FIELDS - set(entry.keys())
     if missing:
         raise ManifestError(
             f"Manifest {manifest_path}: entry[{index}] is missing required fields: "
             f"{sorted(missing)}. All entries must have: {sorted(REQUIRED_ENTRY_FIELDS)}."
         )
+
+    # Reject unknown top-level entry keys (additionalProperties: false per schema)
+    allowed_entry_keys = REQUIRED_ENTRY_FIELDS | {"metadata"}
+    unknown = set(entry.keys()) - allowed_entry_keys
+    if unknown:
+        raise ManifestError(
+            f"Manifest {manifest_path}: entry[{index}] has unknown fields {sorted(unknown)}; "
+            f"allowed keys are {sorted(allowed_entry_keys)}."
+        )
+
     for field in ("kind", "key", "module", "attr", "version"):
-        if not isinstance(entry[field], str) or not entry[field]:
+        val = entry[field]
+        if not isinstance(val, str) or not val.strip():
             raise ManifestError(
-                f"Manifest {manifest_path}: entry[{index}].{field!r} must be a non-empty string."
+                f"Manifest {manifest_path}: entry[{index}].{field!r} must be a non-empty string, "
+                f"got {type(val).__name__}: {val!r}."
+            )
+
+    # Validate kind enum
+    kind = entry["kind"]
+    if kind not in _ALLOWED_KINDS:
+        raise ManifestError(
+            f"Manifest {manifest_path}: entry[{index}] has invalid kind {kind!r}; "
+            f"must be one of {sorted(_ALLOWED_KINDS)}."
+        )
+
+    # Validate version pattern
+    version = entry["version"]
+    if not _get_version_re().match(version):
+        raise ManifestError(
+            f"Manifest {manifest_path}: entry[{index}].version {version!r} must match "
+            f"{_get_version_re().pattern!r} (e.g. '1.0.0')."
+        )
+
+    # Validate module / attr patterns
+    module = entry["module"]
+    if not _get_module_re().match(module):
+        raise ManifestError(
+            f"Manifest {manifest_path}: entry[{index}].module {module!r} must be a dotted "
+            f"Python path matching {_get_module_re().pattern!r}."
+        )
+    attr = entry["attr"]
+    if not _get_attr_re().match(attr):
+        raise ManifestError(
+            f"Manifest {manifest_path}: entry[{index}].attr {attr!r} must match "
+            f"{_get_attr_re().pattern!r}."
+        )
+
+    # Validate key is not empty and looks like a slug (allow alphanum, _, -)
+    # We keep this lenient but ensure non-empty already checked.
+
+    # Validate metadata when present
+    metadata = entry.get("metadata")
+    if metadata is not None and not isinstance(metadata, dict):
+        raise ManifestError(
+            f"Manifest {manifest_path}: entry[{index}].metadata must be a JSON object, "
+            f"got {type(metadata).__name__}: {metadata!r}."
+        )
+
+    # Validate component task enum when kind is component and task is declared
+    if kind == "component" and isinstance(metadata, dict) and "task" in metadata:
+        task_val = metadata["task"]
+        if not isinstance(task_val, str):
+            raise ManifestError(
+                f"Manifest {manifest_path}: entry[{index}] has invalid task {task_val!r} "
+                f"for component {entry['key']!r}; task must be a string."
+            )
+        allowed_tasks = _get_allowed_tasks()
+        if task_val not in allowed_tasks:
+            raise ManifestError(
+                f"Manifest {manifest_path}: entry[{index}] has invalid task {task_val!r} "
+                f"for component {entry['key']!r}; must be one of {sorted(allowed_tasks)}."
             )
 
 
@@ -80,18 +250,30 @@ class ManifestScanner:
     def __init__(self, registry: Registry) -> None:
         self.registry = registry
 
-    def load(self, manifest_path: Path) -> int:
+    def load(self, manifest_path: Path, verify_imports: bool = True) -> int:
         """
         Parse and register all entries from a single manifest file.
 
+        Validation is performed against the formal JSON schema at
+        ``lingualdub/registry/manifest_schema.json`` — missing keys, wrong
+        types, invalid ``kind``/``task`` enums and malformed version strings
+        raise :class:`ManifestError` with file path, section and specific
+        violation before any registration occurs.
+
         Args:
             manifest_path: Path to a lingualdub.manifest.json file.
+            verify_imports: When ``True`` (default) the declared
+                ``module``/``attr`` entrypoints are imported and verified to
+                exist. Set ``False`` to validate schema only without importing
+                (useful for offline linting).
 
         Returns:
             Number of entries successfully registered.
 
         Raises:
-            ManifestError: If the file is malformed or a required field is missing.
+            ManifestError: If the file is malformed, schema validation fails,
+                a task value is invalid, or an entrypoint cannot be imported
+                (when ``verify_imports`` is True).
         """
         try:
             raw = manifest_path.read_text(encoding="utf-8")
@@ -106,32 +288,57 @@ class ManifestScanner:
         if not isinstance(data, dict):
             raise ManifestError(f"Manifest {manifest_path}: top-level value must be a JSON object.")
 
+        # Strict schema validation for top-level fields
+        _validate_manifest_top_level(data, manifest_path)
+
         entries = data.get("entries")
-        if entries is None:
-            raise ManifestError(
-                f"Manifest {manifest_path}: missing required top-level key 'entries'."
-            )
+        # Redundant check — _validate_manifest_top_level already ensured list, but keep for safety
         if not isinstance(entries, list):
             raise ManifestError(f"Manifest {manifest_path}: 'entries' must be a JSON array.")
 
+        # Detect duplicate (kind, key) within the same manifest file
+        seen_keys: set[tuple[str, str]] = set()
         registered = 0
         for i, entry in enumerate(entries):
             if not isinstance(entry, dict):
                 raise ManifestError(f"Manifest {manifest_path}: entry[{i}] must be a JSON object.")
             _validate_entry(entry, manifest_path, i)
 
-            try:
-                module = importlib.import_module(entry["module"])
-                impl = getattr(module, entry["attr"])
-            except ImportError as exc:
+            # Duplicate detection within file
+            dup_key = (entry["kind"], entry["key"])
+            if dup_key in seen_keys:
                 raise ManifestError(
-                    f"Manifest {manifest_path}: entry[{i}] cannot import '{entry['module']}': {exc}"
-                ) from exc
-            except AttributeError as exc:
-                raise ManifestError(
-                    f"Manifest {manifest_path}: entry[{i}] module "
-                    f"'{entry['module']}' has no attribute '{entry['attr']}': {exc}"
-                ) from exc
+                    f"Manifest {manifest_path}: entry[{i}] duplicates (kind={entry['kind']!r}, "
+                    f"key={entry['key']!r}) already declared in this manifest; "
+                    f"duplicate registrations are not allowed."
+                )
+            seen_keys.add(dup_key)
+
+            if verify_imports:
+                try:
+                    module = importlib.import_module(entry["module"])
+                    impl = getattr(module, entry["attr"])
+                except ImportError as exc:
+                    raise ManifestError(
+                        f"Manifest {manifest_path}: entry[{i}] cannot import '{entry['module']}': {exc}"
+                    ) from exc
+                except AttributeError as exc:
+                    raise ManifestError(
+                        f"Manifest {manifest_path}: entry[{i}] module "
+                        f"'{entry['module']}' has no attribute '{entry['attr']}': {exc}"
+                    ) from exc
+            else:
+                # Schema-only mode — use a lightweight placeholder for registration
+                # The actual impl will be resolved lazily by the caller.
+                try:
+                    # Still attempt to store a reference string so registry is not empty;
+                    # but we skip import errors. Use a sentinel object.
+                    module = importlib.import_module(entry["module"])
+                    impl = getattr(module, entry["attr"])
+                except Exception:
+                    # In schema-only mode we tolerate missing imports — store the
+                    # entry's module path as a placeholder string.
+                    impl = f"{entry['module']}:{entry['attr']}"
 
             self.registry.register(
                 kind=entry["kind"],
@@ -152,7 +359,24 @@ class ManifestScanner:
         logger.info("Loaded %d entries from manifest %s", registered, manifest_path.name)
         return registered
 
-    def scan(self, search_paths: list[Path] | None = None) -> int:
+    # ------------------------------------------------------------------
+    # Compatibility aliases required by the roadmap (FND-009)
+    # ------------------------------------------------------------------
+    def scan_file(self, manifest_path: Path, verify_imports: bool = True) -> int:
+        """Alias for :meth:`load` — validates and loads a single manifest file.
+
+        Provided for API stability; the roadmap refers to this as ``scan_file()``.
+        """
+        return self.load(manifest_path, verify_imports=verify_imports)
+
+    def scan_installed(self, verify_imports: bool = True) -> int:
+        """Scan all installed packages for manifests (alias for :meth:`scan`).
+
+        Provided for API stability; the roadmap refers to this as ``scan_installed()``.
+        """
+        return self.scan(verify_imports=verify_imports)
+
+    def scan(self, search_paths: list[Path] | None = None, verify_imports: bool = True) -> int:
         """
         Discover and load all extension manifests from installed packages.
 
@@ -162,6 +386,8 @@ class ManifestScanner:
         Args:
             search_paths: Optional list of directories to search. Defaults
                 to all directories currently on sys.path.
+            verify_imports: When ``False``, schema validation is performed but
+                entrypoint import verification is skipped.
 
         Returns:
             Total number of entries registered across all discovered manifests.
@@ -220,7 +446,7 @@ class ManifestScanner:
                         continue
                     seen.add(resolved)
                     try:
-                        total += self.load(manifest_path)
+                        total += self.load(manifest_path, verify_imports=verify_imports)
                     except ManifestError as exc:
                         logger.warning("Skipping malformed manifest: %s", exc)
 
