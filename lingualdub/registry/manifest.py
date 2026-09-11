@@ -36,6 +36,7 @@ import json
 import logging
 from pathlib import Path
 
+from lingualdub.exceptions import RegistryError
 from lingualdub.registry.registry import Registry
 
 logger = logging.getLogger(__name__)
@@ -45,7 +46,7 @@ MANIFEST_FILENAME = "lingualdub.manifest.json"
 REQUIRED_ENTRY_FIELDS = {"kind", "key", "module", "attr", "version"}
 
 
-class ManifestError(Exception):
+class ManifestError(RegistryError):
     """Raised when a manifest file is malformed or invalid."""
 
 

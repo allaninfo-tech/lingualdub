@@ -22,12 +22,13 @@ from lingualdub.core.pipeline import Pipeline
 from lingualdub.core.resource import Resource
 from lingualdub.core.result import Result
 from lingualdub.core.segment import Segment
+from lingualdub.exceptions import StageExecutionError as _BaseStageExecutionError
 from lingualdub.utils.provenance import make_provenance
 
 logger = logging.getLogger(__name__)
 
 
-class PipelineExecutionError(Exception):
+class PipelineExecutionError(_BaseStageExecutionError):
     """Raised when a pipeline stage fails under ABORT mode."""
 
 

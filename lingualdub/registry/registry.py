@@ -17,6 +17,8 @@ from collections import defaultdict
 from enum import Enum
 from typing import Any
 
+from lingualdub.exceptions import RegistryError as _BaseRegistryError
+
 
 def _version_tuple(version_str: str) -> tuple:
     """Convert a version string like '1.2.3' to a comparable tuple of ints."""
@@ -41,7 +43,7 @@ class ConflictPolicy(str, Enum):
     EXPLICIT = "explicit"
 
 
-class RegistryError(Exception):
+class RegistryError(_BaseRegistryError):
     """Raised when a registry operation cannot be completed."""
 
 

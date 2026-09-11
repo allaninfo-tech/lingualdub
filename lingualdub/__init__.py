@@ -14,6 +14,25 @@ from lingualdub.core.pipeline import Pipeline
 from lingualdub.core.resource import Resource, ResourceKind
 from lingualdub.core.result import Result, ResultStatus
 from lingualdub.core.segment import Segment
+from lingualdub.exceptions import (
+    ComponentContractError,
+    ComponentError,
+    ConfigurationError,
+    ConfigurationValidationError,
+    ConsentViolationError,
+    InitializationError,
+    InternalError,
+    LifecycleError,
+    LingualDubError,
+    PipelineError,
+    RegistrationConflictError,
+    ResolutionError,
+    ResourceError,
+    ResourceLoadError,
+    ShutdownError,
+    StageCompatibilityError,
+    StageExecutionError,
+)
 from lingualdub.pipeline.config_loader import ConfigLoader
 from lingualdub.pipeline.executor import PipelineExecutionError, PipelineExecutor
 from lingualdub.registry.manifest import ManifestError, ManifestScanner
@@ -59,4 +78,22 @@ __all__ = [
     "make_provenance",
     "compare_runs",
     "ProvenanceMismatchError",
+    # Exception Hierarchy
+    "LingualDubError",
+    "ConfigurationError",
+    "ConfigurationValidationError",
+    "LifecycleError",
+    "InitializationError",
+    "ShutdownError",
+    "PipelineError",
+    "StageCompatibilityError",
+    "StageExecutionError",
+    "RegistrationConflictError",
+    "ResolutionError",
+    "ComponentError",
+    "ComponentContractError",
+    "ResourceError",
+    "ResourceLoadError",
+    "ConsentViolationError",
+    "InternalError",
 ]

@@ -18,15 +18,18 @@ import threading
 import uuid
 from pathlib import Path
 
+from lingualdub.exceptions import ResourceLoadError as _BaseResourceLoadError
+from lingualdub.exceptions import ResourceNotFoundError as _BaseResourceNotFoundError
+
 DEFAULT_CACHE_DIR = Path.home() / ".cache" / "lingualdub"
 ENV_CACHE_DIR = "LINGUALDUB_CACHE_DIR"
 
 
-class ChecksumError(Exception):
+class ChecksumError(_BaseResourceLoadError):
     """Raised when a downloaded or cached file does not match its expected SHA256 checksum."""
 
 
-class ResourceNotFoundError(Exception):
+class ResourceNotFoundError(_BaseResourceNotFoundError):
     """Raised when a required resource is not available locally and cannot be downloaded."""
 
 

@@ -15,9 +15,10 @@ from pathlib import Path
 from typing import Any
 
 from lingualdub.core.result import Result
+from lingualdub.exceptions import ComponentContractError as _BaseComponentContractError
 
 
-class ProvenanceMismatchError(Exception):
+class ProvenanceMismatchError(_BaseComponentContractError):
     """Raised when comparing two runs that do not share the same evaluation baseline."""
 
 
