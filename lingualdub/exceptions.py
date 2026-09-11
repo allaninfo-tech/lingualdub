@@ -127,8 +127,12 @@ class ConfigurationError(LingualDubError):
     """
 
 
-class ConfigurationValidationError(ConfigurationError):
+class ConfigurationValidationError(ConfigurationError, ValueError):
     """Raised when a configuration field value fails validation.
+
+    Inherits from both :class:`ConfigurationError` (framework hierarchy) and
+    :class:`ValueError` for backward compatibility — existing callers that
+    ``except ValueError`` will continue to catch validation failures.
 
     Args:
         message: Human-readable description, ideally naming the field and

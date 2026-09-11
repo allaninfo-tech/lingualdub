@@ -49,12 +49,17 @@ class DummyTranslationComponent(TranslationComponent):
         default_translation: str | None = None,
         version: str = "1.0.0",
     ) -> None:
+        from lingualdub.utils.validation import validate_language_code
+
+        validate_language_code(source_language)
+        validate_language_code(target_language)
         self.source_language = source_language
         self.target_language = target_language
         self.prefix = prefix
         self.custom_dictionary = custom_dictionary or {}
         self.default_translation = default_translation
         self.version = version
+        super().__init__()
 
     def _translate_text(self, text: str) -> str:
         if self.default_translation is not None:

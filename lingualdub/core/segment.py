@@ -15,6 +15,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from lingualdub.utils.validation import (
+    require_non_empty_string,
+    validate_language_code,
+)
+
 
 @dataclass
 class Segment:
@@ -45,10 +50,36 @@ class Segment:
     metadata: dict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        # Use centralized validators; keep original semantics but raise
+        # ConfigurationValidationError (which also is ValueError for compat).
+        from lingualdub.exceptions import ConfigurationValidationError
+
         if self.start < 0:
-            raise ValueError("Segment.start must be >= 0.")
+            raise ConfigurationValidationError(
+                f"Field 'start' must be >= 0, got {self.start!r}.", field="start"
+            )
         if self.end < self.start:
-            raise ValueError("Segment.end must be >= Segment.start.")
+            raise ConfigurationValidationError(
+                f"Field 'end' must be >= start ({self.start!r}), got {self.end!r}.",
+                field="end",
+            )
+        # Validate core string fields via shared helper
+        if self.text:
+            require_non_empty_string(self.text, "text")
+        require_non_empty_string(self.language, "language")
+        validate_language_code(self.language)
+        # confidence if provided must be in [0,1]
+        if self.confidence is not None:
+            if not isinstance(self.confidence, (int, float)) or isinstance(self.confidence, bool):
+                raise ConfigurationValidationError(
+                    f"Field 'confidence' must be a number in [0, 1], got {type(self.confidence).__name__}: {self.confidence!r}.",
+                    field="confidence",
+                )
+            if not (0.0 <= float(self.confidence) <= 1.0):
+                raise ConfigurationValidationError(
+                    f"Field 'confidence' must be in [0, 1], got {self.confidence!r}.",
+                    field="confidence",
+                )
 
     @property
     def duration(self) -> float:

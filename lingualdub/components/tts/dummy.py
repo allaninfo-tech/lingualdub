@@ -51,6 +51,9 @@ class DummyTTSComponent(TTSComponent):
         version: str = "1.0.0",
         require_duration_target: bool = False,
     ) -> None:
+        from lingualdub.utils.validation import require_positive_number
+
+        require_positive_number(sample_rate, "sample_rate")
         self.output_dir = (
             Path(output_dir) if output_dir else Path(tempfile.gettempdir()) / "lingualdub_dummy_tts"
         )
@@ -59,6 +62,7 @@ class DummyTTSComponent(TTSComponent):
         self.requires = (
             ["translation", "duration_target"] if require_duration_target else ["translation"]
         )
+        super().__init__()
 
     def run(self, input: Result | Resource) -> Result:
         if not isinstance(input, Result):

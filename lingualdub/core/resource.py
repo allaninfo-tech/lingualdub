@@ -15,6 +15,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 
+from lingualdub.utils.validation import (
+    require_non_empty_string,
+    validate_language_code,
+    validate_version_string,
+)
+
 
 class ResourceKind(str, Enum):
     """Enumeration of supported resource types."""
@@ -62,10 +68,11 @@ class Resource:
     metadata: dict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        if not self.id:
-            raise ValueError("Resource.id must not be empty.")
-        if not self.language:
-            raise ValueError("Resource.language must not be empty.")
+        require_non_empty_string(self.id, "id")
+        require_non_empty_string(self.language, "language")
+        require_non_empty_string(self.version, "version")
+        validate_language_code(self.language)
+        validate_version_string(self.version)
 
     @property
     def has_consent(self) -> bool:

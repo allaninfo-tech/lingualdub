@@ -15,6 +15,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from lingualdub.utils.validation import require_non_empty_string, validate_language_code
+
 
 @dataclass
 class Language:
@@ -48,10 +50,14 @@ class Language:
     metadata: dict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        if not self.code:
-            raise ValueError("Language.code must not be empty.")
-        if not self.name:
-            raise ValueError("Language.name must not be empty.")
+        require_non_empty_string(self.code, "code")
+        require_non_empty_string(self.name, "name")
+        # Validate language code format (2–3 letters). Uses centered helper so
+        # callers get ConfigurationValidationError instead of bare ValueError.
+        validate_language_code(self.code)
+        # family and resource_profile are descriptive but should be non-empty
+        require_non_empty_string(self.family, "family")
+        require_non_empty_string(self.resource_profile, "resource_profile")
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize this Language to a JSON-compatible dictionary."""

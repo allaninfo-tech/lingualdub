@@ -37,11 +37,21 @@ class DummyASRComponent(ASRComponent):
         confidence: float = 0.95,
         version: str = "1.0.0",
     ) -> None:
+        from lingualdub.utils.validation import (
+            require_non_empty_string,
+            require_positive_number,
+            validate_language_code,
+        )
+
+        require_non_empty_string(default_text, "default_text")
+        validate_language_code(language)
+        require_positive_number(duration, "duration")
         self.default_text = default_text
         self.language = language
         self.duration = duration
         self.confidence = confidence
         self.version = version
+        super().__init__()
 
     def run(self, input: Result | Resource) -> Result:
         source_lang = getattr(input, "language", None) or self.language

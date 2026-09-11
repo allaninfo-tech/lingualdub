@@ -18,6 +18,11 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from lingualdub.core.component import FailureMode
+from lingualdub.utils.validation import (
+    require_non_empty_string,
+    require_not_none,
+    validate_language_code,
+)
 
 if TYPE_CHECKING:
     from lingualdub.core.protocols import ComponentProtocol
@@ -51,10 +56,18 @@ class Pipeline:
     metadata: dict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        require_not_none(self.stages, "stages")
         if not self.stages:
-            raise ValueError("Pipeline must have at least one stage.")
-        if not self.source_language:
-            raise ValueError("Pipeline.source_language must not be empty.")
+            from lingualdub.exceptions import ConfigurationValidationError
+
+            raise ConfigurationValidationError(
+                "Pipeline must have at least one stage.", field="stages"
+            )
+        require_non_empty_string(self.source_language, "source_language")
+        validate_language_code(self.source_language)
+        if self.target_language is not None:
+            require_non_empty_string(self.target_language, "target_language")
+            validate_language_code(self.target_language)
         self._validate_stage_compatibility()
 
     def _validate_stage_compatibility(self) -> None:

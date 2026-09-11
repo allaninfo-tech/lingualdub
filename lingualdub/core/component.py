@@ -77,6 +77,19 @@ class Component(ABC):
     provides: list[str] = []
     on_failure: FailureMode | None = None
 
+    def __init__(self, *args, **kwargs) -> None:
+        # Centralised contract validation for every component instance.
+        # Subclasses that override __init__ must call super().__init__() to
+        # trigger this check (enforced via __init_subclass__ wrapper as fallback).
+        from lingualdub.utils.validation import require_non_empty_string, validate_version_string
+
+        # Only validate concrete subclasses, not the abstract base itself
+        if self.__class__ is not Component:
+            # name / version are required contract fields
+            require_non_empty_string(getattr(self, "name", None), "name")
+            require_non_empty_string(getattr(self, "version", None), "version")
+            validate_version_string(getattr(self, "version", None))
+
     @abstractmethod
     def run(self, input: Result | Resource) -> Result:
         """
