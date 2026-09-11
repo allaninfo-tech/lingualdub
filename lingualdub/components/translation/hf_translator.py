@@ -8,6 +8,7 @@ Hugging Face translation adapter for NLLB, M2M100, or Sunbird models.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from lingualdub.components.translation.base import TranslationComponent
 from lingualdub.core.component import ComponentTask, FailureMode
@@ -47,8 +48,8 @@ class HuggingFaceTranslationComponent(TranslationComponent):
         self.device = device
         self.max_length = max_length
         self.version = version
-        self._model = None
-        self._tokenizer = None
+        self._model: Any = None
+        self._tokenizer: Any = None
 
     def _load_model(self) -> None:
         """Lazy load model and tokenizer."""
@@ -86,6 +87,8 @@ class HuggingFaceTranslationComponent(TranslationComponent):
             )
 
         self._load_model()
+        assert self._model is not None, "Model failed to load"
+        assert self._tokenizer is not None, "Tokenizer failed to load"
         try:
             import torch
         except ImportError:

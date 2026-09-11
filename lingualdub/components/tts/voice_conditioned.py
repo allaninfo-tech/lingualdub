@@ -18,6 +18,7 @@ import struct
 import tempfile
 import wave
 from pathlib import Path
+from typing import Any
 
 from lingualdub.components.speaker.embedding import _deterministic_embedding
 from lingualdub.components.tts.base import FittingStrategy, TTSComponent
@@ -165,7 +166,7 @@ class VoiceConditionedTTSComponent(TTSComponent):
         self._registry = registry
         self._voice_resource: Resource | None = None
         self._voice_resource_path: str | None = None
-        self._model = None
+        self._model: Any = None
         # Update requires to include duration_target if requested (for M4 compatibility)
         if require_duration_target:
             self.requires = ["translation", "speaker_embedding", "duration_target"]

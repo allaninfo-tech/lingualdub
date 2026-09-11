@@ -95,15 +95,15 @@ class WhisperASRComponent(ASRComponent):
     def run(self, input: Result | Resource) -> Result:
         # Determine audio path
         audio_path: str | None = None
-        source_lang = self.language
+        source_lang: str = self.language or "und"
 
         if isinstance(input, Resource):
-            source_lang = input.language or self.language
+            source_lang = input.language or self.language or "und"
             audio_path = str(input.path) if input.path else None
             if not audio_path and input.provenance.get("path"):
                 audio_path = str(input.provenance["path"])
         elif isinstance(input, Result):
-            source_lang = input.source_language or self.language
+            source_lang = input.source_language or self.language or "und"
             if input.artifacts:
                 audio_path = input.artifacts[0]
 

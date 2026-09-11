@@ -14,6 +14,7 @@ import json
 import logging
 import os
 import urllib.request
+from typing import Any
 
 from lingualdub.components.translation.base import TranslationComponent
 from lingualdub.core.component import ComponentTask, FailureMode
@@ -64,8 +65,8 @@ class SunbirdTranslationComponent(TranslationComponent):
         self.use_api = use_api
         self.device = device
         self.version = version
-        self._model = None
-        self._tokenizer = None
+        self._model: Any = None
+        self._tokenizer: Any = None
 
     def _load_model(self) -> None:
         """Lazy load Hugging Face model and tokenizer."""
@@ -150,6 +151,8 @@ class SunbirdTranslationComponent(TranslationComponent):
             decoded = self._translate_api(texts)
         else:
             self._load_model()
+            assert self._model is not None, "Model failed to load"
+            assert self._tokenizer is not None, "Tokenizer failed to load"
             from lingualdub.languages.nllb import NLLB_CODE_MAP
 
             src_code = NLLB_CODE_MAP.get(self.source_language, self.source_language)

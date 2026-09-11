@@ -18,6 +18,8 @@ Satisfies M8.2:
 
 from __future__ import annotations
 
+from typing import Any
+
 from lingualdub.components.asr.base import ASRComponent
 from lingualdub.core.component import ComponentTask, FailureMode
 from lingualdub.core.resource import Resource
@@ -80,7 +82,7 @@ class RunyankoleASRComponent(ASRComponent):
         self.use_neural = use_neural
         self.device = device
         self.version = version
-        self._neural_component: object | None = None
+        self._neural_component: Any = None
 
     def _get_neural(self) -> object | None:
         """Lazy-load SunbirdASRComponent for neural execution, if requested."""
@@ -103,7 +105,12 @@ class RunyankoleASRComponent(ASRComponent):
 
     def run(self, input: Result | Resource) -> Result:
         # Determine source language and attempt neural path if enabled
-        source_lang = getattr(input, "language", None) or self.language
+        source_lang = (
+            getattr(input, "language", None)
+            or getattr(input, "source_language", None)
+            or self.language
+            or "und"
+        )
         # Ensure we always emit nyn unless overridden by pipeline
         output_lang = "nyn"
 
@@ -135,7 +142,7 @@ class RunyankoleASRComponent(ASRComponent):
         # Deterministic offline fallback — mirrors DummyASRComponent logic but scoped to nyn
         text = self.default_text
         if isinstance(input, Result) and input.segments:
-            source_lang = input.source_language or self.language
+            source_lang = input.source_language or self.language or "und"
             # Preserve nyn scoping: keep input text if present, but force language nyn
             segments = [
                 Segment(

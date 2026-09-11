@@ -75,6 +75,8 @@ class ConfigLoader:
         if not isinstance(source_lang, str) or not source_lang:
             raise ValueError("Pipeline configuration 'source_language' must be a non-empty string.")
         target_lang = config.get("target_language")
+        if target_lang is not None and not isinstance(target_lang, str):
+            raise ValueError("Pipeline configuration 'target_language' must be a string or null.")
         per_segment = bool(config.get("per_segment_language", False))
         failure_mode_str = str(config.get("on_stage_failure", "abort")).lower()
         try:
@@ -84,7 +86,11 @@ class ConfigLoader:
                 f"Invalid on_stage_failure {failure_mode_str!r}: must be one of {[e.value for e in FailureMode]}."
             ) from exc
         name = config.get("name")
+        if name is not None and not isinstance(name, str):
+            raise ValueError("Pipeline configuration 'name' must be a string or null.")
         description = config.get("description")
+        if description is not None and not isinstance(description, str):
+            raise ValueError("Pipeline configuration 'description' must be a string or null.")
         metadata = config.get("metadata", {})
 
         stages_config = config.get("stages", [])

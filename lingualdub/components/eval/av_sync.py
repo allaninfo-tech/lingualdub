@@ -26,6 +26,7 @@ SpeakerSimilarityEvaluator (components/eval/speaker_similarity.py) patterns:
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from lingualdub.components.eval.base import EvaluatorComponent
 from lingualdub.core.component import ComponentTask, FailureMode
@@ -73,7 +74,7 @@ class AVSyncEvaluator(EvaluatorComponent):
         self._registry = registry
         self._syncnet_resource: Resource | None = None
         self._syncnet_resource_path: str | None = None
-        self._model = None
+        self._model: Any = None
 
     def _load_syncnet_resource(self) -> None:
         """Acquire SyncNet model via Registry/ResourceManager (offline fallback if absent)."""

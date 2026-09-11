@@ -23,6 +23,7 @@ import logging
 import math
 import struct
 from pathlib import Path
+from typing import Any
 
 from lingualdub.components.speaker.base import SpeakerComponent
 from lingualdub.core.component import ComponentTask, FailureMode
@@ -103,7 +104,7 @@ class SpeakerEmbeddingComponent(SpeakerComponent):
         self._registry = registry
         self._speaker_resource: Resource | None = None
         self._speaker_resource_path: str | None = None
-        self._model = None  # Lazy-loaded neural model if available
+        self._model: Any = None  # Lazy-loaded neural model if available
 
     def _load_speaker_resource(self) -> None:
         """Acquire speaker encoder model via Registry and/or ResourceManager."""

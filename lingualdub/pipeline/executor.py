@@ -15,6 +15,7 @@ initial implementation. Non-linear DAG execution is a planned extension.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from lingualdub.core.component import Component, FailureMode
 from lingualdub.core.pipeline import Pipeline
@@ -232,8 +233,9 @@ class PipelineExecutor:
             metadata=dict(current.metadata),
         )
 
-        stage_out = stage.run(sub_result)
+        stage_out: Any = stage.run(sub_result)
         if not isinstance(stage_out, Result):
+            current.mark_partial(f"Stage {stage.name!r} did not return a Result")
             return current
 
         # Recombine processed segments and skipped segments
