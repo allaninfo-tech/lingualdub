@@ -8,6 +8,7 @@ A composable, registry-based framework for building, adapting, composing,
 and evaluating speech-AI systems for low-resource languages.
 """
 
+from lingualdub.config import FrameworkConfig, load_config
 from lingualdub.core.component import Component, ComponentTask, FailureMode
 from lingualdub.core.language import Language
 from lingualdub.core.pipeline import Pipeline
@@ -60,6 +61,9 @@ __all__ = [
     "Result",
     "ResultStatus",
     "Segment",
+    # Configuration
+    "FrameworkConfig",
+    "load_config",
     # Pipeline & Execution
     "PipelineExecutor",
     "PipelineExecutionError",

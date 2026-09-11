@@ -25,6 +25,17 @@ DEFAULT_CACHE_DIR = Path.home() / ".cache" / "lingualdub"
 ENV_CACHE_DIR = "LINGUALDUB_CACHE_DIR"
 
 
+def _resolve_cache_dir_from_env() -> str | None:
+    """Read cache dir via central FrameworkConfig helper to avoid scattered env access."""
+    try:
+        from lingualdub.config import _get_cache_dir_env  # local import to avoid circular
+
+        return _get_cache_dir_env()
+    except Exception:
+        # Fallback to direct env read if config not importable (e.g. during import cycle)
+        return os.environ.get(ENV_CACHE_DIR)
+
+
 class ChecksumError(_BaseResourceLoadError):
     """Raised when a downloaded or cached file does not match its expected SHA256 checksum."""
 
@@ -45,8 +56,9 @@ class ResourceManager:
     """
 
     def __init__(self, cache_dir: Path | None = None) -> None:
-        env_dir = os.environ.get(ENV_CACHE_DIR)
+        env_dir = _resolve_cache_dir_from_env()
         # Explicit cache_dir takes precedence over env var; env var used only as fallback.
+        # Resolution now goes through lingualdub.config._get_cache_dir_env (centralised).
         if cache_dir is not None:
             self.cache_dir = Path(cache_dir)
         elif env_dir:

@@ -45,6 +45,12 @@ The top-level `lingualdub` package exposes the following stable symbols:
 | `ManifestScanner` | Class | File and entrypoint scanner discovering extensions via `lingualdub.manifest.json` |
 | `ManifestError` | Exception | Raised when an extension manifest cannot be found or parsed |
 
+### Configuration
+| Symbol | Type | Description |
+|---|---|---|
+| `FrameworkConfig` | Class | Centralised, validated, immutable framework configuration |
+| `load_config` | Function | Factory that builds a validated `FrameworkConfig` from defaults → env vars → overrides |
+
 ### Utilities & Management
 | Symbol | Type | Description |
 |---|---|---|
