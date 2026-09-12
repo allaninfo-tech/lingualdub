@@ -74,9 +74,22 @@ class ResourceManager:
 
         if not value or not value.strip():
             raise ConfigurationValidationError(f"{label} must be a non-empty string.", field=label)
-        if "/" in value or "\\" in value or ".." in value:
+        # Reject path separators, parent refs, URL-encoded traversal, and absolute
+        if "/" in value or "\\" in value:
             raise ConfigurationValidationError(
-                f"{label} {value!r} must not contain path separators or '..'.", field=label
+                f"{label} {value!r} must not contain path separators.", field=label
+            )
+        if ".." in value or value.startswith("."):
+            raise ConfigurationValidationError(
+                f"{label} {value!r} must not contain '..' or start with '.'.", field=label
+            )
+        if "%2e" in value.lower() or "%2f" in value.lower() or "%5c" in value.lower():
+            raise ConfigurationValidationError(
+                f"{label} {value!r} must not contain URL-encoded traversal.", field=label
+            )
+        if "\x00" in value or ":" in value:
+            raise ConfigurationValidationError(
+                f"{label} {value!r} must not contain null bytes or ':'", field=label
             )
         if Path(value).is_absolute():
             raise ConfigurationValidationError(
@@ -116,11 +129,26 @@ class ResourceManager:
         self._sanitize_part(resource_id, "resource_id")
         self._sanitize_part(version, "version")
         self._sanitize_part(filename, "filename")
-        # Validate URL scheme to prevent SSRF (only http/https allowed)
-        if not (url.startswith("http://") or url.startswith("https://")):
+        # Validate URL scheme and basic SSRF protections
+        from urllib.parse import urlparse as _urlparse
+
+        parsed = _urlparse(url)
+        if parsed.scheme not in ("http", "https"):
             raise ResourceNotFoundError(
                 f"Unsupported URL scheme for {url!r}: only http/https allowed."
             )
+        if not parsed.netloc:
+            raise ResourceNotFoundError(f"URL has no host: {url!r}")
+        # Block private/metadata endpoints
+        host = parsed.hostname or ""
+        blocked_hosts = {"localhost", "127.0.0.1", "::1", "169.254.169.254", "metadata.google.internal"}
+        if host.lower() in blocked_hosts or host.startswith("10.") or host.startswith("192.168."):
+            # Allow if explicitly trusted? For now block
+            raise ResourceNotFoundError(f"Blocked host for SSRF protection: {host!r}")
+        if "@" in parsed.netloc:
+            raise ResourceNotFoundError(f"URL with credentials not allowed: {url!r}")
+        if len(filename) > 255:
+            raise ResourceNotFoundError(f"Filename too long (>255): {filename!r}")
         local_path = self.cache_dir / resource_id / version / filename
         # Ensure resolved path stays within cache_dir
         try:
@@ -133,16 +161,30 @@ class ResourceManager:
                 field="cache_dir",
             ) from exc
 
-        # Fast path: already cached and verified
+        # Fast path: already cached and verified (handle corrupt cache by removing)
         if local_path.exists():
-            self._verify(local_path, checksum)
-            return local_path
+            try:
+                self._verify(local_path, checksum)
+                return local_path
+            except ChecksumError:
+                # Corrupt cache — remove so redownload can proceed
+                try:
+                    local_path.unlink()
+                except OSError:
+                    pass
+                # fall through to download
 
         with self._lock:
             # Double-check inside lock
             if local_path.exists():
-                self._verify(local_path, checksum)
-                return local_path
+                try:
+                    self._verify(local_path, checksum)
+                    return local_path
+                except ChecksumError:
+                    try:
+                        local_path.unlink()
+                    except OSError:
+                        pass
 
             local_path.parent.mkdir(parents=True, exist_ok=True)
             temp_path = local_path.parent / f".tmp_{uuid.uuid4().hex}_{filename}"
@@ -151,19 +193,38 @@ class ResourceManager:
                 # Use urlopen with timeout instead of deprecated urlretrieve; stream to file
                 import urllib.request as _urlrequest
 
+                # Cap download size at 2GB to prevent disk DoS
+                max_bytes = 2 * 1024 * 1024 * 1024
                 req = _urlrequest.Request(url, headers={"User-Agent": "LingualDub/0.1"})
+                total = 0
                 with _urlrequest.urlopen(req, timeout=30) as resp, open(temp_path, "wb") as out:
                     for chunk in iter(lambda: resp.read(8192), b""):
+                        total += len(chunk)
+                        if total > max_bytes:
+                            raise ResourceNotFoundError(f"Download exceeds 2GB limit for {url!r}")
                         out.write(chunk)
                 self._verify(temp_path, checksum)
                 os.replace(temp_path, local_path)
             except ChecksumError:
                 if temp_path.exists():
-                    temp_path.unlink()
+                    try:
+                        temp_path.unlink()
+                    except OSError:
+                        pass
+                raise
+            except (KeyboardInterrupt, SystemExit):
+                if temp_path.exists():
+                    try:
+                        temp_path.unlink()
+                    except OSError:
+                        pass
                 raise
             except Exception as exc:
                 if temp_path.exists():
-                    temp_path.unlink()
+                    try:
+                        temp_path.unlink()
+                    except OSError:
+                        pass
                 raise ResourceNotFoundError(
                     f"Could not download resource {resource_id!r} from {url!r}: {exc}"
                 ) from exc
