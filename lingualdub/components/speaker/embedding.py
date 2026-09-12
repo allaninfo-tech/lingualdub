@@ -97,6 +97,8 @@ class SpeakerEmbeddingComponent(SpeakerComponent):
         registry: object | None = None,
         version: str = "1.0.0",
     ) -> None:
+        super().__init__()
+        self.version = version
         self.model_name_or_path = model_name_or_path or "speechbrain/spkrec-ecapa-voxceleb"
         self.embedding_dim = embedding_dim
         self.version = version
