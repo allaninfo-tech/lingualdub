@@ -233,7 +233,9 @@ class Resource:
         # Type checks for optional collections (reject None explicitly)
         if "provenance" in data and data["provenance"] is None:
             raise SerializationError(
-                "Field 'provenance' must be a dict, got None.", field="provenance", code="RES_DESER_003"
+                "Field 'provenance' must be a dict, got None.",
+                field="provenance",
+                code="RES_DESER_003",
             )
         if "provenance" in data and not isinstance(data["provenance"], dict):
             raise SerializationError(

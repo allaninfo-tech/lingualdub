@@ -290,7 +290,10 @@ def cmd_experiment_run(args: argparse.Namespace) -> int:
                 language=pipeline.source_language,
                 version="1.0.0",
                 path=str(input_video_path),
-                provenance={"consent_basis": "user_provided", "source_video": str(input_video_path)},
+                provenance={
+                    "consent_basis": "user_provided",
+                    "source_video": str(input_video_path),
+                },
             )
     elif args.sample_text:
         input_obj = ld.Result(
@@ -307,7 +310,11 @@ def cmd_experiment_run(args: argparse.Namespace) -> int:
         )
     else:
         # Default placeholder — include synthetic consent for offline voice pipeline testing (flagged as synthetic)
-        prov = {"source": "cli_default", "consent_basis": "research_evaluation", "consent_synthetic": True}
+        prov = {
+            "source": "cli_default",
+            "consent_basis": "research_evaluation",
+            "consent_synthetic": True,
+        }
         if input_video_path:
             prov["source_video"] = str(input_video_path)
         input_obj = ld.Resource(

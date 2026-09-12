@@ -101,7 +101,10 @@ class Component(ABC):
             # If subclass didn't call super().__init__, enforce contract validation here.
             # Component.__init__ validates name/version; we ensure it ran.
             if not getattr(self, "_lingualdub_validated", False):
-                from lingualdub.utils.validation import require_non_empty_string, validate_version_string
+                from lingualdub.utils.validation import (
+                    require_non_empty_string,
+                    validate_version_string,
+                )
 
                 if self.__class__ is not Component:
                     require_non_empty_string(getattr(self, "name", None), "name")

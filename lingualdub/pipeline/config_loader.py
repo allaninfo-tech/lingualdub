@@ -100,14 +100,18 @@ class ConfigLoader:
                 "Pipeline configuration 'target_language' must be a string or null.",
                 field="target_language",
             )
-        if "per_segment_language" in config and not isinstance(config["per_segment_language"], bool):
+        if "per_segment_language" in config and not isinstance(
+            config["per_segment_language"], bool
+        ):
             raise ConfigurationValidationError(
                 f"Field 'per_segment_language' must be a bool, got {type(config['per_segment_language']).__name__}: {config['per_segment_language']!r}.",
                 field="per_segment_language",
             )
         per_segment = bool(config.get("per_segment_language", False))
-        if "on_stage_failure" in config and config["on_stage_failure"] is not None and not isinstance(
-            config["on_stage_failure"], str
+        if (
+            "on_stage_failure" in config
+            and config["on_stage_failure"] is not None
+            and not isinstance(config["on_stage_failure"], str)
         ):
             raise ConfigurationValidationError(
                 f"Field 'on_stage_failure' must be a string, got {type(config['on_stage_failure']).__name__}: {config['on_stage_failure']!r}.",
@@ -135,14 +139,16 @@ class ConfigLoader:
         metadata = config.get("metadata", {})
         if metadata is not None and not isinstance(metadata, dict):
             raise ConfigurationValidationError(
-                f"Field 'metadata' must be a dict, got {type(metadata).__name__}: {metadata!r}.", field="metadata"
+                f"Field 'metadata' must be a dict, got {type(metadata).__name__}: {metadata!r}.",
+                field="metadata",
             )
         metadata = metadata or {}
 
         stages_config = config.get("stages", [])
         if not isinstance(stages_config, list):
             raise ConfigurationValidationError(
-                f"Field 'stages' must be a list, got {type(stages_config).__name__}: {stages_config!r}.", field="stages"
+                f"Field 'stages' must be a list, got {type(stages_config).__name__}: {stages_config!r}.",
+                field="stages",
             )
         if not stages_config:
             raise ConfigurationValidationError(
@@ -163,7 +169,8 @@ class ConfigLoader:
                 raw_kind = stage_def.get("kind", "component")
                 if not isinstance(raw_kind, str) or not raw_kind.strip():
                     raise ConfigurationValidationError(
-                        f"Stage #{i} 'kind' must be a non-empty string, got {raw_kind!r}.", field=f"stages[{i}].kind"
+                        f"Stage #{i} 'kind' must be a non-empty string, got {raw_kind!r}.",
+                        field=f"stages[{i}].kind",
                     )
                 kind = raw_kind.strip()
                 raw_key = stage_def.get("key") or stage_def.get("name")

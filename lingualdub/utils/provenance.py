@@ -49,7 +49,9 @@ def make_provenance(
     """
     clashes = _RESERVED_KEYS.intersection(extra.keys())
     if clashes:
-        raise ValueError(f"extra keys {sorted(clashes)} shadow reserved provenance keys {_RESERVED_KEYS}")
+        raise ValueError(
+            f"extra keys {sorted(clashes)} shadow reserved provenance keys {_RESERVED_KEYS}"
+        )
     return {
         "run_id": run_id or make_run_id(),
         "timestamp": datetime.now(tz=timezone.utc).isoformat(),

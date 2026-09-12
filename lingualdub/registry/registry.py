@@ -99,7 +99,9 @@ class Registry:
         require_non_empty_string(key, "key")
         validate_version_string(version)
         if metadata is not None and not isinstance(metadata, dict):
-            raise RegistryError(f"metadata must be a dict, got {type(metadata).__name__}: {metadata!r}.")
+            raise RegistryError(
+                f"metadata must be a dict, got {type(metadata).__name__}: {metadata!r}."
+            )
         metadata = metadata or {}
         # Copy metadata to break external refs
         metadata = dict(metadata)
@@ -123,7 +125,10 @@ class Registry:
                     import logging
 
                     logging.getLogger(__name__).warning(
-                        "Duplicate registration for (%r, %r) version %r discarded (HIGHEST_VERSION)", kind, key, version
+                        "Duplicate registration for (%r, %r) version %r discarded (HIGHEST_VERSION)",
+                        kind,
+                        key,
+                        version,
                     )
                     return
             else:

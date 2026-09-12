@@ -326,11 +326,15 @@ class Pipeline:
         # Reject explicit None for on_stage_failure (must be valid string)
         if "on_stage_failure" in data and data["on_stage_failure"] is None:
             raise SerializationError(
-                "Field 'on_stage_failure' must be a string, got None.", field="on_stage_failure", code="PIPE_DESER_003"
+                "Field 'on_stage_failure' must be a string, got None.",
+                field="on_stage_failure",
+                code="PIPE_DESER_003",
             )
         if "metadata" in data and data["metadata"] is None:
             raise SerializationError(
-                "Field 'metadata' must be a dict, got None.", field="metadata", code="PIPE_DESER_003"
+                "Field 'metadata' must be a dict, got None.",
+                field="metadata",
+                code="PIPE_DESER_003",
             )
         if "stages" in data and data["stages"] is not None and not isinstance(data["stages"], list):
             raise SerializationError(
@@ -349,7 +353,11 @@ class Pipeline:
                     )
 
         # Validate resolved_stages length matches serialized stages count when available
-        if "stages" in data and isinstance(data["stages"], list) and len(resolved_stages) != len(data["stages"]):
+        if (
+            "stages" in data
+            and isinstance(data["stages"], list)
+            and len(resolved_stages) != len(data["stages"])
+        ):
             raise SerializationError(
                 f"resolved_stages length {len(resolved_stages)} != serialized stages {len(data['stages'])}.",
                 field="stages",

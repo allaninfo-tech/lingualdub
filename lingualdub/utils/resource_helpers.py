@@ -28,7 +28,9 @@ def acquire_resource(
     Returns (resource, resource_path_or_None) tuple. Never raises; logs debug on failure.
     """
     if registry is None:
-        logger.debug("acquire_resource: registry is None for %r — deterministic fallback", resource_key)
+        logger.debug(
+            "acquire_resource: registry is None for %r — deterministic fallback", resource_key
+        )
         return None, None
 
     resource = None

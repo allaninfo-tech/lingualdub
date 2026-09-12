@@ -53,8 +53,17 @@ def ensure_consent(
         # Only enforce for voice-like resources to avoid blocking TEXT/EVAL_SET
         from lingualdub.core.resource import ResourceKind
 
-        voice_kinds = {ResourceKind.SPEECH, ResourceKind.VIDEO, ResourceKind.CHECKPOINT, ResourceKind.SYNTHETIC}
-        is_voice_resource = input_obj.kind in voice_kinds or has_valid_consent(input_obj.provenance) or "consent_basis" in input_obj.provenance
+        voice_kinds = {
+            ResourceKind.SPEECH,
+            ResourceKind.VIDEO,
+            ResourceKind.CHECKPOINT,
+            ResourceKind.SYNTHETIC,
+        }
+        is_voice_resource = (
+            input_obj.kind in voice_kinds
+            or has_valid_consent(input_obj.provenance)
+            or "consent_basis" in input_obj.provenance
+        )
         if not require_for_resource:
             is_voice_resource = False
         if is_voice_resource and not has_valid_consent(input_obj.provenance):

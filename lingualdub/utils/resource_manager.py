@@ -141,7 +141,13 @@ class ResourceManager:
             raise ResourceNotFoundError(f"URL has no host: {url!r}")
         # Block private/metadata endpoints
         host = parsed.hostname or ""
-        blocked_hosts = {"localhost", "127.0.0.1", "::1", "169.254.169.254", "metadata.google.internal"}
+        blocked_hosts = {
+            "localhost",
+            "127.0.0.1",
+            "::1",
+            "169.254.169.254",
+            "metadata.google.internal",
+        }
         if host.lower() in blocked_hosts or host.startswith("10.") or host.startswith("192.168."):
             # Allow if explicitly trusted? For now block
             raise ResourceNotFoundError(f"Blocked host for SSRF protection: {host!r}")

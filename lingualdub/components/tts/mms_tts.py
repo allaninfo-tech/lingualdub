@@ -132,7 +132,9 @@ class MMSTTSComponent(TTSComponent):
                     wf.setnchannels(1)
                     wf.setsampwidth(2)
                     wf.setframerate(rate)
-                    buf = array.array("h", [int(max(-1.0, min(1.0, float(x))) * 32767.0) for x in data])
+                    buf = array.array(
+                        "h", [int(max(-1.0, min(1.0, float(x))) * 32767.0) for x in data]
+                    )
                     wf.writeframes(buf.tobytes())
 
         self.output_dir.mkdir(parents=True, exist_ok=True)

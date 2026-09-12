@@ -218,7 +218,9 @@ class Language:
                 )
         if "metadata" in data and data["metadata"] is None:
             raise SerializationError(
-                "Field 'metadata' must be a dict, got None.", field="metadata", code="LANG_DESER_003"
+                "Field 'metadata' must be a dict, got None.",
+                field="metadata",
+                code="LANG_DESER_003",
             )
 
         # Preserve unknown keys in metadata for forward compatibility (base wins on collision)

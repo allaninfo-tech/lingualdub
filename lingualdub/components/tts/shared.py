@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import math
 import re
-import struct
 import wave
 from pathlib import Path
 
@@ -57,9 +56,7 @@ def write_dummy_wav(
     buf = array.array("h")
     for i in range(num_samples):
         envelope = math.sin(math.pi * (i / max(num_samples, 1)))
-        val = int(
-            32767.0 * 0.3 * envelope * math.sin(2.0 * math.pi * freq_hz * (i / sample_rate))
-        )
+        val = int(32767.0 * 0.3 * envelope * math.sin(2.0 * math.pi * freq_hz * (i / sample_rate)))
         buf.append(val)
     with wave.open(str(filepath), "wb") as wav_file:
         wav_file.setnchannels(1)  # mono

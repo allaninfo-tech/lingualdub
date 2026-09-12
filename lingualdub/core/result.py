@@ -300,7 +300,9 @@ class Result:
         # --- segments --------------------------------------------------------
         if "segments" in data and data["segments"] is None:
             raise SerializationError(
-                "Field 'segments' must be a list, got None.", field="segments", code="RESU_DESER_003"
+                "Field 'segments' must be a list, got None.",
+                field="segments",
+                code="RESU_DESER_003",
             )
         raw_segments = data.get("segments", [])
         if not isinstance(raw_segments, list):
