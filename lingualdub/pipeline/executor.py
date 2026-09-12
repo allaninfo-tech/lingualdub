@@ -145,6 +145,16 @@ class PipelineExecutor:
                     result = current.replace(warnings=new_warnings, status=new_status)
                     # Keep current and result in sync for next stage's input (original shared reference)
                     current = result
+                else:
+                    from lingualdub.exceptions import ComponentContractError
+
+                    raise ComponentContractError(
+                        f"Stage {stage.name!r} must return a Result, got {type(current).__name__}: {current!r}.",
+                        component=stage.name,
+                    )
+            except PipelineExecutionError:
+                # Don't wrap per-segment ABORT again
+                raise
             except Exception as exc:
                 logger.warning("Stage %r failed: %s", stage.name, exc)
 
@@ -156,6 +166,7 @@ class PipelineExecutor:
 
                 elif failure_mode == FailureMode.SKIP:
                     result = result.mark_partial(f"Stage {stage.name!r} skipped: {exc}")
+                    current = result
                     logger.info("Stage %r skipped.", stage.name)
 
                 elif failure_mode == FailureMode.DEGRADE:
@@ -200,6 +211,7 @@ class PipelineExecutor:
                         result = result.mark_partial(
                             f"Stage {stage.name!r} has no degrade() path; skipped: {exc}"
                         )
+                        current = result
                     except Exception as degrade_exc:
                         result = result.mark_failed(
                             f"Stage {stage.name!r} degrade() also failed: {degrade_exc}"
@@ -226,6 +238,15 @@ class PipelineExecutor:
         # Prefer structural can_handle() if available (duck-typed protocol),
         # else fall back to supported_languages list.
         can_handle = getattr(stage, "can_handle", None)
+        stage_langs: list[str] = list(getattr(stage, "supported_languages", []) or [])
+        # Fast path for universal stages
+        if not stage_langs or "*" in stage_langs:
+            # If stage declares universal, don't partition even if can_handle exists
+            if callable(can_handle):
+                # For universal components, can_handle should return True for all; trust it
+                pass
+            else:
+                return stage.run(current)  # type: ignore[operator, no-any-return]
         if callable(can_handle):
             supported: list[tuple[int, Segment]] = []
             unsupported: list[tuple[int, Segment]] = []
@@ -235,16 +256,12 @@ class PipelineExecutor:
                     handles = bool(can_handle(seg_lang))  # type: ignore[operator]
                 except Exception:
                     # Fallback to language list if can_handle raises
-                    stage_langs_fb = getattr(stage, "supported_languages", [])
-                    handles = not stage_langs_fb or seg_lang in stage_langs_fb
+                    handles = not stage_langs or "*" in stage_langs or seg_lang in stage_langs
                 if handles:
                     supported.append((idx, seg))
                 else:
                     unsupported.append((idx, seg))
-            # For universal components, can_handle returns True for all -> no unsupported
-            stage_langs: list[str] = getattr(stage, "supported_languages", [])
         else:
-            stage_langs = getattr(stage, "supported_languages", [])
             if not stage_langs or "*" in stage_langs:
                 return stage.run(current)  # type: ignore[operator, no-any-return]
 
@@ -326,11 +343,14 @@ class PipelineExecutor:
 
         stage_out: Any = stage.run(sub_result)  # type: ignore[operator]
         if not isinstance(stage_out, Result):
-            return current_with_skipped.mark_partial(
-                f"Stage {stage.name!r} did not return a Result"
+            from lingualdub.exceptions import ComponentContractError
+
+            raise ComponentContractError(
+                f"Stage {stage.name!r} per-segment run must return a Result, got {type(stage_out).__name__}: {stage_out!r}.",
+                component=stage.name,
             )
 
-        # Recombine processed segments and skipped segments
+        # Recombine processed segments and skipped segments — preserve original order
         combined_segments: list[Segment] = []
         if len(stage_out.segments) == len(supported):
             new_segments_map = {
@@ -343,10 +363,24 @@ class PipelineExecutor:
                 elif i in unsupported_map:
                     combined_segments.append(unsupported_map[i])
         else:
-            combined_segments = sorted(
-                list(stage_out.segments) + [s for _, s in updated_unsupported],
-                key=lambda s: (s.start, s.end),
-            )
+            # Order changed (e.g. stage split segments) — keep original index order, then stage order
+            new_segments_map = {
+                orig_idx: stage_out.segments[i]
+                for i, (orig_idx, _) in enumerate(supported)
+                if i < len(stage_out.segments)
+            }
+            # Preserve original sequence: iterate original indices, emit new segments in order
+            for i in range(len(current.segments)):
+                if i in new_segments_map:
+                    combined_segments.append(new_segments_map[i])
+            # Append any extra segments from stage_out beyond original supported count
+            if len(stage_out.segments) > len(supported):
+                combined_segments.extend(stage_out.segments[len(supported) :])
+            # Append skipped segments in original order
+            for _, seg in sorted(updated_unsupported, key=lambda x: x[0]):
+                combined_segments.append(seg)
+            # Finally sort by start to keep temporal order stable without scrambling original index
+            combined_segments = sorted(combined_segments, key=lambda s: (s.start, s.end, s.text))
 
         # Immutable: produce new stage_out via replace
         stage_out = stage_out.replace(segments=combined_segments)
