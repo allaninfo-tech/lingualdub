@@ -28,20 +28,16 @@ def acquire_resource(
     Returns (resource, resource_path_or_None) tuple. Never raises; logs debug on failure.
     """
     if registry is None:
+        logger.debug("acquire_resource: registry is None for %r — deterministic fallback", resource_key)
         return None, None
 
     resource = None
-    # Registry lookup — try resolve (preferred) then get for backward compat
-    for method_name in ("resolve", "get"):
-        if hasattr(registry, method_name):
-            try:
-                method = getattr(registry, method_name)
-                resource = method(kind, resource_key)
-                if resource is not None:
-                    break
-            except Exception as exc:
-                logger.debug("Registry %s(%r, %r) failed: %s", method_name, kind, resource_key, exc)
-                continue
+    # Registry lookup — canonical is resolve(kind, key); no get fallback (dead code removed)
+    if hasattr(registry, "resolve"):
+        try:
+            resource = registry.resolve(kind, resource_key)  # type: ignore[attr-defined]
+        except Exception as exc:
+            logger.debug("Registry resolve(%r, %r) failed: %s", kind, resource_key, exc)
 
     if resource is None:
         logger.debug("Resource %r not found in registry.", resource_key)
