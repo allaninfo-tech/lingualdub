@@ -55,6 +55,7 @@ class MMSTTSComponent(TTSComponent):
         device: str | None = None,
         version: str = "1.0.0",
     ) -> None:
+        super().__init__()
         self.language = language
         # Resolve checkpoint: use explicit path, then language map, then fallback.
         if model_name_or_path:
@@ -124,15 +125,15 @@ class MMSTTSComponent(TTSComponent):
 
                 scipy.io.wavfile.write(str(dest), rate=rate, data=data)
             except ImportError:
-                import struct
+                import array
                 import wave
 
                 with wave.open(str(dest), "wb") as wf:
                     wf.setnchannels(1)
                     wf.setsampwidth(2)
                     wf.setframerate(rate)
-                    int16_data = [int(max(-1.0, min(1.0, float(x))) * 32767.0) for x in data]
-                    wf.writeframes(struct.pack(f"<{len(int16_data)}h", *int16_data))
+                    buf = array.array("h", [int(max(-1.0, min(1.0, float(x))) * 32767.0) for x in data])
+                    wf.writeframes(buf.tobytes())
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
         artifacts = list(input.artifacts)
@@ -143,17 +144,12 @@ class MMSTTSComponent(TTSComponent):
             if not text:
                 continue
 
-            # Annotate fitting strategy from duration modelling metadata (shared thresholds)
-            from lingualdub.components.tts.shared import _COMPRESS_MAX_RATIO, _SKIP_MIN_RATIO
+            # Annotate fitting strategy via single source of truth
+            from lingualdub.components.tts.shared import choose_strategy
 
             ratio = seg.metadata.get("duration_ratio", 1.0)
             target_dur = seg.metadata.get("target_duration", seg.duration)
-            if ratio <= _COMPRESS_MAX_RATIO:
-                strategy = FittingStrategy.COMPRESS
-            elif ratio <= _SKIP_MIN_RATIO:
-                strategy = FittingStrategy.SPLIT
-            else:
-                strategy = FittingStrategy.SKIP
+            strategy = choose_strategy(ratio, text)
 
             seg.metadata["fitting_strategy"] = strategy.value
             seg.metadata["target_duration"] = round(float(target_dur), 4)
