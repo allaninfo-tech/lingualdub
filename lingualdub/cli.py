@@ -199,12 +199,17 @@ def get_default_registry() -> ld.Registry:
         version="1.0.0",
     )
 
-    # Scan installed extension manifests
+    # Scan installed extension manifests (use NAMESPACED so built-ins + manifest coexist)
+    # Temporarily allow NAMESPACED for scan to avoid discarding manifest entries on same version
+    original_policy = registry.conflict_policy
+    registry.conflict_policy = ld.ConflictPolicy.NAMESPACED
     scanner = ManifestScanner(registry)
     try:
         scanner.scan()
     except Exception as exc:
-        logger.debug("Manifest scanning: %s", exc)
+        logger.warning("Manifest scanning failed: %s", exc)
+    finally:
+        registry.conflict_policy = original_policy
 
     return registry
 
@@ -250,9 +255,8 @@ def cmd_experiment_run(args: argparse.Namespace) -> int:
             },
         )
     elif args.input_audio:
-        prov = {"consent_basis": "user_provided"}
-        if input_video_path:
-            prov["source_video"] = str(input_video_path)
+        prov: dict = {"consent_basis": "user_provided"}
+        # Note: input_video_path already handled in combined branch above; no dead video attach here
         input_obj = ld.Resource(
             id="cli_audio_input",
             kind=ld.ResourceKind.SPEECH,
@@ -262,18 +266,33 @@ def cmd_experiment_run(args: argparse.Namespace) -> int:
             provenance=prov,
         )
     elif input_video_path:
-        input_obj = ld.Resource(
-            id="cli_video_input",
-            kind=ld.ResourceKind.VIDEO,
-            language=pipeline.source_language,
-            version="1.0.0",
-            path=str(input_video_path),
-            provenance={"consent_basis": "user_provided", "source_video": str(input_video_path)},
-        )
+        # No audio, but video + possibly sample_text — handle sample_text with video provenance
+        if args.sample_text:
+            prov = {"source_video": str(input_video_path)}
+            tmp = ld.Result(
+                segments=[
+                    ld.Segment(
+                        start=0.0,
+                        end=3.0,
+                        text=args.sample_text,
+                        language=pipeline.source_language,
+                    )
+                ],
+                source_language=pipeline.source_language,
+                provenance=prov,
+                metadata={"source_video": str(input_video_path)},
+            )
+            input_obj = tmp
+        else:
+            input_obj = ld.Resource(
+                id="cli_video_input",
+                kind=ld.ResourceKind.VIDEO,
+                language=pipeline.source_language,
+                version="1.0.0",
+                path=str(input_video_path),
+                provenance={"consent_basis": "user_provided", "source_video": str(input_video_path)},
+            )
     elif args.sample_text:
-        prov = {}
-        if input_video_path:
-            prov["source_video"] = str(input_video_path)
         input_obj = ld.Result(
             segments=[
                 ld.Segment(
@@ -284,14 +303,11 @@ def cmd_experiment_run(args: argparse.Namespace) -> int:
                 )
             ],
             source_language=pipeline.source_language,
-            provenance=prov if prov else {},
+            provenance={},
         )
-        if prov:
-            input_obj.provenance.update(prov)
-            input_obj.metadata["source_video"] = str(input_video_path)
     else:
-        # Default placeholder — include consent for offline voice pipeline testing
-        prov = {"source": "cli_default", "consent_basis": "research_evaluation"}
+        # Default placeholder — include synthetic consent for offline voice pipeline testing (flagged as synthetic)
+        prov = {"source": "cli_default", "consent_basis": "research_evaluation", "consent_synthetic": True}
         if input_video_path:
             prov["source_video"] = str(input_video_path)
         input_obj = ld.Resource(
@@ -313,12 +329,26 @@ def cmd_experiment_run(args: argparse.Namespace) -> int:
     for s in result.segments:
         logger.info("  [%0.2fs -> %0.2fs] (%s): %s", s.start, s.end, s.language or "-", s.text)
 
-    # Save output if output directory is provided
+    # Save output if output directory is provided (atomic writes)
     if args.output_dir:
         out_dir = Path(args.output_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
+        if not out_dir.is_dir():
+            logger.error("Output path is not a directory: %s", out_dir)
+            return 1
+        import tempfile
+
         results_file = out_dir / "results.json"
-        results_file.write_text(json.dumps(result.to_dict(), indent=2), encoding="utf-8")
+        tmp_fd, tmp_path = tempfile.mkstemp(dir=str(out_dir), suffix=".json")
+        try:
+            with open(tmp_fd, "w", encoding="utf-8") as f:
+                json.dump(result.to_dict(), f, indent=2)
+            Path(tmp_path).replace(results_file)
+        finally:
+            try:
+                Path(tmp_path).unlink()
+            except FileNotFoundError:
+                pass
         logger.info("Saved result JSON to: %s", results_file)
 
         # Write experiment summary README
@@ -337,7 +367,16 @@ def cmd_experiment_run(args: argparse.Namespace) -> int:
         for s in result.segments:
             summary_md += f"- **[{s.start:.2f}s - {s.end:.2f}s]** ({s.language}): {s.text}\n"
 
-        summary_file.write_text(summary_md, encoding="utf-8")
+        tmp_fd2, tmp_path2 = tempfile.mkstemp(dir=str(out_dir), suffix=".md")
+        try:
+            with open(tmp_fd2, "w", encoding="utf-8") as f:
+                f.write(summary_md)
+            Path(tmp_path2).replace(summary_file)
+        finally:
+            try:
+                Path(tmp_path2).unlink()
+            except FileNotFoundError:
+                pass
         logger.info("Saved experiment summary to: %s", summary_file)
 
     return 0
