@@ -29,6 +29,7 @@ tears it down (`shutdown() → STOPPED`) on exit, even if the test raises.
 from lingualdub.testing.lifecycle import TestFramework, assert_lifecycle_sequence
 from lingualdub.lifecycle import LifecycleState
 
+
 def test_startup_flow():
     with TestFramework() as fw:
         # fw.lifecycle is isolated — no sharing with other tests
