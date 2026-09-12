@@ -60,6 +60,13 @@ The top-level `lingualdub` package exposes the following stable symbols:
 | `FrameworkConfig` | Class | Centralised, validated, immutable framework configuration |
 | `load_config` | Function | Factory that builds a validated `FrameworkConfig` from defaults → env vars → overrides |
 
+### Lifecycle
+| Symbol | Type | Description |
+|---|---|---|
+| `FrameworkLifecycle` | Class | Deterministic state machine (`UNINITIALIZED→...→STOPPED`) with startup hook registry |
+| `LifecycleState` | Enum | Ordered lifecycle stages (`UNINITIALIZED`, `CONFIGURING`, `CONFIGURED`, `INITIALIZING`, `READY`, `RUNNING`, `SHUTTING_DOWN`, `STOPPED`) |
+| `startup_hook` | Decorator | Module-level decorator marking a function as a startup hook (`@startup_hook(name, depends_on)`) |
+
 ### Centralized Types (`lingualdub.types`)
 | Symbol | Type | Description |
 |---|---|---|
