@@ -74,16 +74,89 @@ class Component(ABC):
     name: str
     version: str
     task: ComponentTask
-    supported_languages: list[LanguageCode] = []
-    requires: list[str] = []
-    provides: list[str] = []
+    supported_languages: list[LanguageCode] = []  # type: ignore[assignment]
+    requires: list[str] = []  # type: ignore[assignment]
+    provides: list[str] = []  # type: ignore[assignment]
     on_failure: FailureMode | None = None
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        orig_init = cls.__init__
+
+        # Avoid double-wrapping
+        if getattr(orig_init, "_lingualdub_wrapped", False):
+            return
+
+        def _wrapped_init(self, *args, **kw):  # type: ignore[no-untyped-def]
+            # Ensure per-instance copies of mutable class-level lists to avoid
+            # shared-state bugs (appending on one instance polluting another).
+            for attr in ("supported_languages", "requires", "provides"):
+                val = getattr(self.__class__, attr, None)
+                if isinstance(val, list):
+                    # Only copy if instance hasn't already shadowed it
+                    if attr not in self.__dict__:
+                        object.__setattr__(self, attr, list(val))
+            # Call original __init__ (which will eventually hit Component.__init__)
+            orig_init(self, *args, **kw)
+            # If subclass didn't call super().__init__, enforce contract validation here.
+            # Component.__init__ validates name/version; we ensure it ran.
+            if not getattr(self, "_lingualdub_validated", False):
+                from lingualdub.utils.validation import require_non_empty_string, validate_version_string
+
+                if self.__class__ is not Component:
+                    require_non_empty_string(getattr(self, "name", None), "name")
+                    require_non_empty_string(getattr(self, "version", None), "version")
+                    validate_version_string(getattr(self, "version", None))
+                    # Validate task type
+                    if not isinstance(getattr(self, "task", None), ComponentTask):
+                        from lingualdub.exceptions import ConfigurationValidationError
+
+                        raise ConfigurationValidationError(
+                            f"Field 'task' must be a ComponentTask, got {type(getattr(self, 'task', None)).__name__}: {getattr(self, 'task', None)!r}.",
+                            field="task",
+                        )
+                    # Validate list fields are actually lists of strings
+                    for list_field in ("supported_languages", "requires", "provides"):
+                        v = getattr(self, list_field, None)
+                        if not isinstance(v, list):
+                            from lingualdub.exceptions import ConfigurationValidationError
+
+                            raise ConfigurationValidationError(
+                                f"Field {list_field!r} must be a list, got {type(v).__name__}: {v!r}.",
+                                field=list_field,
+                            )
+                        for i, item in enumerate(v):
+                            if not isinstance(item, str):
+                                from lingualdub.exceptions import ConfigurationValidationError
+
+                                raise ConfigurationValidationError(
+                                    f"Field {list_field!r}[{i}] must be a string, got {type(item).__name__}: {item!r}.",
+                                    field=f"{list_field}[{i}]",
+                                )
+                    # Validate on_failure
+                    of = getattr(self, "on_failure", None)
+                    if of is not None and not isinstance(of, FailureMode):
+                        from lingualdub.exceptions import ConfigurationValidationError
+
+                        raise ConfigurationValidationError(
+                            f"Field 'on_failure' must be a FailureMode or None, got {type(of).__name__}: {of!r}.",
+                            field="on_failure",
+                        )
+                object.__setattr__(self, "_lingualdub_validated", True)
+
+        _wrapped_init._lingualdub_wrapped = True  # type: ignore[attr-defined]
+        cls.__init__ = _wrapped_init  # type: ignore[method-assign]
 
     def __init__(self, *args, **kwargs) -> None:
         # Centralised contract validation for every component instance.
-        # Subclasses that override __init__ must call super().__init__() to
-        # trigger this check (enforced via __init_subclass__ wrapper as fallback).
         from lingualdub.utils.validation import require_non_empty_string, validate_version_string
+
+        # Ensure per-instance copies even when Component.__init__ is called directly
+        for attr in ("supported_languages", "requires", "provides"):
+            if attr not in self.__dict__:
+                class_val = getattr(self.__class__, attr, None)
+                if isinstance(class_val, list):
+                    object.__setattr__(self, attr, list(class_val))
 
         # Only validate concrete subclasses, not the abstract base itself
         if self.__class__ is not Component:
@@ -91,6 +164,7 @@ class Component(ABC):
             require_non_empty_string(getattr(self, "name", None), "name")
             require_non_empty_string(getattr(self, "version", None), "version")
             validate_version_string(getattr(self, "version", None))
+            object.__setattr__(self, "_lingualdub_validated", True)
 
     @abstractmethod
     def run(self, input: Result | Resource) -> Result:
@@ -123,7 +197,12 @@ class Component(ABC):
 
     def supports_language(self, language_code: LanguageCode) -> bool:
         """Returns True if this component supports the given language code."""
-        return not self.supported_languages or language_code in self.supported_languages
+        langs = getattr(self, "supported_languages", [])
+        if not langs:
+            return True
+        if "*" in langs:
+            return True
+        return language_code in langs
 
     def can_handle(self, language: LanguageCode) -> bool:
         """Return True if this component can handle the given language code.
