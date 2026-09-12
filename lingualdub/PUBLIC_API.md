@@ -68,6 +68,15 @@ The top-level `lingualdub` package exposes the following stable symbols:
 | `startup_hook` | Decorator | Module-level decorator marking a function as a startup hook (`@startup_hook(name, depends_on)`) |
 | `shutdown_hook` | Decorator | Module-level decorator marking a function as a shutdown hook (`@shutdown_hook(name)`) |
 
+### Dependency Injection (`lingualdub.di`)
+| Symbol | Type | Description |
+|---|---|---|
+| `DependencyContainer` | Class | Explicit container (`register`, `register_instance`, `resolve`, `list_registered`, `create_scope`, `override`/`override_context`, circular detection) |
+| `DependencyScope` | Class | Scoped context manager for `SCOPED` lifetime; `close()` called on exit, nested scopes raise `LifecycleError` |
+| `DependencyDescriptor` | Class | Descriptor `name`, `type_hint`, `lifetime`, `default` (sentinel `_MISSING`) |
+| `Lifetime` | Enum | `SINGLETON` (per container), `SCOPED` (per scope), `TRANSIENT` (per resolve) |
+| `Dependency` | Descriptor/Annotation | Marker `Dependency[SomeService]` via `Annotated`; supports field injection and `isinstance` checks |
+
 ### Centralized Types (`lingualdub.types`)
 | Symbol | Type | Description |
 |---|---|---|

@@ -16,6 +16,13 @@ from lingualdub.core.protocols import ComponentProtocol, EvaluatorProtocol, Regi
 from lingualdub.core.resource import Resource, ResourceKind
 from lingualdub.core.result import Result, ResultStatus
 from lingualdub.core.segment import Segment
+from lingualdub.di import (
+    Dependency,
+    DependencyContainer,
+    DependencyDescriptor,
+    DependencyScope,
+    Lifetime,
+)
 from lingualdub.exceptions import (
     ComponentContractError,
     ComponentError,
@@ -91,6 +98,12 @@ __all__ = [
     "LifecycleState",
     "startup_hook",
     "shutdown_hook",
+    # Dependency Injection (DI)
+    "DependencyContainer",
+    "DependencyScope",
+    "DependencyDescriptor",
+    "Lifetime",
+    "Dependency",
     # Pipeline & Execution
     "PipelineExecutor",
     "PipelineExecutionError",
