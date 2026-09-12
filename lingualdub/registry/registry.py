@@ -22,9 +22,14 @@ from lingualdub.exceptions import RegistryError as _BaseRegistryError
 
 
 def _version_tuple(version_str: str) -> tuple:
-    """Convert a version string like '1.2.3' to a comparable tuple of ints."""
+    """Convert a version string like '1.2.3' to a comparable tuple of ints, stripping pre-release."""
     try:
-        return tuple(int(x) for x in version_str.split("."))
+        core = version_str.split("-")[0].split("+")[0]
+        parts = core.split(".")
+        # Require 2-3 numeric parts, else fallback to (0,)
+        if len(parts) < 2 or len(parts) > 3:
+            return (0,)
+        return tuple(int(x) for x in parts)
     except ValueError:
         return (0,)
 
@@ -88,7 +93,16 @@ class Registry:
             version: Version string for this registration.
             metadata: Optional dict of additional metadata.
         """
+        from lingualdub.utils.validation import require_non_empty_string, validate_version_string
+
+        require_non_empty_string(kind, "kind")
+        require_non_empty_string(key, "key")
+        validate_version_string(version)
+        if metadata is not None and not isinstance(metadata, dict):
+            raise RegistryError(f"metadata must be a dict, got {type(metadata).__name__}: {metadata!r}.")
         metadata = metadata or {}
+        # Copy metadata to break external refs
+        metadata = dict(metadata)
         entries = self._store[kind][key]
 
         if entries and self.conflict_policy == ConflictPolicy.EXPLICIT:
@@ -98,12 +112,31 @@ class Registry:
             )
 
         if entries and self.conflict_policy == ConflictPolicy.HIGHEST_VERSION:
-            # Keep only the highest version; replace existing only if new version is strictly higher.
-            existing_version = entries[-1][0]
-            if _version_tuple(version) > _version_tuple(existing_version):
+            # Compare against highest stored version, not just last inserted
+            max_version = max((v for v, _, _ in entries), key=_version_tuple)
+            if _version_tuple(version) > _version_tuple(max_version):
                 entries.clear()
+            elif _version_tuple(version) == _version_tuple(max_version):
+                # Same version but possibly different impl — keep both for history but don't discard silently
+                # If exact version string already exists, reject duplicate silently with warning
+                if any(v == version for v, _, _ in entries):
+                    import logging
+
+                    logging.getLogger(__name__).warning(
+                        "Duplicate registration for (%r, %r) version %r discarded (HIGHEST_VERSION)", kind, key, version
+                    )
+                    return
             else:
                 # New version is not higher — discard it, keep existing.
+                import logging
+
+                logging.getLogger(__name__).debug(
+                    "Registration for (%r, %r) version %r discarded, keeping %r (HIGHEST_VERSION)",
+                    kind,
+                    key,
+                    version,
+                    max_version,
+                )
                 return
 
         entries.append((version, impl, metadata))
@@ -130,7 +163,10 @@ class Registry:
             raise RegistryError(f"No registration found for ({kind!r}, {key!r}).")
 
         if version is None:
-            # Return the most recently registered entry (latest by insertion order).
+            # Return the highest version (not insertion-latest) for HIGHEST_VERSION policy
+            if self.conflict_policy == ConflictPolicy.HIGHEST_VERSION:
+                best = max(entries, key=lambda x: _version_tuple(x[0]))
+                return best[1]
             return entries[-1][1]
 
         for v, impl, _ in entries:
@@ -151,7 +187,11 @@ class Registry:
         result = []
         for key, entries in self._store.get(kind, {}).items():
             if entries:
-                result.append((key, entries[-1][0]))
+                if self.conflict_policy == ConflictPolicy.HIGHEST_VERSION:
+                    best_version = max((v for v, _, _ in entries), key=_version_tuple)
+                    result.append((key, best_version))
+                else:
+                    result.append((key, entries[-1][0]))
         return sorted(result)
 
     def __repr__(self) -> str:
