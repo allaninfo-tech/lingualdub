@@ -343,6 +343,7 @@ def cmd_experiment_run(args: argparse.Namespace) -> int:
         if not out_dir.is_dir():
             logger.error("Output path is not a directory: %s", out_dir)
             return 1
+        import contextlib
         import tempfile
 
         results_file = out_dir / "results.json"
@@ -352,10 +353,8 @@ def cmd_experiment_run(args: argparse.Namespace) -> int:
                 json.dump(result.to_dict(), f, indent=2)
             Path(tmp_path).replace(results_file)
         finally:
-            try:
+            with contextlib.suppress(FileNotFoundError):
                 Path(tmp_path).unlink()
-            except FileNotFoundError:
-                pass
         logger.info("Saved result JSON to: %s", results_file)
 
         # Write experiment summary README
@@ -380,10 +379,8 @@ def cmd_experiment_run(args: argparse.Namespace) -> int:
                 f.write(summary_md)
             Path(tmp_path2).replace(summary_file)
         finally:
-            try:
+            with contextlib.suppress(FileNotFoundError):
                 Path(tmp_path2).unlink()
-            except FileNotFoundError:
-                pass
         logger.info("Saved experiment summary to: %s", summary_file)
 
     return 0

@@ -187,14 +187,17 @@ class Result:
         # dataclasses.replace bypasses frozen __setattr__ via object.__setattr__
         new_obj = dc_replace(self, **changes)
         # Enforce monotonic: FAILED is terminal, cannot regress from FAILED
-        if "status" in changes and self.status == ResultStatus.FAILED:
-            if new_obj.status != ResultStatus.FAILED:  # type: ignore[attr-defined]
-                from lingualdub.exceptions import ConfigurationValidationError
+        if (
+            "status" in changes
+            and self.status == ResultStatus.FAILED
+            and new_obj.status != ResultStatus.FAILED  # type: ignore[attr-defined]
+        ):
+            from lingualdub.exceptions import ConfigurationValidationError
 
-                raise ConfigurationValidationError(
-                    f"Result status cannot regress from {self.status.value!r} to {new_obj.status.value!r} (FAILED is terminal).",
-                    field="status",
-                )
+            raise ConfigurationValidationError(
+                f"Result status cannot regress from {self.status.value!r} to {new_obj.status.value!r} (FAILED is terminal).",
+                field="status",
+            )
         try:
             new_obj.__post_init__()  # type: ignore[attr-defined]
         except Exception:

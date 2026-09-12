@@ -92,10 +92,8 @@ class Component(ABC):
             # shared-state bugs (appending on one instance polluting another).
             for attr in ("supported_languages", "requires", "provides"):
                 val = getattr(self.__class__, attr, None)
-                if isinstance(val, list):
-                    # Only copy if instance hasn't already shadowed it
-                    if attr not in self.__dict__:
-                        object.__setattr__(self, attr, list(val))
+                if isinstance(val, list) and attr not in self.__dict__:
+                    object.__setattr__(self, attr, list(val))
             # Call original __init__ (which will eventually hit Component.__init__)
             orig_init(self, *args, **kw)
             # If subclass didn't call super().__init__, enforce contract validation here.

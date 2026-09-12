@@ -199,24 +199,24 @@ class ResourceManager:
                 os.replace(temp_path, local_path)
             except ChecksumError:
                 if temp_path.exists():
-                    try:
+                    import contextlib
+
+                    with contextlib.suppress(OSError):
                         temp_path.unlink()
-                    except OSError:
-                        pass
                 raise
             except (KeyboardInterrupt, SystemExit):
                 if temp_path.exists():
-                    try:
+                    import contextlib
+
+                    with contextlib.suppress(OSError):
                         temp_path.unlink()
-                    except OSError:
-                        pass
                 raise
             except Exception as exc:
                 if temp_path.exists():
-                    try:
+                    import contextlib
+
+                    with contextlib.suppress(OSError):
                         temp_path.unlink()
-                    except OSError:
-                        pass
                 raise ResourceNotFoundError(
                     f"Could not download resource {resource_id!r} from {url!r}: {exc}"
                 ) from exc

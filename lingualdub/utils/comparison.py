@@ -62,30 +62,28 @@ def compare_runs(
     base_ds = res_base.provenance.get("dataset_version")
     cand_ds = res_cand.provenance.get("dataset_version")
     # If only one is set, treat as mismatch when require_matching_dataset
-    if base_ds != cand_ds:
-        if base_ds is not None or cand_ds is not None:
-            if require_matching_dataset:
-                raise ProvenanceMismatchError(
-                    f"Cannot compare runs: baseline dataset is {base_ds!r} but candidate dataset is {cand_ds!r}."
-                )
-            else:
-                import warnings
+    if base_ds != cand_ds and (base_ds is not None or cand_ds is not None):
+        if require_matching_dataset:
+            raise ProvenanceMismatchError(
+                f"Cannot compare runs: baseline dataset is {base_ds!r} but candidate dataset is {cand_ds!r}."
+            )
+        else:
+            import warnings
 
-                warnings.warn(
-                    f"Comparing runs across different datasets: baseline {base_ds!r} vs candidate {cand_ds!r}. "
-                    "Metric deltas may not be meaningful.",
-                    UserWarning,
-                    stacklevel=2,
-                )
+            warnings.warn(
+                f"Comparing runs across different datasets: baseline {base_ds!r} vs candidate {cand_ds!r}. "
+                "Metric deltas may not be meaningful.",
+                UserWarning,
+                stacklevel=2,
+            )
 
     base_proto = res_base.provenance.get("evaluation_protocol")
     cand_proto = res_cand.provenance.get("evaluation_protocol")
-    if base_proto != cand_proto:
-        if base_proto is not None or cand_proto is not None:
-            raise ProvenanceMismatchError(
-                f"Cannot compare runs: baseline evaluation protocol is {base_proto!r} "
-                f"but candidate protocol is {cand_proto!r}."
-            )
+    if base_proto != cand_proto and (base_proto is not None or cand_proto is not None):
+        raise ProvenanceMismatchError(
+            f"Cannot compare runs: baseline evaluation protocol is {base_proto!r} "
+            f"but candidate protocol is {cand_proto!r}."
+        )
 
     base_metrics = res_base.metadata.get("metrics", {})
     cand_metrics = res_cand.metadata.get("metrics", {})
