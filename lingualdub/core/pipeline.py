@@ -55,17 +55,88 @@ class Pipeline:
 
     def __post_init__(self) -> None:
         require_not_none(self.stages, "stages")
+        if not isinstance(self.stages, list):
+            from lingualdub.exceptions import ConfigurationValidationError
+
+            raise ConfigurationValidationError(
+                f"Field 'stages' must be a list, got {type(self.stages).__name__}: {self.stages!r}.",
+                field="stages",
+            )
         if not self.stages:
             from lingualdub.exceptions import ConfigurationValidationError
 
             raise ConfigurationValidationError(
                 "Pipeline must have at least one stage.", field="stages"
             )
+        for i, stage in enumerate(self.stages):
+            if not hasattr(stage, "name") or not hasattr(stage, "version"):
+                from lingualdub.exceptions import ConfigurationValidationError
+
+                raise ConfigurationValidationError(
+                    f"Stage #{i} must be a ComponentProtocol (has name/version), got {type(stage).__name__}: {stage!r}.",
+                    field=f"stages[{i}]",
+                )
+            for attr in ("requires", "provides", "supported_languages"):
+                val = getattr(stage, attr, None)
+                if val is not None and not isinstance(val, list):
+                    from lingualdub.exceptions import ConfigurationValidationError
+
+                    raise ConfigurationValidationError(
+                        f"Stage {getattr(stage, 'name', i)!r} field {attr!r} must be a list, got {type(val).__name__}: {val!r}.",
+                        field=f"stages[{i}].{attr}",
+                    )
+                if isinstance(val, list):
+                    for j, item in enumerate(val):
+                        if not isinstance(item, str):
+                            from lingualdub.exceptions import ConfigurationValidationError
+
+                            raise ConfigurationValidationError(
+                                f"Stage {getattr(stage, 'name', i)!r} {attr!r}[{j}] must be a string, got {type(item).__name__}: {item!r}.",
+                                field=f"stages[{i}].{attr}[{j}]",
+                            )
         require_non_empty_string(self.source_language, "source_language")
         validate_language_code(self.source_language)
         if self.target_language is not None:
             require_non_empty_string(self.target_language, "target_language")
             validate_language_code(self.target_language)
+        if not isinstance(self.per_segment_language, bool):
+            from lingualdub.exceptions import ConfigurationValidationError
+
+            raise ConfigurationValidationError(
+                f"Field 'per_segment_language' must be a bool, got {type(self.per_segment_language).__name__}: {self.per_segment_language!r}.",
+                field="per_segment_language",
+            )
+        if not isinstance(self.on_stage_failure, FailureMode):
+            from lingualdub.exceptions import ConfigurationValidationError
+
+            raise ConfigurationValidationError(
+                f"Field 'on_stage_failure' must be a FailureMode, got {type(self.on_stage_failure).__name__}: {self.on_stage_failure!r}.",
+                field="on_stage_failure",
+            )
+        if self.name is not None and not isinstance(self.name, str):
+            from lingualdub.exceptions import ConfigurationValidationError
+
+            raise ConfigurationValidationError(
+                f"Field 'name' must be a string or None, got {type(self.name).__name__}: {self.name!r}.",
+                field="name",
+            )
+        if self.description is not None and not isinstance(self.description, str):
+            from lingualdub.exceptions import ConfigurationValidationError
+
+            raise ConfigurationValidationError(
+                f"Field 'description' must be a string or None, got {type(self.description).__name__}: {self.description!r}.",
+                field="description",
+            )
+        if not isinstance(self.metadata, dict):
+            from lingualdub.exceptions import ConfigurationValidationError
+
+            raise ConfigurationValidationError(
+                f"Field 'metadata' must be a dict, got {type(self.metadata).__name__}: {self.metadata!r}.",
+                field="metadata",
+            )
+        # Break external refs
+        object.__setattr__(self, "stages", list(self.stages))
+        object.__setattr__(self, "metadata", dict(self.metadata))
         self._validate_stage_compatibility()
 
     def _validate_stage_compatibility(self) -> None:
@@ -139,6 +210,8 @@ class Pipeline:
         a Registry (see Pipeline.from_dict). No component logic is serialized.
         The returned dict is a deep copy suitable for round-trip.
         """
+        import copy
+
         return {
             "source_language": self.source_language,
             "target_language": self.target_language,
@@ -146,7 +219,7 @@ class Pipeline:
             "on_stage_failure": self.on_stage_failure.value,
             "name": self.name,
             "description": self.description,
-            "metadata": dict(self.metadata),
+            "metadata": copy.deepcopy(self.metadata),
             "stages": [{"name": s.name, "version": s.version} for s in self.stages],
         }
 
@@ -250,10 +323,43 @@ class Pipeline:
                 code="PIPE_DESER_003",
             )
 
-        # Preserve unknown keys in metadata
+        # Reject explicit None for on_stage_failure (must be valid string)
+        if "on_stage_failure" in data and data["on_stage_failure"] is None:
+            raise SerializationError(
+                "Field 'on_stage_failure' must be a string, got None.", field="on_stage_failure", code="PIPE_DESER_003"
+            )
+        if "metadata" in data and data["metadata"] is None:
+            raise SerializationError(
+                "Field 'metadata' must be a dict, got None.", field="metadata", code="PIPE_DESER_003"
+            )
+        if "stages" in data and data["stages"] is not None and not isinstance(data["stages"], list):
+            raise SerializationError(
+                f"Field 'stages' must be a list, got {type(data['stages']).__name__}: {data['stages']!r}.",
+                field="stages",
+                code="PIPE_DESER_003",
+            )
+        # Validate stages entries when present (name/version pairs)
+        if "stages" in data and isinstance(data["stages"], list):
+            for i, entry in enumerate(data["stages"]):
+                if not isinstance(entry, dict):
+                    raise SerializationError(
+                        f"Field 'stages[{i}]' must be a dict, got {type(entry).__name__}: {entry!r}.",
+                        field=f"stages[{i}]",
+                        code="PIPE_DESER_003",
+                    )
+
+        # Validate resolved_stages length matches serialized stages count when available
+        if "stages" in data and isinstance(data["stages"], list) and len(resolved_stages) != len(data["stages"]):
+            raise SerializationError(
+                f"resolved_stages length {len(resolved_stages)} != serialized stages {len(data['stages'])}.",
+                field="stages",
+                code="PIPE_DESER_003",
+            )
+
+        # Preserve unknown keys in metadata (base wins)
         base_metadata = dict(data.get("metadata") or {})
         unknown = {k: v for k, v in data.items() if k not in known_keys}
-        merged_metadata = {**base_metadata, **unknown} if unknown else base_metadata
+        merged_metadata = {**unknown, **base_metadata} if unknown else base_metadata
 
         # Resolve on_stage_failure with default
         raw_fm_val = data.get("on_stage_failure", FailureMode.ABORT.value)
