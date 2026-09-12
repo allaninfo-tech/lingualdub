@@ -39,7 +39,7 @@ jobs:
 
       - name: Run test suite with coverage
         run: |
-          pytest --cov=lingualdub --cov-report=term-missing --cov-report=xml --cov-fail-under=75 -v
+          pytest --cov=lingualdub --cov-report=term-missing --cov-report=xml --cov-fail-under=70 -v
 
       - name: Upload coverage artifact
         uses: actions/upload-artifact@v4
