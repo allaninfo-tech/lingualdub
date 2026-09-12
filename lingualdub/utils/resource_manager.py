@@ -161,30 +161,16 @@ class ResourceManager:
                 field="cache_dir",
             ) from exc
 
-        # Fast path: already cached and verified (handle corrupt cache by removing)
+        # Fast path: already cached and verified — if checksum fails, raise immediately (don't redownload with wrong checksum)
         if local_path.exists():
-            try:
-                self._verify(local_path, checksum)
-                return local_path
-            except ChecksumError:
-                # Corrupt cache — remove so redownload can proceed
-                try:
-                    local_path.unlink()
-                except OSError:
-                    pass
-                # fall through to download
+            self._verify(local_path, checksum)
+            return local_path
 
         with self._lock:
             # Double-check inside lock
             if local_path.exists():
-                try:
-                    self._verify(local_path, checksum)
-                    return local_path
-                except ChecksumError:
-                    try:
-                        local_path.unlink()
-                    except OSError:
-                        pass
+                self._verify(local_path, checksum)
+                return local_path
 
             local_path.parent.mkdir(parents=True, exist_ok=True)
             temp_path = local_path.parent / f".tmp_{uuid.uuid4().hex}_{filename}"

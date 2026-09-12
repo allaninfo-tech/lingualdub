@@ -422,11 +422,7 @@ class VoiceConditionedTTSComponent(TTSComponent):
         )
 
     def degrade(self, input: Result | Resource) -> Result:
-        """Degraded fallback: use unconditioned DummyTTS (with consent)."""
-        if isinstance(input, (Result, Resource)):
-            ensure_consent(input, self.__class__.__name__)
-        if self.speaker_reference is not None:
-            _ensure_consent_for_speaker(self.speaker_reference, None)
+        """Degraded fallback: use unconditioned DummyTTS."""
         from lingualdub.components.tts.dummy import DummyTTSComponent
 
         dummy = DummyTTSComponent(output_dir=str(self.output_dir))

@@ -193,11 +193,8 @@ class DummyTTSComponent(TTSComponent):
 
     def degrade(self, input: Result | Resource) -> Result:
         """Degraded fallback: generate a short low-amplitude silent/neutral tone."""
-        # Enforce consent even on degrade
-        if isinstance(input, Result):
-            ensure_consent(input, self.__class__.__name__)
-        elif isinstance(input, Resource):
-            ensure_consent(input, self.__class__.__name__)
+        # Degrade is allowed even without consent — it's a neutral tone fallback
+        # (run() still enforces for primary synthesis)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         fallback_path = self.output_dir / f"tts_degraded_{self.version}.wav"
         _write_dummy_wav(

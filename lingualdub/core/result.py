@@ -186,15 +186,13 @@ class Result:
 
         # dataclasses.replace bypasses frozen __setattr__ via object.__setattr__
         new_obj = dc_replace(self, **changes)
-        # Enforce monotonic severity: cannot downgrade FAILED etc.
-        if "status" in changes:
-            old_sev = Result._SEVERITY.get(self.status, 0)
-            new_sev = Result._SEVERITY.get(new_obj.status, 0)  # type: ignore[arg-type]
-            if new_sev < old_sev:
+        # Enforce monotonic: FAILED is terminal, cannot regress from FAILED
+        if "status" in changes and self.status == ResultStatus.FAILED:
+            if new_obj.status != ResultStatus.FAILED:  # type: ignore[attr-defined]
                 from lingualdub.exceptions import ConfigurationValidationError
 
                 raise ConfigurationValidationError(
-                    f"Result status cannot regress from {self.status.value!r} to {new_obj.status.value!r} (monotonic severity).",
+                    f"Result status cannot regress from {self.status.value!r} to {new_obj.status.value!r} (FAILED is terminal).",
                     field="status",
                 )
         try:

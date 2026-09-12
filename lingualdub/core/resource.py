@@ -77,7 +77,19 @@ class Resource:
         require_non_empty_string(self.version, "version")
         validate_language_code(self.language, "language")
         validate_version_string(self.version)
-        if not isinstance(self.kind, ResourceKind):
+        # Accept string coincident with ResourceKind values for backward compat
+        if isinstance(self.kind, str) and not isinstance(self.kind, ResourceKind):
+            try:
+                coerced = ResourceKind(self.kind)
+                object.__setattr__(self, "kind", coerced)
+            except ValueError:
+                from lingualdub.exceptions import ConfigurationValidationError
+
+                raise ConfigurationValidationError(
+                    f"Field 'kind' must be a ResourceKind, got {self.kind!r}.",
+                    field="kind",
+                ) from None
+        elif not isinstance(self.kind, ResourceKind):
             from lingualdub.exceptions import ConfigurationValidationError
 
             raise ConfigurationValidationError(
