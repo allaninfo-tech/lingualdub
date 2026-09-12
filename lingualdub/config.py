@@ -49,8 +49,8 @@ _ENV_MAP: dict[str, str] = {
     "LINGUALDUB_CONSENT_ENFORCEMENT": "consent_enforcement",
 }
 
-_TRUTHY = {"1", "true", "yes", "on", "enabled", "t", "y"}
-_FALSY = {"0", "false", "no", "off", "disabled", "f", "n"}
+_TRUTHY = {"1", "true", "yes", "on", "enabled"}
+_FALSY = {"0", "false", "no", "off", "disabled"}
 
 
 # ---------------------------------------------------------------------------
