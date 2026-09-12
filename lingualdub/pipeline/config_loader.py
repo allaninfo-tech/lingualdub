@@ -318,6 +318,8 @@ class ConfigLoader:
                         field="config",
                     ) from exc
         else:
+            from lingualdub.exceptions import ConfigurationValidationError
+
             raise ConfigurationValidationError(
                 f"Unsupported config extension {filepath.suffix!r} for {filepath}. Use .yaml/.yml/.json",
                 field="config",
