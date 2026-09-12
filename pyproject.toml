@@ -74,11 +74,12 @@ docs = [
     "mkdocstrings[python]>=0.25.0",
 ]
 models = [
-    "torch>=2.0.0",
-    "transformers>=4.38.0",
-    "torchaudio>=2.0.0",
-    "scipy>=1.10.0",
+    "torch>=2.0.0,<3.0.0",
+    "transformers>=4.38.0,<5.0.0",
+    "torchaudio>=2.0.0,<3.0.0",
+    "scipy>=1.10.0,<2.0.0",
     "soundfile>=0.12.0",
+    "numpy>=1.24.0,<2.0.0",
 ]
 eval = [
     "jiwer>=3.0.0",
@@ -93,17 +94,18 @@ dev = [
     "build>=1.1.0",
     "twine>=5.0.0",
     "pyyaml>=6.0",
-    "numpy>=1.24.0",
+    "numpy>=1.24.0,<2.0.0",
 ]
 all = [
-    "torch>=2.0.0",
-    "transformers>=4.38.0",
-    "torchaudio>=2.0.0",
-    "scipy>=1.10.0",
+    "torch>=2.0.0,<3.0.0",
+    "transformers>=4.38.0,<5.0.0",
+    "torchaudio>=2.0.0,<3.0.0",
+    "scipy>=1.10.0,<2.0.0",
     "soundfile>=0.12.0",
     "jiwer>=3.0.0",
     "sacrebleu>=2.4.0",
     "pyyaml>=6.0",
+    "numpy>=1.24.0,<2.0.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -111,7 +113,7 @@ where = ["."]
 include = ["lingualdub*"]
 
 [tool.setuptools.package-data]
-lingualdub = ["py.typed", "lingualdub.manifest.json", "registry/manifest_schema.json"]
+lingualdub = ["py.typed", "lingualdub.manifest.json", "registry/manifest_schema.json", "configs/*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

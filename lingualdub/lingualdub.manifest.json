@@ -340,7 +340,7 @@
         "task": "asr",
         "provider": "sunbird_transfer",
         "language": "nyn",
-        "type": "neural+deteriministic",
+        "type": "neural+deterministic",
         "transfer": "lug->nyn"
       }
     },
