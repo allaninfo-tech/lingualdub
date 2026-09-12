@@ -62,11 +62,22 @@ class Segment:
     metadata: MetadataDict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
-        # Use centralized validators; keep original semantics but raise
-        # ConfigurationValidationError (which also is ValueError for compat).
+        import math
+
         from lingualdub.exceptions import ConfigurationValidationError
 
-        # start / end are numbers; validate via helper where possible
+        # start / end must be numbers (reject bool) and finite
+        for field_name in ("start", "end"):
+            val = getattr(self, field_name)
+            if isinstance(val, bool) or not isinstance(val, (int, float)):
+                raise ConfigurationValidationError(
+                    f"Field {field_name!r} must be a number, got {type(val).__name__}: {val!r}.",
+                    field=field_name,
+                )
+            if not math.isfinite(float(val)):
+                raise ConfigurationValidationError(
+                    f"Field {field_name!r} must be finite, got {val!r}.", field=field_name
+                )
         if self.start < 0:
             raise ConfigurationValidationError(
                 f"Field 'start' must be >= 0, got {self.start!r}.", field="start"
@@ -77,6 +88,11 @@ class Segment:
                 field="end",
             )
         # Validate core string fields via shared helper
+        if not isinstance(self.text, str):
+            raise ConfigurationValidationError(
+                f"Field 'text' must be a string, got {type(self.text).__name__}: {self.text!r}.",
+                field="text",
+            )
         if self.text:
             require_non_empty_string(self.text, "text")
         require_non_empty_string(self.language, "language")
@@ -84,18 +100,42 @@ class Segment:
         if self.source_language is not None:
             require_non_empty_string(self.source_language, "source_language")
             validate_language_code(self.source_language)
-        # confidence if provided must be in [0,1]
+        if self.speaker is not None and not isinstance(self.speaker, str):
+            raise ConfigurationValidationError(
+                f"Field 'speaker' must be a string or None, got {type(self.speaker).__name__}: {self.speaker!r}.",
+                field="speaker",
+            )
+        if self.speaker is not None and self.speaker != "" and not self.speaker.strip():
+            raise ConfigurationValidationError(
+                "Field 'speaker' must be non-whitespace when set.", field="speaker"
+            )
+        if not isinstance(self.provenance, dict):
+            raise ConfigurationValidationError(
+                f"Field 'provenance' must be a dict, got {type(self.provenance).__name__}: {self.provenance!r}.",
+                field="provenance",
+            )
+        if not isinstance(self.metadata, dict):
+            raise ConfigurationValidationError(
+                f"Field 'metadata' must be a dict, got {type(self.metadata).__name__}: {self.metadata!r}.",
+                field="metadata",
+            )
+        # confidence if provided must be in [0,1] and finite
         if self.confidence is not None:
             if not isinstance(self.confidence, (int, float)) or isinstance(self.confidence, bool):
                 raise ConfigurationValidationError(
                     f"Field 'confidence' must be a number in [0, 1], got {type(self.confidence).__name__}: {self.confidence!r}.",
                     field="confidence",
                 )
-            if not (0.0 <= float(self.confidence) <= 1.0):
+            cf = float(self.confidence)
+            if not math.isfinite(cf) or not (0.0 <= cf <= 1.0):
                 raise ConfigurationValidationError(
-                    f"Field 'confidence' must be in [0, 1], got {self.confidence!r}.",
+                    f"Field 'confidence' must be finite in [0, 1], got {self.confidence!r}.",
                     field="confidence",
                 )
+        # Freeze dict fields shallowly by copying and preventing mutation via object.__setattr__
+        # Use copy to break external reference sharing
+        object.__setattr__(self, "provenance", dict(self.provenance))
+        object.__setattr__(self, "metadata", dict(self.metadata))
 
     def replace(self, **changes) -> Segment:
         """
@@ -125,50 +165,11 @@ class Segment:
 
         # Use dataclasses.replace which bypasses frozen __setattr__ via object.__setattr__
         new_obj = dc_replace(self, **changes)
-        # Manually trigger validation (dataclasses.replace does not call __post_init__)
-        # We call the validation logic directly by invoking __post_init__'s checks
-        # via a helper to avoid duplicating code.
-        # Since Segment is frozen, we need to validate the new object without mutating.
-        # Call __post_init__ manually (it only validates, not mutates, so safe).
-        # However __post_init__ is defined to validate self, so we call it on new_obj.
-        # Use object.__getattribute__ to avoid recursion issues.
+        # Trigger validation via __post_init__ on new_obj
         try:
-            # Re-use the same validation logic as __post_init__
-            from lingualdub.exceptions import ConfigurationValidationError
-
-            if new_obj.start < 0:
-                raise ConfigurationValidationError(
-                    f"Field 'start' must be >= 0, got {new_obj.start!r}.", field="start"
-                )
-            if new_obj.end < new_obj.start:
-                raise ConfigurationValidationError(
-                    f"Field 'end' must be >= start ({new_obj.start!r}), got {new_obj.end!r}.",
-                    field="end",
-                )
-            if new_obj.text:
-                require_non_empty_string(new_obj.text, "text")
-            require_non_empty_string(new_obj.language, "language")
-            validate_language_code(new_obj.language)
-            if new_obj.source_language is not None:
-                require_non_empty_string(new_obj.source_language, "source_language")
-                validate_language_code(new_obj.source_language)
-            if new_obj.confidence is not None:
-                if not isinstance(new_obj.confidence, (int, float)) or isinstance(
-                    new_obj.confidence, bool
-                ):
-                    raise ConfigurationValidationError(
-                        f"Field 'confidence' must be a number in [0, 1], got {type(new_obj.confidence).__name__}: {new_obj.confidence!r}.",
-                        field="confidence",
-                    )
-                if not (0.0 <= float(new_obj.confidence) <= 1.0):
-                    raise ConfigurationValidationError(
-                        f"Field 'confidence' must be in [0, 1], got {new_obj.confidence!r}.",
-                        field="confidence",
-                    )
+            new_obj.__post_init__()  # type: ignore[attr-defined]
         except Exception:
-            # If validation fails, the new object is discarded; original unchanged
             raise
-
         return new_obj
 
     @property
@@ -182,6 +183,8 @@ class Segment:
         The returned dictionary is a deep copy suitable for JSON serialization
         and round-trip via :meth:`from_dict`.
         """
+        import copy
+
         return {
             "start": self.start,
             "end": self.end,
@@ -190,8 +193,8 @@ class Segment:
             "speaker": self.speaker,
             "confidence": self.confidence,
             "source_language": self.source_language,
-            "provenance": dict(self.provenance),
-            "metadata": dict(self.metadata),
+            "provenance": copy.deepcopy(self.provenance),
+            "metadata": copy.deepcopy(self.metadata),
         }
 
     @classmethod
@@ -340,10 +343,11 @@ class Segment:
                 code="SEG_DESER_003",
             )
 
-        # Preserve unknown keys in metadata for schema evolution
+        # Preserve unknown keys in metadata for schema evolution (no shadowing)
         base_metadata = dict(data.get("metadata") or {})
         unknown = {k: v for k, v in data.items() if k not in known_keys}
-        merged_metadata = {**base_metadata, **unknown} if unknown else base_metadata
+        # Base metadata wins on collision to avoid data loss
+        merged_metadata = {**unknown, **base_metadata} if unknown else base_metadata
 
         # Construction delegates language-code and confidence invariants to
         # __post_init__ / validators (ConfigurationValidationError).  We pass

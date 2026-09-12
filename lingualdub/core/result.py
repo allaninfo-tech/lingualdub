@@ -93,6 +93,13 @@ class Result:
     artifacts: list[str] = field(default_factory=list)
     metadata: MetadataDict = field(default_factory=dict)
 
+    _SEVERITY = {
+        ResultStatus.COMPLETE: 0,
+        ResultStatus.PARTIAL: 1,
+        ResultStatus.DEGRADED: 2,
+        ResultStatus.FAILED: 3,
+    }
+
     def __post_init__(self) -> None:
         # Validate language fields when present
         if self.source_language is not None:
@@ -113,6 +120,44 @@ class Result:
                 f"Field 'status' must be a ResultStatus, got {type(self.status).__name__}: {self.status!r}.",
                 field="status",
             )
+        # Validate list/dict fields and break external references
+        for key in ("segments", "warnings", "artifacts"):
+            val = getattr(self, key)
+            if not isinstance(val, list):
+                from lingualdub.exceptions import ConfigurationValidationError
+
+                raise ConfigurationValidationError(
+                    f"Field {key!r} must be a list, got {type(val).__name__}: {val!r}.", field=key
+                )
+        if not isinstance(self.provenance, dict):
+            from lingualdub.exceptions import ConfigurationValidationError
+
+            raise ConfigurationValidationError(
+                f"Field 'provenance' must be a dict, got {type(self.provenance).__name__}: {self.provenance!r}.",
+                field="provenance",
+            )
+        if not isinstance(self.metadata, dict):
+            from lingualdub.exceptions import ConfigurationValidationError
+
+            raise ConfigurationValidationError(
+                f"Field 'metadata' must be a dict, got {type(self.metadata).__name__}: {self.metadata!r}.",
+                field="metadata",
+            )
+        # Break external mutable references by copying
+        object.__setattr__(self, "segments", list(self.segments))
+        object.__setattr__(self, "warnings", list(self.warnings))
+        object.__setattr__(self, "artifacts", list(self.artifacts))
+        object.__setattr__(self, "provenance", dict(self.provenance))
+        object.__setattr__(self, "metadata", dict(self.metadata))
+        # Validate segments are Segment instances
+        for i, s in enumerate(self.segments):
+            if not isinstance(s, Segment):
+                from lingualdub.exceptions import ConfigurationValidationError
+
+                raise ConfigurationValidationError(
+                    f"Field segments[{i}] must be a Segment, got {type(s).__name__}: {s!r}.",
+                    field=f"segments[{i}]",
+                )
 
     def replace(self, **changes) -> Result:
         """
@@ -141,36 +186,21 @@ class Result:
 
         # dataclasses.replace bypasses frozen __setattr__ via object.__setattr__
         new_obj = dc_replace(self, **changes)
-        # Validate the new object (language codes, status etc.)
-        # Use __post_init__ logic by calling it manually
-        try:
-            # Re-use same validation as __post_init__
-            if new_obj.source_language is not None:
-                from lingualdub.utils.validation import (
-                    require_non_empty_string,
-                    validate_language_code,
-                )
-
-                require_non_empty_string(new_obj.source_language, "source_language")
-                validate_language_code(new_obj.source_language)
-            if new_obj.target_language is not None:
-                from lingualdub.utils.validation import (
-                    require_non_empty_string,
-                    validate_language_code,
-                )
-
-                require_non_empty_string(new_obj.target_language, "target_language")
-                validate_language_code(new_obj.target_language)
-            if not isinstance(new_obj.status, ResultStatus):  # type: ignore
+        # Enforce monotonic severity: cannot downgrade FAILED etc.
+        if "status" in changes:
+            old_sev = Result._SEVERITY.get(self.status, 0)
+            new_sev = Result._SEVERITY.get(new_obj.status, 0)  # type: ignore[arg-type]
+            if new_sev < old_sev:
                 from lingualdub.exceptions import ConfigurationValidationError
 
                 raise ConfigurationValidationError(
-                    f"Field 'status' must be a ResultStatus, got {type(new_obj.status).__name__}: {new_obj.status!r}.",
+                    f"Result status cannot regress from {self.status.value!r} to {new_obj.status.value!r} (monotonic severity).",
                     field="status",
                 )
+        try:
+            new_obj.__post_init__()  # type: ignore[attr-defined]
         except Exception:
             raise
-
         return new_obj
 
     def add_warning(self, message: str) -> Result:
@@ -218,15 +248,17 @@ class Result:
         The returned dictionary is a deep copy suitable for JSON serialization
         and round-trip via :meth:`from_dict`.
         """
+        import copy
+
         return {
             "segments": [s.to_dict() for s in self.segments],
             "source_language": self.source_language,
             "target_language": self.target_language,
             "status": self.status.value,
             "warnings": list(self.warnings),
-            "provenance": dict(self.provenance),
+            "provenance": copy.deepcopy(self.provenance),
             "artifacts": list(self.artifacts),
-            "metadata": dict(self.metadata),
+            "metadata": copy.deepcopy(self.metadata),
         }
 
     @classmethod
@@ -268,15 +300,19 @@ class Result:
         }
 
         # --- segments --------------------------------------------------------
+        if "segments" in data and data["segments"] is None:
+            raise SerializationError(
+                "Field 'segments' must be a list, got None.", field="segments", code="RESU_DESER_003"
+            )
         raw_segments = data.get("segments", [])
-        if raw_segments is not None and not isinstance(raw_segments, list):
+        if not isinstance(raw_segments, list):
             raise SerializationError(
                 f"Field 'segments' must be a list, got {type(raw_segments).__name__}: {raw_segments!r}.",
                 field="segments",
                 code="RESU_DESER_003",
             )
         segments: list[Segment] = []
-        for idx, seg_data in enumerate(raw_segments or []):
+        for idx, seg_data in enumerate(raw_segments):
             if not isinstance(seg_data, dict):
                 raise SerializationError(
                     f"Segment at index {idx} must be a dict, got {type(seg_data).__name__}: {seg_data!r}.",
@@ -318,9 +354,11 @@ class Result:
                 )
 
         # --- status ---------------------------------------------------------
+        if "status" in data and data["status"] is None:
+            raise SerializationError(
+                "Field 'status' must be a string, got None.", field="status", code="RESU_DESER_003"
+            )
         raw_status = data.get("status", ResultStatus.COMPLETE.value)
-        if raw_status is None:
-            raw_status = ResultStatus.COMPLETE.value
         if not isinstance(raw_status, str):
             raise SerializationError(
                 f"Field 'status' must be a string, got {type(raw_status).__name__}: {raw_status!r}.",
@@ -338,7 +376,11 @@ class Result:
 
         # --- warnings / artifacts / provenance / metadata -------------------
         for key in ("warnings", "artifacts"):
-            if key in data and data[key] is not None and not isinstance(data[key], list):
+            if key in data and data[key] is None:
+                raise SerializationError(
+                    f"Field '{key}' must be a list, got None.", field=key, code="RESU_DESER_003"
+                )
+            if key in data and not isinstance(data[key], list):
                 raise SerializationError(
                     f"Field '{key}' must be a list, got {type(data[key]).__name__}: {data[key]!r}.",
                     field=key,
@@ -354,28 +396,37 @@ class Result:
                         )
 
         for key in ("provenance", "metadata"):
-            if key in data and data[key] is not None and not isinstance(data[key], dict):
+            if key in data and data[key] is None:
+                raise SerializationError(
+                    f"Field '{key}' must be a dict, got None.", field=key, code="RESU_DESER_003"
+                )
+            if key in data and not isinstance(data[key], dict):
                 raise SerializationError(
                     f"Field '{key}' must be a dict, got {type(data[key]).__name__}: {data[key]!r}.",
                     field=key,
                     code="RESU_DESER_003",
                 )
 
-        # Preserve unknown keys in metadata for schema evolution
+        # Preserve unknown keys in metadata for schema evolution (base wins on collision)
         base_metadata = dict(data.get("metadata") or {})
         unknown = {k: v for k, v in data.items() if k not in known_keys}
-        merged_metadata = {**base_metadata, **unknown} if unknown else base_metadata
+        merged_metadata = {**unknown, **base_metadata} if unknown else base_metadata
 
+        # Validate warnings/artifacts/provenance/metadata None was already rejected
+        warnings_val = data.get("warnings", [])
+        artifacts_val = data.get("artifacts", [])
+        provenance_val = data.get("provenance", {})
+        metadata_val = merged_metadata
         # Construction delegates language-code validation to __post_init__
         return cls(
             segments=segments,
             source_language=data.get("source_language"),
             target_language=data.get("target_language"),
             status=status,
-            warnings=list(data.get("warnings") or []),
-            provenance=dict(data.get("provenance") or {}),
-            artifacts=list(data.get("artifacts") or []),
-            metadata=merged_metadata,
+            warnings=list(warnings_val),  # type: ignore[arg-type]
+            provenance=dict(provenance_val),  # type: ignore[arg-type]
+            artifacts=list(artifacts_val),  # type: ignore[arg-type]
+            metadata=metadata_val,
         )
 
     def __repr__(self) -> str:
