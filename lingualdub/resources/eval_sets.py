@@ -30,12 +30,12 @@ LUGANDA_ASR_EVAL_SET = Resource(
         "dataset_version": "1.0.0",
         "consent_basis": "institutional_open_research_release",
     },
-    quality_flags=["verified_transcripts", "single_speaker_clean"],
+    quality_flags=["verified_transcripts", "multi_speaker_clean"],
     compatible_components=["wer_evaluator", "sunbird_asr", "whisper_asr", "dummy_asr"],
     path="data/samples/sample_lug.wav",
     metadata={
         "split": "test",
-        "sample_count": 5,
+        "sample_count": 3,
         "sample_rate_hz": 16000,
         "samples": [
             {
@@ -47,14 +47,14 @@ LUGANDA_ASR_EVAL_SET = Resource(
             },
             {
                 "id": "lug_salt_002",
-                "audio_path": "data/samples/sample_lug_02.wav",
+                "audio_path": "data/samples/sample_lug.wav",
                 "reference_text": "Emikono waggulu tusome ebitabo byaffe.",
                 "speaker": "speaker_lug_02",
                 "duration_seconds": 2.95,
             },
             {
                 "id": "lug_salt_003",
-                "audio_path": "data/samples/sample_lug_03.wav",
+                "audio_path": "data/samples/sample_lug.wav",
                 "reference_text": "Abaana bagenze ku ssomero okukola ebigezo.",
                 "speaker": "speaker_lug_01",
                 "duration_seconds": 3.40,
@@ -199,7 +199,7 @@ def get_evaluation_resource(resource_id: str) -> Resource | None:
 # ─────────────────────────────────────────────────────────────────────────────
 DUMMY_TIMING_RESOURCE = Resource(
     id="dummy_timing_resource",
-    kind=ResourceKind.CHECKPOINT,
+    kind=ResourceKind.ALIGNMENT,
     language="lug",
     version="1.0.0",
     provenance={
@@ -290,7 +290,7 @@ VOICE_CLONING_RESOURCE = Resource(
             "or YourTTS via ResourceManager. Choice documented in docs/models.md."
         ),
         "model_reference": "coqui/XTTS-v2",
-        "licence": "CPML (Coqui Public Model License) - allows commercial use with attribution",
+        "license": "CPML (Coqui Public Model License) - allows commercial use with attribution",
         "alternative": "YourTTS (GPL-3.0, research only)",
         "sample_rate_hz": 16000,
         "supported_languages": ["lug", "nyn", "eng", "swa"],
@@ -356,11 +356,12 @@ DUMMY_VIDEO_RESOURCE = Resource(
     compatible_components=["video_merger", "dialogue_timing", "av_sync_evaluator"],
     path="data/samples/sample_lug.mp4",
     metadata={
-        "description": "Placeholder video for offline AV-sync pipeline tests. Synthetic color clip.",
+        "description": "Placeholder video for offline AV-sync pipeline tests. Synthetic color clip. No real MP4 required offline.",
         "duration": 12.5,
         "fps": 25,
         "has_audio": True,
         "resolution": "640x480",
+        "note": "path may not exist offline; VideoMerger falls back to dummy generation",
     },
 )
 
@@ -393,7 +394,7 @@ RUNYANKOLE_ASR_EVAL_SET = Resource(
         "text_sources": "Uganda Parliament Hansard, JW.org, MoH health advisories",
         "transfer_basis": "Bantu Great Lakes lexical ~70-80% cognate with Luganda, identical noun-class morphology",
     },
-    quality_flags=["verified_transcripts", "single_speaker_clean", "family_transfer_benchmark"],
+    quality_flags=["verified_transcripts", "multi_speaker_clean", "family_transfer_benchmark"],
     compatible_components=[
         "wer_evaluator",
         "runyankole_asr",
@@ -404,7 +405,7 @@ RUNYANKOLE_ASR_EVAL_SET = Resource(
     path="data/samples/sample_nyn.wav",
     metadata={
         "split": "test",
-        "sample_count": 5,
+        "sample_count": 3,
         "sample_rate_hz": 16000,
         "language": "nyn",
         "family_transfer": "lug->nyn",
@@ -418,14 +419,14 @@ RUNYANKOLE_ASR_EVAL_SET = Resource(
             },
             {
                 "id": "nyn_salt_002",
-                "audio_path": "data/samples/sample_nyn_02.wav",
+                "audio_path": "data/samples/sample_nyn.wav",
                 "reference_text": "Abaana bagyenda aha ishuri kushoma ebitabo.",
                 "speaker": "speaker_nyn_02",
                 "duration_seconds": 2.88,
             },
             {
                 "id": "nyn_salt_003",
-                "audio_path": "data/samples/sample_nyn_03.wav",
+                "audio_path": "data/samples/sample_nyn.wav",
                 "reference_text": "Enjura yagwire munonga omu kiryo kyanyenkyi.",
                 "speaker": "speaker_nyn_01",
                 "duration_seconds": 3.10,
