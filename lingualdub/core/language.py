@@ -59,6 +59,42 @@ class Language:
         # family and resource_profile are descriptive but should be non-empty
         require_non_empty_string(self.family, "family")
         require_non_empty_string(self.resource_profile, "resource_profile")
+        # Defensive copy validation for lists
+        for attr in ("supported_tasks", "related_languages", "resources", "compatible_components"):
+            val = getattr(self, attr)
+            if not isinstance(val, list):
+                from lingualdub.exceptions import ConfigurationValidationError
+
+                raise ConfigurationValidationError(
+                    f"Field {attr!r} must be a list, got {type(val).__name__}: {val!r}.", field=attr
+                )
+            for i, item in enumerate(val):
+                if not isinstance(item, str):
+                    from lingualdub.exceptions import ConfigurationValidationError
+
+                    raise ConfigurationValidationError(
+                        f"Field {attr!r}[{i}] must be a string, got {type(item).__name__}: {item!r}.",
+                        field=f"{attr}[{i}]",
+                    )
+                if not item.strip():
+                    from lingualdub.exceptions import ConfigurationValidationError
+
+                    raise ConfigurationValidationError(
+                        f"Field {attr!r}[{i}] must be non-empty.", field=f"{attr}[{i}]"
+                    )
+        if not isinstance(self.metadata, dict):
+            from lingualdub.exceptions import ConfigurationValidationError
+
+            raise ConfigurationValidationError(
+                f"Field 'metadata' must be a dict, got {type(self.metadata).__name__}: {self.metadata!r}.",
+                field="metadata",
+            )
+        # Break external references
+        object.__setattr__(self, "supported_tasks", list(self.supported_tasks))
+        object.__setattr__(self, "related_languages", list(self.related_languages))
+        object.__setattr__(self, "resources", list(self.resources))
+        object.__setattr__(self, "compatible_components", list(self.compatible_components))
+        object.__setattr__(self, "metadata", dict(self.metadata))
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize this Language to a JSON-compatible dictionary.
@@ -66,6 +102,8 @@ class Language:
         The returned dictionary is a deep copy suitable for JSON serialization
         and round-trip via :meth:`from_dict`.
         """
+        import copy
+
         return {
             "code": self.code,
             "name": self.name,
@@ -75,7 +113,7 @@ class Language:
             "related_languages": list(self.related_languages),
             "resources": list(self.resources),
             "compatible_components": list(self.compatible_components),
-            "metadata": dict(self.metadata),
+            "metadata": copy.deepcopy(self.metadata),
         }
 
     @classmethod
@@ -172,23 +210,41 @@ class Language:
                 code="LANG_DESER_003",
             )
 
-        # Preserve unknown keys in metadata for forward compatibility
+        # Explicitly reject None for optional collections (don't coerce to [])
+        for key in optional_lists:
+            if key in data and data[key] is None:
+                raise SerializationError(
+                    f"Field {key!r} must be a list, got None.", field=key, code="LANG_DESER_003"
+                )
+        if "metadata" in data and data["metadata"] is None:
+            raise SerializationError(
+                "Field 'metadata' must be a dict, got None.", field="metadata", code="LANG_DESER_003"
+            )
+
+        # Preserve unknown keys in metadata for forward compatibility (base wins on collision)
         base_metadata = dict(data.get("metadata") or {})
         unknown = {k: v for k, v in data.items() if k not in known_keys}
-        merged_metadata = {**base_metadata, **unknown} if unknown else base_metadata
+        merged_metadata = {**unknown, **base_metadata} if unknown else base_metadata
 
         # Construction delegates string/code validation to __post_init__
         # (which raises ConfigurationValidationError).  We let that propagate
         # because it is the correct hierarchy for domain validation.
+        # Reject None coercion: only default to [] when key absent
+        def _list_or_default(key: str) -> list[str]:
+            if key not in data:
+                return []
+            v = data[key]
+            return list(v)  # type: ignore[arg-type]
+
         return cls(
             code=data["code"],
             name=data["name"],
             family=data["family"],
             resource_profile=data["resource_profile"],
-            supported_tasks=list(data.get("supported_tasks") or []),
-            related_languages=list(data.get("related_languages") or []),
-            resources=list(data.get("resources") or []),
-            compatible_components=list(data.get("compatible_components") or []),
+            supported_tasks=_list_or_default("supported_tasks"),
+            related_languages=_list_or_default("related_languages"),
+            resources=_list_or_default("resources"),
+            compatible_components=_list_or_default("compatible_components"),
             metadata=merged_metadata,
         )
 

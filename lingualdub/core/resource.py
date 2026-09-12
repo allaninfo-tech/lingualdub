@@ -69,11 +69,63 @@ class Resource:
     metadata: MetadataDict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
+        import os as _os
+        from pathlib import Path as _Path
+
         require_non_empty_string(self.id, "id")
         require_non_empty_string(self.language, "language")
         require_non_empty_string(self.version, "version")
         validate_language_code(self.language)
         validate_version_string(self.version)
+        if not isinstance(self.kind, ResourceKind):
+            from lingualdub.exceptions import ConfigurationValidationError
+
+            raise ConfigurationValidationError(
+                f"Field 'kind' must be a ResourceKind, got {type(self.kind).__name__}: {self.kind!r}.",
+                field="kind",
+            )
+        if not isinstance(self.provenance, dict):
+            from lingualdub.exceptions import ConfigurationValidationError
+
+            raise ConfigurationValidationError(
+                f"Field 'provenance' must be a dict, got {type(self.provenance).__name__}: {self.provenance!r}.",
+                field="provenance",
+            )
+        for attr in ("quality_flags", "compatible_components"):
+            val = getattr(self, attr)
+            if not isinstance(val, list):
+                from lingualdub.exceptions import ConfigurationValidationError
+
+                raise ConfigurationValidationError(
+                    f"Field {attr!r} must be a list, got {type(val).__name__}: {val!r}.", field=attr
+                )
+            for i, item in enumerate(val):
+                if not isinstance(item, str):
+                    from lingualdub.exceptions import ConfigurationValidationError
+
+                    raise ConfigurationValidationError(
+                        f"Field {attr!r}[{i}] must be a string, got {type(item).__name__}: {item!r}.",
+                        field=f"{attr}[{i}]",
+                    )
+        if self.path is not None and not isinstance(self.path, (str, _Path, _os.PathLike)):
+            from lingualdub.exceptions import ConfigurationValidationError
+
+            raise ConfigurationValidationError(
+                f"Field 'path' must be a string, path-like, or None, got {type(self.path).__name__}: {self.path!r}.",
+                field="path",
+            )
+        if not isinstance(self.metadata, dict):
+            from lingualdub.exceptions import ConfigurationValidationError
+
+            raise ConfigurationValidationError(
+                f"Field 'metadata' must be a dict, got {type(self.metadata).__name__}: {self.metadata!r}.",
+                field="metadata",
+            )
+        # Break external references
+        object.__setattr__(self, "provenance", dict(self.provenance))
+        object.__setattr__(self, "quality_flags", list(self.quality_flags))
+        object.__setattr__(self, "compatible_components", list(self.compatible_components))
+        object.__setattr__(self, "metadata", dict(self.metadata))
 
     @property
     def has_consent(self) -> bool:
@@ -91,6 +143,8 @@ class Resource:
         ``path`` is always serialized as a string (or ``None``) so that
         ``pathlib.Path`` values round-trip correctly through JSON.
         """
+        import copy
+
         # PathLike may be a pathlib.Path — serialize to string for JSON
         path_val: str | None = None if self.path is None else str(self.path)
 
@@ -99,11 +153,11 @@ class Resource:
             "kind": self.kind.value,
             "language": self.language,
             "version": self.version,
-            "provenance": dict(self.provenance),
+            "provenance": copy.deepcopy(self.provenance),
             "quality_flags": list(self.quality_flags),
             "compatible_components": list(self.compatible_components),
             "path": path_val,
-            "metadata": dict(self.metadata),
+            "metadata": copy.deepcopy(self.metadata),
         }
 
     @classmethod
@@ -164,19 +218,23 @@ class Resource:
                 code="RES_DESER_003",
             )
 
-        # Type checks for optional collections
-        if (
-            "provenance" in data
-            and data["provenance"] is not None
-            and not isinstance(data["provenance"], dict)
-        ):
+        # Type checks for optional collections (reject None explicitly)
+        if "provenance" in data and data["provenance"] is None:
+            raise SerializationError(
+                "Field 'provenance' must be a dict, got None.", field="provenance", code="RES_DESER_003"
+            )
+        if "provenance" in data and not isinstance(data["provenance"], dict):
             raise SerializationError(
                 f"Field 'provenance' must be a dict, got {type(data['provenance']).__name__}: {data['provenance']!r}.",
                 field="provenance",
                 code="RES_DESER_003",
             )
         for key in ("quality_flags", "compatible_components"):
-            if key in data and data[key] is not None and not isinstance(data[key], list):
+            if key in data and data[key] is None:
+                raise SerializationError(
+                    f"Field '{key}' must be a list, got None.", field=key, code="RES_DESER_003"
+                )
+            if key in data and not isinstance(data[key], list):
                 raise SerializationError(
                     f"Field '{key}' must be a list, got {type(data[key]).__name__}: {data[key]!r}.",
                     field=key,
@@ -190,11 +248,11 @@ class Resource:
                             field=f"{key}[{i}]",
                             code="RES_DESER_003",
                         )
-        if (
-            "metadata" in data
-            and data["metadata"] is not None
-            and not isinstance(data["metadata"], dict)
-        ):
+        if "metadata" in data and data["metadata"] is None:
+            raise SerializationError(
+                "Field 'metadata' must be a dict, got None.", field="metadata", code="RES_DESER_003"
+            )
+        if "metadata" in data and not isinstance(data["metadata"], dict):
             raise SerializationError(
                 f"Field 'metadata' must be a dict, got {type(data['metadata']).__name__}: {data['metadata']!r}.",
                 field="metadata",
@@ -214,20 +272,37 @@ class Resource:
                 code="RES_DESER_003",
             )
 
-        # Preserve unknown keys in metadata for schema evolution
+        # Preserve unknown keys in metadata for schema evolution (base wins)
         base_metadata = dict(data.get("metadata") or {})
         unknown = {k: v for k, v in data.items() if k not in known_keys}
-        merged_metadata = {**base_metadata, **unknown} if unknown else base_metadata
+        merged_metadata = {**unknown, **base_metadata} if unknown else base_metadata
+
+        def _list_or_default(key: str) -> list[str]:
+            if key not in data:
+                return []
+            return list(data[key])  # type: ignore[arg-type]
+
+        # Normalize path including PathLike → str (also handle os.PathLike)
+        if isinstance(raw_path, _Path):
+            norm_path = str(raw_path)
+        elif isinstance(raw_path, _os.PathLike):  # type: ignore[arg-type]
+            norm_path = str(_os.fspath(raw_path))  # type: ignore[arg-type]
+        else:
+            norm_path = raw_path  # type: ignore[assignment]
+
+        prov_val = data.get("provenance")
+        if prov_val is None and "provenance" not in data:
+            prov_val = {}
 
         return cls(
             id=data["id"],
             kind=ResourceKind(raw_kind),
             language=data["language"],
             version=data["version"],
-            provenance=dict(data.get("provenance") or {}),
-            quality_flags=list(data.get("quality_flags") or []),
-            compatible_components=list(data.get("compatible_components") or []),
-            path=str(raw_path) if isinstance(raw_path, _Path) else raw_path,
+            provenance=dict(prov_val) if isinstance(prov_val, dict) else {},  # type: ignore[arg-type]
+            quality_flags=_list_or_default("quality_flags"),
+            compatible_components=_list_or_default("compatible_components"),
+            path=norm_path,  # type: ignore[arg-type]
             metadata=merged_metadata,
         )
 
