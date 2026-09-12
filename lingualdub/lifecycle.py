@@ -18,11 +18,15 @@ Responsibilities per stage:
 
 from __future__ import annotations
 
+import atexit
+import logging
 from collections import deque
 from collections.abc import Callable
 from enum import Enum
 
 from lingualdub.exceptions import InitializationError, LifecycleError
+
+logger = logging.getLogger(__name__)
 
 
 class LifecycleState(str, Enum):
@@ -61,6 +65,16 @@ class FrameworkLifecycle:
         self._startup_hooks: dict[str, tuple[Callable[[], None], list[str]]] = {}
         # Preserve registration order for deterministic tie-breaking
         self._startup_hook_order: list[str] = []
+        # Shutdown hook registry: name -> callable (LIFO teardown)
+        self._shutdown_hooks: dict[str, Callable[[], None]] = {}
+        self._shutdown_hook_order: list[str] = []
+        # Ensure atexit calls shutdown() for deterministic teardown
+        # Register once per instance; suppress duplicate registration on re-init
+        try:
+            atexit.register(self._handle_atexit)  # type: ignore[arg-type]
+        except Exception:
+            # atexit registration should never fail framework init
+            logger.debug("Failed to register atexit handler for FrameworkLifecycle", exc_info=True)
 
     @property
     def state(self) -> LifecycleState:
@@ -333,6 +347,169 @@ class FrameworkLifecycle:
         """Alias for :meth:`run_startup_hooks`."""
         return self.run_startup_hooks()
 
+    # ------------------------------------------------------------------
+    # Shutdown hooks — LCY-003
+    # ------------------------------------------------------------------
+
+    def register_shutdown_hook(
+        self,
+        name: str,
+        hook: Callable[[], None],
+    ) -> None:
+        """
+        Register a shutdown hook invoked during ``shutdown()``.
+
+        Shutdown hooks run in reverse registration order (LIFO), which
+        corresponds to reverse startup order when shutdown hooks are
+        registered alongside their startup counterparts.
+
+        Args:
+            name: Unique hook name.
+            hook: Callable with no required arguments.
+
+        Raises:
+            LifecycleError: If name is invalid, duplicate, or hook not callable.
+        """
+        from lingualdub.utils.validation import require_non_empty_string
+
+        require_non_empty_string(name, "name")
+        if not callable(hook):
+            raise LifecycleError(
+                f"Shutdown hook {name!r} must be callable, got {type(hook).__name__}: {hook!r}.",
+                code="LIFECYCLE_006",
+                context={"hook": name},
+            )
+        if name in self._shutdown_hooks:
+            raise LifecycleError(
+                f"Shutdown hook {name!r} is already registered.",
+                code="LIFECYCLE_006",
+                context={"hook": name},
+            )
+        self._shutdown_hooks[name] = hook
+        self._shutdown_hook_order.append(name)
+
+    def shutdown_hook(
+        self,
+        name: str,
+    ) -> Callable[[Callable[[], None]], Callable[[], None]]:
+        """
+        Decorator to register a shutdown hook.
+
+        Example:
+            lifecycle = FrameworkLifecycle()
+            @lifecycle.shutdown_hook("cleanup_tmp")
+            def cleanup_tmp(): ...
+
+        Args:
+            name: Hook name.
+
+        Returns:
+            Decorator that registers the function and returns it unchanged.
+        """
+
+        def decorator(func: Callable[[], None]) -> Callable[[], None]:
+            self.register_shutdown_hook(name, func)
+            return func
+
+        return decorator
+
+    def list_shutdown_hooks(self) -> list[str]:
+        """Return shutdown hook names in registration order."""
+        return list(self._shutdown_hook_order)
+
+    def clear_shutdown_hooks(self) -> None:
+        """Remove all registered shutdown hooks (useful for testing)."""
+        self._shutdown_hooks.clear()
+        self._shutdown_hook_order.clear()
+
+    def run_shutdown_hooks(self) -> None:
+        """
+        Execute all registered shutdown hooks in reverse registration order.
+
+        Best-effort teardown: if a hook raises, the error is logged at
+        WARNING level and remaining hooks continue.
+
+        No exception is raised for hook failures; all hooks are attempted.
+        """
+        # Reverse registration order = reverse startup order when paired
+        for name in reversed(self._shutdown_hook_order):
+            hook = self._shutdown_hooks[name]
+            try:
+                hook()
+            except Exception as exc:  # noqa: BLE001 — best-effort teardown must not abort
+                logger.warning(
+                    "Shutdown hook %r failed: %s",
+                    name,
+                    exc,
+                    exc_info=True,
+                )
+
+    def shutdown(self) -> None:
+        """
+        Deterministically teardown the framework.
+
+        Transitions state through ``SHUTTING_DOWN → STOPPED`` and runs
+        shutdown hooks in reverse order. Safe to call from any state
+        (including before startup completes) and idempotent — subsequent
+        calls after ``STOPPED`` are no-ops.
+
+        Best-effort: shutdown hook failures are logged but do not abort
+        teardown; state still proceeds to ``STOPPED``.
+
+        Handles partial initialization: if ``shutdown()`` is called before
+        ``INITIALIZING`` completes, any registered shutdown hooks are still
+        executed and state moves to ``STOPPED``.
+        """
+        if self._state == LifecycleState.STOPPED:
+            return
+        if self._state == LifecycleState.SHUTTING_DOWN:
+            # Already shutting down — avoid re-entrance
+            return
+
+        # Transition to SHUTTING_DOWN — allow from any non-terminal state
+        # for partial-init cleanup. Use can_transition when possible,
+        # otherwise force transition.
+        if self.can_transition(LifecycleState.SHUTTING_DOWN):
+            try:
+                self.transition(LifecycleState.SHUTTING_DOWN)
+            except LifecycleError:
+                # Fallback force
+                self._state = LifecycleState.SHUTTING_DOWN
+                self._history.append(LifecycleState.SHUTTING_DOWN)
+        else:
+            # Partial init: e.g., UNINITIALIZED/CONFIGURING/CONFIGURED/INITIALIZING
+            # -> force SHUTTING_DOWN for deterministic cleanup
+            self._state = LifecycleState.SHUTTING_DOWN
+            self._history.append(LifecycleState.SHUTTING_DOWN)
+
+        # Run shutdown hooks best-effort
+        try:
+            self.run_shutdown_hooks()
+        except Exception:
+            # run_shutdown_hooks itself should not raise, but be defensive
+            logger.warning("Unexpected error during shutdown hooks", exc_info=True)
+
+        # Transition to STOPPED
+        if self.can_transition(LifecycleState.STOPPED):
+            try:
+                self.transition(LifecycleState.STOPPED)
+            except LifecycleError:
+                self._state = LifecycleState.STOPPED
+                self._history.append(LifecycleState.STOPPED)
+        else:
+            if self._state != LifecycleState.STOPPED:
+                self._state = LifecycleState.STOPPED
+                self._history.append(LifecycleState.STOPPED)
+
+    def _handle_atexit(self) -> None:
+        """atexit handler — ensure shutdown() on interpreter exit."""
+        try:
+            if self._state != LifecycleState.STOPPED:
+                self.shutdown()
+        except Exception:
+            # atexit must never raise
+            logger.debug("Exception in atexit shutdown handler", exc_info=True)
+
     def __repr__(self) -> str:
         return f"FrameworkLifecycle(state={self._state.value!r})"
 
@@ -404,6 +581,52 @@ def startup_hook(
             object.__setattr__(
                 func, "_lingualdub_startup_hook", (name, list(depends_on) if depends_on else [])
             )  # type: ignore[attr-defined]
+        return func
+
+    return decorator
+
+
+def shutdown_hook(
+    name: str,
+) -> Callable[[Callable[[], None]], Callable[[], None]]:
+    """
+    Module-level decorator to mark a function as a shutdown hook.
+
+    Mirrors :func:`startup_hook` but for shutdown. Validates arguments and
+    attaches metadata ``_lingualdub_shutdown_hook`` so it can be registered
+    later via ``lifecycle.register_shutdown_hook``.
+
+    Example:
+        from lingualdub.lifecycle import shutdown_hook
+
+        @shutdown_hook("cleanup_tmp")
+        def cleanup_tmp(): ...
+
+        # Later:
+        lifecycle.register_shutdown_hook("cleanup_tmp", cleanup_tmp)
+        # Or inspect: cleanup_tmp._lingualdub_shutdown_hook == "cleanup_tmp"
+
+    Args:
+        name: Hook name.
+
+    Returns:
+        Decorator.
+    """
+    from lingualdub.utils.validation import require_non_empty_string
+
+    require_non_empty_string(name, "name")
+
+    def decorator(func: Callable[[], None]) -> Callable[[], None]:
+        if not callable(func):
+            raise LifecycleError(
+                f"Shutdown hook {name!r} must be callable.",
+                code="LIFECYCLE_006",
+                context={"hook": name},
+            )
+        import contextlib
+
+        with contextlib.suppress(Exception):
+            object.__setattr__(func, "_lingualdub_shutdown_hook", name)  # type: ignore[attr-defined]
         return func
 
     return decorator

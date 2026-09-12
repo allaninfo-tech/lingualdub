@@ -63,9 +63,10 @@ The top-level `lingualdub` package exposes the following stable symbols:
 ### Lifecycle
 | Symbol | Type | Description |
 |---|---|---|
-| `FrameworkLifecycle` | Class | Deterministic state machine (`UNINITIALIZED→...→STOPPED`) with startup hook registry |
+| `FrameworkLifecycle` | Class | Deterministic state machine (`UNINITIALIZED→...→STOPPED`) with startup/shutdown hook registry |
 | `LifecycleState` | Enum | Ordered lifecycle stages (`UNINITIALIZED`, `CONFIGURING`, `CONFIGURED`, `INITIALIZING`, `READY`, `RUNNING`, `SHUTTING_DOWN`, `STOPPED`) |
 | `startup_hook` | Decorator | Module-level decorator marking a function as a startup hook (`@startup_hook(name, depends_on)`) |
+| `shutdown_hook` | Decorator | Module-level decorator marking a function as a shutdown hook (`@shutdown_hook(name)`) |
 
 ### Centralized Types (`lingualdub.types`)
 | Symbol | Type | Description |

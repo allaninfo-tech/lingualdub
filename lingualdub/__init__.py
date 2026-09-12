@@ -36,7 +36,7 @@ from lingualdub.exceptions import (
     StageCompatibilityError,
     StageExecutionError,
 )
-from lingualdub.lifecycle import FrameworkLifecycle, LifecycleState, startup_hook
+from lingualdub.lifecycle import FrameworkLifecycle, LifecycleState, shutdown_hook, startup_hook
 from lingualdub.pipeline.config_loader import ConfigLoader
 from lingualdub.pipeline.executor import PipelineExecutionError, PipelineExecutor
 from lingualdub.registry.manifest import ManifestError, ManifestScanner
@@ -90,6 +90,7 @@ __all__ = [
     "FrameworkLifecycle",
     "LifecycleState",
     "startup_hook",
+    "shutdown_hook",
     # Pipeline & Execution
     "PipelineExecutor",
     "PipelineExecutionError",
