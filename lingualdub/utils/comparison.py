@@ -61,38 +61,47 @@ def compare_runs(
     # Validate provenance — dataset_version and protocol must match for comparable evaluation
     base_ds = res_base.provenance.get("dataset_version")
     cand_ds = res_cand.provenance.get("dataset_version")
-    if base_ds and cand_ds and base_ds != cand_ds:
-        if require_matching_dataset:
-            raise ProvenanceMismatchError(
-                f"Cannot compare runs: baseline dataset is {base_ds!r} but candidate dataset is {cand_ds!r}."
-            )
-        else:
-            import warnings
+    # If only one is set, treat as mismatch when require_matching_dataset
+    if base_ds != cand_ds:
+        if base_ds is not None or cand_ds is not None:
+            if require_matching_dataset:
+                raise ProvenanceMismatchError(
+                    f"Cannot compare runs: baseline dataset is {base_ds!r} but candidate dataset is {cand_ds!r}."
+                )
+            else:
+                import warnings
 
-            warnings.warn(
-                f"Comparing runs across different datasets: baseline {base_ds!r} vs candidate {cand_ds!r}. "
-                "Metric deltas may not be meaningful.",
-                UserWarning,
-                stacklevel=2,
-            )
+                warnings.warn(
+                    f"Comparing runs across different datasets: baseline {base_ds!r} vs candidate {cand_ds!r}. "
+                    "Metric deltas may not be meaningful.",
+                    UserWarning,
+                    stacklevel=2,
+                )
 
     base_proto = res_base.provenance.get("evaluation_protocol")
     cand_proto = res_cand.provenance.get("evaluation_protocol")
-    if base_proto and cand_proto and base_proto != cand_proto:
-        raise ProvenanceMismatchError(
-            f"Cannot compare runs: baseline evaluation protocol is {base_proto!r} "
-            f"but candidate protocol is {cand_proto!r}."
-        )
+    if base_proto != cand_proto:
+        if base_proto is not None or cand_proto is not None:
+            raise ProvenanceMismatchError(
+                f"Cannot compare runs: baseline evaluation protocol is {base_proto!r} "
+                f"but candidate protocol is {cand_proto!r}."
+            )
 
     base_metrics = res_base.metadata.get("metrics", {})
     cand_metrics = res_cand.metadata.get("metrics", {})
 
     deltas: dict[str, Any] = {}
 
+    def _safe_float(v: Any, name: str) -> float:
+        try:
+            return float(v)
+        except Exception as e:
+            raise ProvenanceMismatchError(f"Metric {name!r} is not numeric: {v!r}") from e
+
     # Word Error Rate (WER): lower is better -> candidate - baseline
     if "wer" in base_metrics and "wer" in cand_metrics:
-        b_wer = float(base_metrics["wer"])
-        c_wer = float(cand_metrics["wer"])
+        b_wer = _safe_float(base_metrics["wer"], "wer")
+        c_wer = _safe_float(cand_metrics["wer"], "wer")
         deltas["wer_delta"] = round(c_wer - b_wer, 4)
         deltas["wer_relative_reduction_pct"] = round(
             ((b_wer - c_wer) / b_wer * 100.0) if b_wer > 0 else 0.0, 2
@@ -100,34 +109,34 @@ def compare_runs(
 
     # Character Error Rate (CER): lower is better
     if "cer" in base_metrics and "cer" in cand_metrics:
-        b_cer = float(base_metrics["cer"])
-        c_cer = float(cand_metrics["cer"])
+        b_cer = _safe_float(base_metrics["cer"], "cer")
+        c_cer = _safe_float(cand_metrics["cer"], "cer")
         deltas["cer_delta"] = round(c_cer - b_cer, 4)
 
     # chrF: higher is better -> candidate - baseline
     if "chrf" in base_metrics and "chrf" in cand_metrics:
-        b_chrf = float(base_metrics["chrf"])
-        c_chrf = float(cand_metrics["chrf"])
+        b_chrf = _safe_float(base_metrics["chrf"], "chrf")
+        c_chrf = _safe_float(cand_metrics["chrf"], "chrf")
         deltas["chrf_delta"] = round(c_chrf - b_chrf, 2)
 
     # BLEU: higher is better -> candidate - baseline
     if "bleu" in base_metrics and "bleu" in cand_metrics:
-        b_bleu = float(base_metrics["bleu"])
-        c_bleu = float(cand_metrics["bleu"])
+        b_bleu = _safe_float(base_metrics["bleu"], "bleu")
+        c_bleu = _safe_float(cand_metrics["bleu"], "bleu")
         deltas["bleu_delta"] = round(c_bleu - b_bleu, 2)
 
     # Timing metrics
     base_timing = res_base.metadata.get("timing_metrics", {})
     cand_timing = res_cand.metadata.get("timing_metrics", {})
     if "mean_duration_error_ms" in base_timing and "mean_duration_error_ms" in cand_timing:
-        b_dur = float(base_timing["mean_duration_error_ms"])
-        c_dur = float(cand_timing["mean_duration_error_ms"])
+        b_dur = _safe_float(base_timing["mean_duration_error_ms"], "mean_duration_error_ms")
+        c_dur = _safe_float(cand_timing["mean_duration_error_ms"], "mean_duration_error_ms")
         deltas["duration_error_ms_delta"] = round(c_dur - b_dur, 2)
 
     # Speaker similarity (M5): higher is better
     if "speaker_similarity" in base_metrics and "speaker_similarity" in cand_metrics:
-        b_spk = float(base_metrics["speaker_similarity"])
-        c_spk = float(cand_metrics["speaker_similarity"])
+        b_spk = _safe_float(base_metrics["speaker_similarity"], "speaker_similarity")
+        c_spk = _safe_float(cand_metrics["speaker_similarity"], "speaker_similarity")
         deltas["speaker_similarity_delta"] = round(c_spk - b_spk, 4)
         # Relative improvement
         deltas["speaker_similarity_relative_pct"] = round(
@@ -141,15 +150,15 @@ def compare_runs(
     base_av = res_base.metadata.get("av_sync_metrics", {})
     cand_av = res_cand.metadata.get("av_sync_metrics", {})
     if "mean_av_offset_ms" in base_av and "mean_av_offset_ms" in cand_av:
-        b_av = float(base_av["mean_av_offset_ms"])
-        c_av = float(cand_av["mean_av_offset_ms"])
+        b_av = _safe_float(base_av["mean_av_offset_ms"], "mean_av_offset_ms")
+        c_av = _safe_float(cand_av["mean_av_offset_ms"], "mean_av_offset_ms")
         deltas["mean_av_offset_ms_delta"] = round(c_av - b_av, 2)
         deltas["mean_av_offset_ms_relative_reduction_pct"] = round(
             ((b_av - c_av) / b_av * 100.0) if b_av > 0 else 0.0, 2
         )
     if "pct_within_100ms" in base_av and "pct_within_100ms" in cand_av:
-        b_pct = float(base_av["pct_within_100ms"])
-        c_pct = float(cand_av["pct_within_100ms"])
+        b_pct = _safe_float(base_av["pct_within_100ms"], "pct_within_100ms")
+        c_pct = _safe_float(cand_av["pct_within_100ms"], "pct_within_100ms")
         deltas["pct_within_100ms_delta"] = round(c_pct - b_pct, 2)
 
     return {

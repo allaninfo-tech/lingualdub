@@ -21,6 +21,9 @@ def make_run_id() -> str:
     return str(uuid.uuid4())
 
 
+_RESERVED_KEYS = {"run_id", "timestamp", "pipeline", "component_versions", "dataset_version"}
+
+
 def make_provenance(
     pipeline_name: str | None = None,
     component_versions: dict[str, str] | None = None,
@@ -40,12 +43,18 @@ def make_provenance(
 
     Returns:
         A provenance dictionary suitable for Result.provenance or Resource.provenance.
+
+    Raises:
+        ValueError: If extra shadows a reserved key.
     """
+    clashes = _RESERVED_KEYS.intersection(extra.keys())
+    if clashes:
+        raise ValueError(f"extra keys {sorted(clashes)} shadow reserved provenance keys {_RESERVED_KEYS}")
     return {
         "run_id": run_id or make_run_id(),
         "timestamp": datetime.now(tz=timezone.utc).isoformat(),
         "pipeline": pipeline_name,
-        "component_versions": component_versions or {},
+        "component_versions": dict(component_versions) if component_versions else {},
         "dataset_version": dataset_version,
         **extra,
     }
