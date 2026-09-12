@@ -89,16 +89,23 @@ def require_one_of(value: Any, allowed: Iterable[Any], field_name: str) -> Any:
     """
     Validate that ``value`` is one of ``allowed``.
 
+    Uses identity-aware check for bool/int ambiguity (True != 1).
+
     Raises:
         ConfigurationValidationError: If ``value`` not in ``allowed``.
     """
     allowed_list = list(allowed)
-    if value not in allowed_list:
-        raise ConfigurationValidationError(
-            f"Field {field_name!r} must be one of {allowed_list!r}, got {value!r}.",
-            field=field_name,
-        )
-    return value
+    # Use exact type+value match for bool to avoid True==1
+    for a in allowed_list:
+        if a is value or (type(a) is type(value) and a == value):
+            return value
+        # For non-bool, fall back to equality but guard bool/int confusion
+        if not isinstance(value, bool) and not isinstance(a, bool) and value == a:
+            return value
+    raise ConfigurationValidationError(
+        f"Field {field_name!r} must be one of {allowed_list!r}, got {value!r}.",
+        field=field_name,
+    )
 
 
 def require_not_none(value: Any, field_name: str) -> Any:
@@ -121,7 +128,7 @@ def require_not_none(value: Any, field_name: str) -> Any:
 # ---------------------------------------------------------------------------
 
 
-def validate_language_code(code: Any) -> str:
+def validate_language_code(code: Any, field_name: str = "language_code") -> str:
     """
     Validate an ISO 639-3 / BCP-47-ish language code.
 
@@ -136,15 +143,14 @@ def validate_language_code(code: Any) -> str:
     Raises:
         ConfigurationValidationError: If ``code`` is not a valid language code.
     """
-    require_non_empty_string(code, "language_code")
+    require_non_empty_string(code, field_name)
     if not isinstance(code, str):
-        # require_non_empty_string already raised, but keep for type checker
-        raise ConfigurationValidationError("language_code must be a string.", field="language_code")
+        raise ConfigurationValidationError("language_code must be a string.", field=field_name)
     if not _LANGUAGE_CODE_RE.match(code):
         raise ConfigurationValidationError(
-            f"Invalid language_code {code!r}: must match {_LANGUAGE_CODE_RE.pattern!r} "
+            f"Invalid {field_name} {code!r}: must match {_LANGUAGE_CODE_RE.pattern!r} "
             "(2–3 lowercase letters, e.g. 'lug', 'eng', 'nyn').",
-            field="language_code",
+            field=field_name,
         )
     return code
 

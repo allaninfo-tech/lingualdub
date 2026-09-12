@@ -55,7 +55,7 @@ class Language:
         require_non_empty_string(self.name, "name")
         # Validate language code format (2–3 letters). Uses centered helper so
         # callers get ConfigurationValidationError instead of bare ValueError.
-        validate_language_code(self.code)
+        validate_language_code(self.code, "code")
         # family and resource_profile are descriptive but should be non-empty
         require_non_empty_string(self.family, "family")
         require_non_empty_string(self.resource_profile, "resource_profile")

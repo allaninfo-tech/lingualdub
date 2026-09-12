@@ -106,12 +106,12 @@ class Result:
             from lingualdub.utils.validation import require_non_empty_string, validate_language_code
 
             require_non_empty_string(self.source_language, "source_language")
-            validate_language_code(self.source_language)
+            validate_language_code(self.source_language, "source_language")
         if self.target_language is not None:
             from lingualdub.utils.validation import require_non_empty_string, validate_language_code
 
             require_non_empty_string(self.target_language, "target_language")
-            validate_language_code(self.target_language)
+            validate_language_code(self.target_language, "target_language")
         # Validate status is a valid enum
         if not isinstance(self.status, ResultStatus):  # type: ignore
             from lingualdub.exceptions import ConfigurationValidationError

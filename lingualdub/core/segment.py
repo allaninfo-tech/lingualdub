@@ -96,10 +96,10 @@ class Segment:
         if self.text:
             require_non_empty_string(self.text, "text")
         require_non_empty_string(self.language, "language")
-        validate_language_code(self.language)
+        validate_language_code(self.language, "language")
         if self.source_language is not None:
             require_non_empty_string(self.source_language, "source_language")
-            validate_language_code(self.source_language)
+            validate_language_code(self.source_language, "source_language")
         if self.speaker is not None and not isinstance(self.speaker, str):
             raise ConfigurationValidationError(
                 f"Field 'speaker' must be a string or None, got {type(self.speaker).__name__}: {self.speaker!r}.",

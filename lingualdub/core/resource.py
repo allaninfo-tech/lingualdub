@@ -75,7 +75,7 @@ class Resource:
         require_non_empty_string(self.id, "id")
         require_non_empty_string(self.language, "language")
         require_non_empty_string(self.version, "version")
-        validate_language_code(self.language)
+        validate_language_code(self.language, "language")
         validate_version_string(self.version)
         if not isinstance(self.kind, ResourceKind):
             from lingualdub.exceptions import ConfigurationValidationError

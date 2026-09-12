@@ -95,10 +95,10 @@ class Pipeline:
                                 field=f"stages[{i}].{attr}[{j}]",
                             )
         require_non_empty_string(self.source_language, "source_language")
-        validate_language_code(self.source_language)
+        validate_language_code(self.source_language, "source_language")
         if self.target_language is not None:
             require_non_empty_string(self.target_language, "target_language")
-            validate_language_code(self.target_language)
+            validate_language_code(self.target_language, "target_language")
         if not isinstance(self.per_segment_language, bool):
             from lingualdub.exceptions import ConfigurationValidationError
 
