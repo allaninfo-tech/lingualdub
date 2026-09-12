@@ -54,11 +54,12 @@ class DummyTTSComponent(TTSComponent):
         from lingualdub.utils.validation import require_positive_number
 
         require_positive_number(sample_rate, "sample_rate")
+        # Set fields before super().__init__ so validation sees them
+        self.version = version
         self.output_dir = (
             Path(output_dir) if output_dir else Path(tempfile.gettempdir()) / "lingualdub_dummy_tts"
         )
         self.sample_rate = sample_rate
-        self.version = version
         self.requires = (
             ["translation", "duration_target"] if require_duration_target else ["translation"]
         )
@@ -192,6 +193,11 @@ class DummyTTSComponent(TTSComponent):
 
     def degrade(self, input: Result | Resource) -> Result:
         """Degraded fallback: generate a short low-amplitude silent/neutral tone."""
+        # Enforce consent even on degrade
+        if isinstance(input, Result):
+            ensure_consent(input, self.__class__.__name__)
+        elif isinstance(input, Resource):
+            ensure_consent(input, self.__class__.__name__)
         self.output_dir.mkdir(parents=True, exist_ok=True)
         fallback_path = self.output_dir / f"tts_degraded_{self.version}.wav"
         _write_dummy_wav(
