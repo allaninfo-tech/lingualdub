@@ -43,7 +43,26 @@ from lingualdub.exceptions import (
     StageCompatibilityError,
     StageExecutionError,
 )
+from lingualdub.extensions import (
+    ComponentExtension,
+    EvaluatorExtension,
+    LanguageExtension,
+    MiddlewareExtension,
+    Plugin,
+    PluginRegistry,
+    PluginState,
+    ResourceExtension,
+)
 from lingualdub.lifecycle import FrameworkLifecycle, LifecycleState, shutdown_hook, startup_hook
+from lingualdub.middleware import (
+    ConsentMiddleware,
+    ExecutionContext,
+    LoggingMiddleware,
+    MiddlewareChain,
+    MiddlewareProtocol,
+    MiddlewareRegistry,
+    TimingMiddleware,
+)
 from lingualdub.pipeline.config_loader import ConfigLoader
 from lingualdub.pipeline.executor import PipelineExecutionError, PipelineExecutor
 from lingualdub.registry.manifest import ManifestError, ManifestScanner
@@ -104,6 +123,23 @@ __all__ = [
     "DependencyDescriptor",
     "Lifetime",
     "Dependency",
+    # Extensions
+    "Plugin",
+    "PluginRegistry",
+    "PluginState",
+    "ComponentExtension",
+    "LanguageExtension",
+    "ResourceExtension",
+    "EvaluatorExtension",
+    "MiddlewareExtension",
+    # Middleware
+    "MiddlewareProtocol",
+    "MiddlewareChain",
+    "MiddlewareRegistry",
+    "ExecutionContext",
+    "LoggingMiddleware",
+    "TimingMiddleware",
+    "ConsentMiddleware",
     # Pipeline & Execution
     "PipelineExecutor",
     "PipelineExecutionError",

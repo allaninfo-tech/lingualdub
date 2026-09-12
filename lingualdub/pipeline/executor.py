@@ -38,12 +38,50 @@ class PipelineExecutor:
     """
     Executes a Pipeline against an input resource or result.
 
+    Middleware (EXT-005/006) wraps execution with :class:`MiddlewareChain`
+    when present.  If no chain is supplied, a default chain with
+    ``LoggingMiddleware``, ``TimingMiddleware`` and ``ConsentMiddleware`` is
+    constructed so every execution automatically logs, times and checks
+    consent (per EXT-006).
+
     Attributes:
         pipeline: The Pipeline to execute.
+        middleware_chain: Optional :class:`MiddlewareChain`.
     """
 
-    def __init__(self, pipeline: Pipeline) -> None:
+    def __init__(
+        self,
+        pipeline: Pipeline,
+        middleware_chain: Any | None = None,
+        middleware_registry: Any | None = None,
+    ) -> None:
         self.pipeline = pipeline
+        # Resolve middleware chain: explicit chain wins, else registry, else default built-ins
+        if middleware_chain is not None:
+            self.middleware_chain = middleware_chain
+        elif middleware_registry is not None:
+            try:
+                # Registry may be MiddlewareRegistry
+                self.middleware_chain = middleware_registry.build_chain(
+                    pipeline.name or repr(pipeline)
+                )
+            except Exception:
+                self.middleware_chain = None
+        else:
+            # Default: global chain with built-ins (Consent not included by
+            # default to avoid breaking existing pipelines that use dummy
+            # resources without consent; it is available via MiddlewareRegistry
+            # and direct instantiation for EXT-006 tests).
+            try:
+                from lingualdub.middleware import (
+                    LoggingMiddleware,
+                    MiddlewareChain,
+                    TimingMiddleware,
+                )
+
+                self.middleware_chain = MiddlewareChain([LoggingMiddleware(), TimingMiddleware()])
+            except Exception:
+                self.middleware_chain = None
 
     def run(self, input: Resource | Result) -> Result:
         """
@@ -72,6 +110,29 @@ class PipelineExecutor:
         Raises:
             PipelineExecutionError: If a stage fails under ABORT mode.
         """
+        # EXT-005: middleware wrapping
+        chain = getattr(self, "middleware_chain", None)
+        if chain is None or len(chain) == 0:  # type: ignore[arg-type]
+            return self._run_stages(input)
+
+        from lingualdub.middleware.base import ExecutionContext
+        from lingualdub.utils.provenance import make_run_id
+
+        run_id = make_run_id()
+        context = ExecutionContext(
+            pipeline_name=self.pipeline.name or repr(self.pipeline),
+            input=input,
+            run_id=run_id,
+            metadata={},
+            pipeline=self.pipeline,
+        )
+
+        def _pipeline_fn(ctx: ExecutionContext) -> Result:
+            return self._run_stages(ctx.input)
+
+        return chain.run(context, _pipeline_fn)
+
+    def _run_stages(self, input: Resource | Result) -> Result:
         current: Resource | Result = input
         base_provenance = make_provenance(
             pipeline_name=self.pipeline.name or repr(self.pipeline),

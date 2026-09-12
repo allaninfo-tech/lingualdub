@@ -77,6 +77,29 @@ The top-level `lingualdub` package exposes the following stable symbols:
 | `Lifetime` | Enum | `SINGLETON` (per container), `SCOPED` (per scope), `TRANSIENT` (per resolve) |
 | `Dependency` | Descriptor/Annotation | Marker `Dependency[SomeService]` via `Annotated`; supports field injection and `isinstance` checks |
 
+### Extensions (`lingualdub.extensions`)
+| Symbol | Type | Description |
+|---|---|---|
+| `Plugin` | Class | Base plugin dataclass (`name`, `version`, `description`, `author`, `dependencies`/`depends_on`, `state`, `on_startup`/`on_shutdown`) |
+| `PluginRegistry` | Class | Registry (`register_plugin`, `get_plugin`, `list_plugins`, `list_failed_plugins`, `discover` via entry_points, `initialize_all`/`shutdown_all` with fail_fast) |
+| `PluginState` | Enum | `REGISTERED`/`INITIALIZING`/`ACTIVE`/`FAILED`/`STOPPED` |
+| `ComponentExtension` | Protocol | Stable stage extension (`name`, `version`, `task`, `requires`/`provides`, `run`/`degrade`/`can_handle`) |
+| `LanguageExtension` | Protocol | Stable language profile extension (`code`, `name`, `family`, `resource_profile`, etc.) |
+| `ResourceExtension` | Protocol | Stable resource extension (`id`, `kind`, `language`, `version`, etc.) |
+| `EvaluatorExtension` | Protocol | Experimental evaluator (`evaluate_pair` plus component fields) |
+| `MiddlewareExtension` | Protocol | Experimental middleware (`name`, `priority`, `before`/`after`/`on_error`) |
+
+### Middleware (`lingualdub.middleware`)
+| Symbol | Type | Description |
+|---|---|---|
+| `MiddlewareProtocol` | Protocol | Cross-cutting `name`/`priority` (lower outermost), `before`/`after`/`on_error` |
+| `MiddlewareChain` | Class | Composes middleware in priority order, handles short-circuit and error recovery (`run`, `build`) |
+| `MiddlewareRegistry` | Class | Global/scoped registry (`register`/`remove`/`list_middleware`/`build_chain`) |
+| `ExecutionContext` | Class | Pipeline execution context (`pipeline_name`, `input`, `run_id`, `metadata`, `short_circuit`) |
+| `LoggingMiddleware` | Class | Built-in: logs start/end/error (priority 10) |
+| `TimingMiddleware` | Class | Built-in: adds `execution_time_ms` to `Result.metadata` (priority 20) |
+| `ConsentMiddleware` | Class | Built-in: raises `ConsentViolationError` if consent absent (priority 5) |
+
 ### Centralized Types (`lingualdub.types`)
 | Symbol | Type | Description |
 |---|---|---|
