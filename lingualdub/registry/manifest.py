@@ -296,20 +296,20 @@ class ManifestScanner:
         if not isinstance(entries, list):
             raise ManifestError(f"Manifest {manifest_path}: 'entries' must be a JSON array.")
 
-        # Detect duplicate (kind, key) within the same manifest file
-        seen_keys: set[tuple[str, str]] = set()
+        # Detect duplicate (kind, key, version) within the same manifest file (allow multi-version)
+        seen_keys: set[tuple[str, str, str]] = set()
         registered = 0
         for i, entry in enumerate(entries):
             if not isinstance(entry, dict):
                 raise ManifestError(f"Manifest {manifest_path}: entry[{i}] must be a JSON object.")
             _validate_entry(entry, manifest_path, i)
 
-            # Duplicate detection within file
-            dup_key = (entry["kind"], entry["key"])
+            # Duplicate detection within file — same kind/key/version
+            dup_key = (entry["kind"], entry["key"], entry["version"])
             if dup_key in seen_keys:
                 raise ManifestError(
                     f"Manifest {manifest_path}: entry[{i}] duplicates (kind={entry['kind']!r}, "
-                    f"key={entry['key']!r}) already declared in this manifest; "
+                    f"key={entry['key']!r}, version={entry['version']!r}) already declared in this manifest; "
                     f"duplicate registrations are not allowed."
                 )
             seen_keys.add(dup_key)
@@ -407,6 +407,9 @@ class ManifestScanner:
         # Directories to prune during walk (heavy or irrelevant)
         prune_dirs = {
             ".git",
+            ".hg",
+            ".svn",
+            ".eggs",
             ".venv",
             "venv",
             "__pycache__",
@@ -417,6 +420,8 @@ class ManifestScanner:
             "build",
             "dist",
             "website",
+            "htmlcov",
+            ".ruff_cache",
         }
 
         for base in paths:
