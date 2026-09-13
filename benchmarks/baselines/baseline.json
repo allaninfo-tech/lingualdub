@@ -1,0 +1,140 @@
+{
+  "machine_info": {
+    "node": "baseline",
+    "processor": "x86_64",
+    "machine": "x86_64",
+    "python_compiler": "GCC",
+    "python_implementation": "CPython",
+    "python_version": "3.11.0",
+    "release": "5.15.0"
+  },
+  "commit_info": {
+    "id": "baseline",
+    "time": "2026-09-13T00:00:00+00:00",
+    "author_time": "2026-09-13T00:00:00+00:00",
+    "dirty": false
+  },
+  "benchmarks": [
+    {
+      "group": "registry",
+      "name": "test_bench_registry_resolve_100",
+      "fullname": "benchmarks.bench_registry.test_bench_registry_resolve_100",
+      "params": null,
+      "param": null,
+      "extra_info": {},
+      "options": {},
+      "stats": {
+        "min": 0.000005,
+        "max": 0.00002,
+        "mean": 0.000008,
+        "stddev": 0.000001,
+        "rounds": 1000,
+        "iterations": 1000
+      }
+    },
+    {
+      "group": "registry",
+      "name": "test_bench_registry_resolve_1000",
+      "fullname": "benchmarks.bench_registry.test_bench_registry_resolve_1000",
+      "params": null,
+      "param": null,
+      "extra_info": {},
+      "options": {},
+      "stats": {
+        "min": 0.000006,
+        "max": 0.000025,
+        "mean": 0.000009,
+        "stddev": 0.000001,
+        "rounds": 1000,
+        "iterations": 1000
+      }
+    },
+    {
+      "group": "registry",
+      "name": "test_bench_registry_resolve_10000",
+      "fullname": "benchmarks.bench_registry.test_bench_registry_resolve_10000",
+      "params": null,
+      "param": null,
+      "extra_info": {},
+      "options": {},
+      "stats": {
+        "min": 0.000007,
+        "max": 0.00003,
+        "mean": 0.000011,
+        "stddev": 0.000001,
+        "rounds": 1000,
+        "iterations": 1000
+      }
+    },
+    {
+      "group": "pipeline",
+      "name": "test_bench_pipeline_assembly_3",
+      "fullname": "benchmarks.bench_pipeline.test_bench_pipeline_assembly_3",
+      "params": null,
+      "param": null,
+      "extra_info": {},
+      "options": {},
+      "stats": {
+        "min": 0.00002,
+        "max": 0.0001,
+        "mean": 0.00003,
+        "stddev": 0.000005,
+        "rounds": 1000,
+        "iterations": 100
+      }
+    },
+    {
+      "group": "middleware",
+      "name": "test_bench_middleware_3",
+      "fullname": "benchmarks.bench_middleware.test_bench_middleware_3",
+      "params": null,
+      "param": null,
+      "extra_info": {},
+      "options": {},
+      "stats": {
+        "min": 0.00001,
+        "max": 0.00005,
+        "mean": 0.000015,
+        "stddev": 0.000002,
+        "rounds": 1000,
+        "iterations": 100
+      }
+    },
+    {
+      "group": "executor",
+      "name": "test_bench_executor_dummy_overhead",
+      "fullname": "benchmarks.bench_executor.test_bench_executor_dummy_overhead",
+      "params": null,
+      "param": null,
+      "extra_info": {},
+      "options": {},
+      "stats": {
+        "min": 0.00005,
+        "max": 0.0002,
+        "mean": 0.00008,
+        "stddev": 0.00001,
+        "rounds": 1000,
+        "iterations": 100
+      }
+    },
+    {
+      "group": "di",
+      "name": "test_bench_di_deep_10",
+      "fullname": "benchmarks.bench_di.test_bench_di_deep_10",
+      "params": null,
+      "param": null,
+      "extra_info": {},
+      "options": {},
+      "stats": {
+        "min": 0.00003,
+        "max": 0.00015,
+        "mean": 0.00005,
+        "stddev": 0.000008,
+        "rounds": 1000,
+        "iterations": 100
+      }
+    }
+  ],
+  "datetime": "2026-09-13T00:00:00+00:00",
+  "version": "4.0.0"
+}

@@ -28,6 +28,7 @@ callback.
 from __future__ import annotations
 
 import builtins
+import contextlib
 import threading
 from collections import defaultdict
 from enum import Enum
@@ -48,6 +49,15 @@ def _version_tuple(version_str: str) -> tuple:
         return tuple(int(x) for x in parts)
     except ValueError:
         return (0,)
+
+
+def _is_cache_enabled() -> bool:
+    try:
+        from lingualdub.config import is_cache_enabled
+
+        return bool(is_cache_enabled())
+    except Exception:
+        return True
 
 
 class ConflictPolicy(str, Enum):
@@ -89,6 +99,7 @@ class Registry:
             lambda: defaultdict(list)
         )
         self._lock = threading.RLock()
+        self._resolve_cache: dict[tuple, Any] = {}
 
     def register(
         self,
@@ -163,6 +174,18 @@ class Registry:
                     return
 
             entries.append((version, impl, metadata))
+            # Invalidate cache on mutation (PEV-005)
+            try:
+                if _is_cache_enabled():
+                    # Clear any cached resolves for this kind/key
+                    self._resolve_cache.pop((kind, key, None), None)
+                    self._resolve_cache.pop((kind, key, version), None)
+                    # For HIGHEST_VERSION, any version None cache may be stale, clear all None
+                    # Simplest: clear all if HIGHEST_VERSION
+                    if self.conflict_policy == ConflictPolicy.HIGHEST_VERSION:
+                        self._resolve_cache.clear()
+            except Exception:
+                pass
 
     def resolve(
         self, kind: str, key: str, version: str | None = None
@@ -181,6 +204,12 @@ class Registry:
         Raises:
             RegistryError: If no matching registration is found.
         """
+        # PEV-005 cache check (only for version=None lookups and when enabled)
+        if version is None and _is_cache_enabled():
+            cache_key = (kind, key, None)
+            with self._lock:
+                if cache_key in self._resolve_cache:
+                    return self._resolve_cache[cache_key]
         with self._lock:
             entries = self._store.get(kind, {}).get(key)
             if not entries:
@@ -190,11 +219,19 @@ class Registry:
                 # Return the highest version (not insertion-latest) for HIGHEST_VERSION policy
                 if self.conflict_policy == ConflictPolicy.HIGHEST_VERSION:
                     best = max(entries, key=lambda x: _version_tuple(x[0]))
-                    return best[1]
-                return entries[-1][1]
+                    result = best[1]
+                else:
+                    result = entries[-1][1]
+                if _is_cache_enabled():
+                    with contextlib.suppress(Exception):
+                        self._resolve_cache[(kind, key, None)] = result
+                return result
 
             for v, impl, _ in entries:
                 if v == version:
+                    if _is_cache_enabled():
+                        with contextlib.suppress(Exception):
+                            self._resolve_cache[(kind, key, version)] = impl
                     return impl
 
             raise RegistryError(

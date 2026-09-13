@@ -21,6 +21,15 @@ logger = logging.getLogger(__name__)
 __all__ = ["MiddlewareRegistry"]
 
 
+def _is_cache_enabled() -> bool:
+    try:
+        from lingualdub.config import is_cache_enabled
+
+        return bool(is_cache_enabled())
+    except Exception:
+        return True
+
+
 class MiddlewareRegistry:
     """Registry for :class:`MiddlewareProtocol` with global and scoped support.
 
@@ -39,6 +48,7 @@ class MiddlewareRegistry:
     def __init__(self) -> None:
         self._global: dict[str, MiddlewareProtocol] = {}
         self._scoped: dict[str, dict[str, MiddlewareProtocol]] = {}
+        self._build_cache: dict[str | None, MiddlewareChain] = {}
 
     # ------------------------------------------------------------------
     # Registration
@@ -94,6 +104,8 @@ class MiddlewareRegistry:
                     code="MIDDLEWARE_CONFLICT_001",
                 )
             bucket[name] = middleware
+        # Invalidate build cache (PEV-005)
+        self._build_cache.clear()
 
     def remove(self, middleware_name: str, scope: str | None = None) -> bool:
         """Remove a middleware by name.
@@ -127,6 +139,8 @@ class MiddlewareRegistry:
                 removed = True
                 if not bucket:
                     self._scoped.pop(scope, None)
+        if removed:
+            self._build_cache.clear()
         return removed
 
     def list_middleware(self, scope: str | None = None) -> list[MiddlewareProtocol]:
@@ -157,6 +171,7 @@ class MiddlewareRegistry:
         """Build a :class:`MiddlewareChain` for a pipeline.
 
         Combines global + pipeline-scoped middleware in priority order.
+        Cached when ``FrameworkConfig.cache_enabled`` is True (PEV-005).
 
         Args:
             pipeline_name: Pipeline name or ``None`` for global only.
@@ -164,11 +179,16 @@ class MiddlewareRegistry:
         Returns:
             New ``MiddlewareChain``.
         """
+        if _is_cache_enabled() and pipeline_name in self._build_cache:
+            return self._build_cache[pipeline_name]
         if pipeline_name is None:
             mws = self.list_middleware(scope=None)
         else:
             mws = self.list_middleware(scope=pipeline_name)
-        return MiddlewareChain(mws)
+        chain = MiddlewareChain(mws)
+        if _is_cache_enabled():
+            self._build_cache[pipeline_name] = chain
+        return chain
 
     # Alias for spec compatibility: spec says MiddlewareChain.build(pipeline_name)
     # but we also provide registry.build_chain. For convenience, alias.
@@ -178,6 +198,7 @@ class MiddlewareRegistry:
         """Remove all middleware (testing utility)."""
         self._global.clear()
         self._scoped.clear()
+        self._build_cache.clear()
 
     def __len__(self) -> int:
         return len(self._global) + sum(len(b) for b in self._scoped.values())

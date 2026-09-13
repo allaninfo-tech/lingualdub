@@ -22,6 +22,7 @@ Example::
 
 from __future__ import annotations
 
+import contextlib
 import os
 from dataclasses import FrozenInstanceError, dataclass, field
 from pathlib import Path
@@ -31,7 +32,19 @@ from lingualdub.core.component import FailureMode
 from lingualdub.exceptions import ConfigurationValidationError
 from lingualdub.registry.registry import ConflictPolicy
 
-__all__ = ["FrameworkConfig", "SecurityConfig", "load_config"]
+__all__ = ["FrameworkConfig", "SecurityConfig", "load_config", "is_cache_enabled"]
+
+# Global cache enabled flag for PEV-005 — updated on validate/load_config
+_global_cache_enabled: bool = True
+
+
+def is_cache_enabled() -> bool:
+    """Return whether framework caches are enabled (PEV-005).
+
+    Controlled by ``FrameworkConfig.cache_enabled``. Defaults to ``True``.
+    """
+    return _global_cache_enabled
+
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -547,6 +560,10 @@ class FrameworkConfig:
         # Freeze — use object.__setattr__ to bypass our own guard
         if not is_frozen:
             object.__setattr__(self, "_frozen", True)
+        # Update global cache flag (PEV-005)
+        global _global_cache_enabled
+        with contextlib.suppress(Exception):
+            _global_cache_enabled = bool(self.cache_enabled)
 
     @property
     def is_frozen(self) -> bool:

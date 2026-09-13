@@ -21,6 +21,7 @@ from __future__ import annotations
 import atexit
 import contextlib
 import logging
+import time
 from collections import deque
 from collections.abc import Callable
 from enum import Enum
@@ -351,6 +352,7 @@ class FrameworkLifecycle:
             LifecycleError: If dependencies are missing or circular.
             InitializationError: If any hook raises.
         """
+        _startup_start = time.time()
         with contextlib.suppress(Exception):
             _struct_logger.info(
                 "lifecycle.startup",
@@ -388,6 +390,17 @@ class FrameworkLifecycle:
                     code="INIT_HOOK_001",
                     context={"hook": name, "order": order},
                 ) from exc
+        with contextlib.suppress(Exception):
+            _struct_logger.info(
+                "lifecycle.startup.complete",
+                extra={
+                    "run_id": "-",
+                    "pipeline_name": "-",
+                    "stage_name": "startup",
+                    "language": "-",
+                    "duration_ms": (time.time() - _startup_start) * 1000,
+                },
+            )
 
     # Alias for spec compatibility — roadmap refers to both names in prose
     def execute_startup_hooks(self) -> None:

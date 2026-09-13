@@ -25,6 +25,28 @@ from lingualdub.utils.validation import (
     validate_language_code,
 )
 
+# Cache for PEV-005: _validate_stage_compatibility results keyed on stage name/version tuples
+_validate_cache: dict[tuple, bool] = {}
+_validate_cache_lock = None  # lazy initialized RLock
+
+
+def _is_cache_enabled() -> bool:
+    try:
+        from lingualdub.config import is_cache_enabled
+
+        return bool(is_cache_enabled())
+    except Exception:
+        return True
+
+
+def _get_validate_cache_lock():
+    global _validate_cache_lock
+    if _validate_cache_lock is None:
+        import threading
+
+        _validate_cache_lock = threading.RLock()
+    return _validate_cache_lock
+
 
 @dataclass
 class Pipeline:
@@ -149,6 +171,29 @@ class Pipeline:
         and Stage 2 provides "translation", Stage 3 can require either or both.
         This check runs at pipeline assembly time, not at execution time.
         """
+        # PEV-005 caching
+        if _is_cache_enabled():
+            try:
+                key = (
+                    tuple(
+                        (
+                            getattr(s, "name", ""),
+                            getattr(s, "version", ""),
+                            tuple(getattr(s, "requires", [])),
+                            tuple(getattr(s, "provides", [])),
+                        )
+                        for s in self.stages
+                    ),
+                    self.source_language,
+                    self.target_language,
+                    self.per_segment_language,
+                )
+                lock = _get_validate_cache_lock()
+                with lock:
+                    if key in _validate_cache:
+                        return
+            except Exception:
+                pass
         accumulated_provides: list[str] = []
         for stage in self.stages:
             # Support both classic Component (check_compatibility method) and
@@ -195,6 +240,29 @@ class Pipeline:
                         upstream=str(sorted(pipeline_langs)),
                         downstream=stage.name,
                     )
+
+        # Cache successful validation (PEV-005)
+        if _is_cache_enabled():
+            try:
+                _cache_key = (
+                    tuple(
+                        (
+                            getattr(s, "name", ""),
+                            getattr(s, "version", ""),
+                            tuple(getattr(s, "requires", [])),
+                            tuple(getattr(s, "provides", [])),
+                        )
+                        for s in self.stages
+                    ),
+                    self.source_language,
+                    self.target_language,
+                    self.per_segment_language,
+                )
+                _lock = _get_validate_cache_lock()
+                with _lock:
+                    _validate_cache[_cache_key] = True
+            except Exception:
+                pass
 
     @property
     def stage_names(self) -> list[str]:
