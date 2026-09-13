@@ -63,7 +63,7 @@ export default function Home() {
               <ArrowRight className="w-4 h-4" />
             </Link>
             <a
-              href="https://github.com/allaninfo-tech/lingualdub"
+              href="https://github.com/allannuwamanya/lingualdub"
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl font-semibold text-slate-300 bg-slate-900 border border-slate-700 hover:bg-slate-800 transition-all"

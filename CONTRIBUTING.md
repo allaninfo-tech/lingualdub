@@ -41,7 +41,7 @@ LingualDub is built on three core tenets:
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/allaninfo-tech/lingualdub.git
+git clone https://github.com/allannuwamanya/lingualdub.git
 cd lingualdub
 ```
 

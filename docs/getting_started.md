@@ -8,7 +8,7 @@ LingualDub standardises how speech/text datasets, model components, execution pi
 
 ### Core Package (Zero heavy ML dependencies)
 ```bash
-git clone https://github.com/allaninfo-tech/lingualdub.git
+git clone https://github.com/allannuwamanya/lingualdub.git
 cd lingualdub
 pip install -e ".[dev]"
 ```

@@ -35,7 +35,7 @@ export default function Docs() {
               </p>
             </div>
             <a
-              href="https://github.com/allaninfo-tech/lingualdub"
+              href="https://github.com/allannuwamanya/lingualdub"
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-2 px-5 py-3 rounded-xl font-bold text-slate-950 bg-white hover:bg-slate-100 shadow transition-all shrink-0 text-sm"

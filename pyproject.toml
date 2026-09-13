@@ -51,9 +51,9 @@ dependencies = [
 [project.urls]
 Homepage = "https://lingualdub.pages.dev"
 Documentation = "https://lingualdub.pages.dev/docs"
-Repository = "https://github.com/allaninfo-tech/lingualdub"
-Issues = "https://github.com/allaninfo-tech/lingualdub/issues"
-Changelog = "https://github.com/allaninfo-tech/lingualdub/blob/main/CHANGELOG.md"
+Repository = "https://github.com/allannuwamanya/lingualdub"
+Issues = "https://github.com/allannuwamanya/lingualdub/issues"
+Changelog = "https://github.com/allannuwamanya/lingualdub/blob/main/CHANGELOG.md"
 
 [project.scripts]
 lingualdub = "lingualdub.cli:main"

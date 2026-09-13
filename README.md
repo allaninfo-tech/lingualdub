@@ -8,8 +8,8 @@
 
 **A composable, registry-based speech-AI framework for low-resource languages.**
 
-[![CI](https://github.com/allaninfo-tech/lingualdub/actions/workflows/ci.yml/badge.svg)](https://github.com/allaninfo-tech/lingualdub/actions/workflows/ci.yml)
-[![Lint & Type Check](https://github.com/allaninfo-tech/lingualdub/actions/workflows/lint.yml/badge.svg)](https://github.com/allaninfo-tech/lingualdub/actions/workflows/lint.yml)
+[![CI](https://github.com/allannuwamanya/lingualdub/actions/workflows/ci.yml/badge.svg)](https://github.com/allannuwamanya/lingualdub/actions/workflows/ci.yml)
+[![Lint & Type Check](https://github.com/allannuwamanya/lingualdub/actions/workflows/lint.yml/badge.svg)](https://github.com/allannuwamanya/lingualdub/actions/workflows/lint.yml)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
@@ -88,7 +88,7 @@ Initial reference validation languages:
 
 ```bash
 # Clone and install in editable mode
-git clone https://github.com/allaninfo-tech/lingualdub.git
+git clone https://github.com/allannuwamanya/lingualdub.git
 cd lingualdub
 pip install -e ".[dev]"
 ```
@@ -274,7 +274,7 @@ If you use LingualDub in your research, please cite:
 @software{lingualdub2026,
   author = {LingualDub Authors and Contributors},
   title = {LingualDub: A Composable, Registry-Based Speech-AI Framework for Low-Resource Languages},
-  url = {https://github.com/allaninfo-tech/lingualdub},
+  url = {https://github.com/allannuwamanya/lingualdub},
   version = {0.1.0},
   year = {2026}
 }

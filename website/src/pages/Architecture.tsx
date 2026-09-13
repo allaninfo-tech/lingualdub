@@ -167,13 +167,13 @@ export default function Architecture() {
             The complete Python package, research modules, notebooks, and docs are open source on GitHub.
           </p>
           <a
-            href="https://github.com/allaninfo-tech/lingualdub"
+            href="https://github.com/allannuwamanya/lingualdub"
             target="_blank"
             rel="noreferrer"
             className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl font-bold text-slate-950 bg-white hover:bg-slate-100 shadow transition-all"
           >
             <GithubIcon className="w-5 h-5 text-slate-950" />
-            allaninfo-tech/lingualdub
+            allannuwamanya/lingualdub
           </a>
         </div>
       </section>

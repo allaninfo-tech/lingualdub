@@ -72,7 +72,7 @@ export default function Layout() {
 
           <div className="flex items-center gap-3">
             <a
-              href="https://github.com/allaninfo-tech/lingualdub"
+              href="https://github.com/allannuwamanya/lingualdub"
               target="_blank"
               rel="noreferrer"
               className="hidden sm:inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl text-slate-950 bg-white hover:bg-slate-100 shadow transition-all"
@@ -110,7 +110,7 @@ export default function Layout() {
               </NavLink>
             ))}
             <a
-              href="https://github.com/allaninfo-tech/lingualdub"
+              href="https://github.com/allannuwamanya/lingualdub"
               target="_blank"
               rel="noreferrer"
               className="flex items-center gap-2 px-3.5 py-2.5 text-sm font-semibold text-slate-950 bg-white rounded-lg mt-2 justify-center"
@@ -157,7 +157,7 @@ export default function Layout() {
                 </Link>
               ))}
               <a
-                href="https://github.com/allaninfo-tech/lingualdub"
+                href="https://github.com/allannuwamanya/lingualdub"
                 target="_blank"
                 rel="noreferrer"
                 className="text-slate-400 hover:text-white transition-colors ml-2"

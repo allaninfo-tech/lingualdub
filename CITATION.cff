@@ -3,8 +3,8 @@ message: "If you use LingualDub in your research, please cite it as below."
 title: "LingualDub: A Composable, Registry-Based Speech-AI Framework for Low-Resource Languages"
 authors:
   - name: "LingualDub Authors and Contributors"
-url: "https://github.com/allaninfo-tech/lingualdub"
-repository-code: "https://github.com/allaninfo-tech/lingualdub"
+url: "https://github.com/allannuwamanya/lingualdub"
+repository-code: "https://github.com/allannuwamanya/lingualdub"
 abstract: >
   LingualDub is an open, modular speech-AI framework designed for low-resource languages.
   It standardises language metadata, resource management, capability-checked pipeline composition,
