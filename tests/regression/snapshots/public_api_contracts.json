@@ -168,17 +168,33 @@
     "module": "lingualdub.config",
     "params": [
       "log_level",
+      "log_format",
       "default_failure_mode",
       "registry_conflict_policy",
       "cache_dir",
-      "consent_enforcement"
+      "consent_enforcement",
+      "cache_enabled",
+      "log_redaction_enabled",
+      "sensitive_fields",
+      "metrics_backend",
+      "max_segment_length",
+      "max_metadata_depth",
+      "path_traversal_check_enabled"
     ],
     "defaults": {
       "log_level": "'INFO'",
+      "log_format": "'json'",
       "default_failure_mode": "<FailureMode.ABORT: 'abort'>",
       "registry_conflict_policy": "<ConflictPolicy.NAMESPACED: 'namespaced'>",
       "cache_dir": "<factory>",
-      "consent_enforcement": "True"
+      "consent_enforcement": "True",
+      "cache_enabled": "True",
+      "log_redaction_enabled": "True",
+      "sensitive_fields": "<factory>",
+      "metrics_backend": "'noop'",
+      "max_segment_length": "5000",
+      "max_metadata_depth": "10",
+      "path_traversal_check_enabled": "True"
     },
     "method_to_dict_params": []
   },

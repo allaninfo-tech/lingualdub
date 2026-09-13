@@ -171,6 +171,15 @@ class Resource:
                 f"Field 'ownership' must be a ResourceOwnership, got {type(self.ownership).__name__}: {self.ownership!r}.",
                 field="ownership",
             )
+        # Security limits (PRO-004)
+        from lingualdub.utils.validation import validate_metadata_depth, validate_resource_path
+
+        if self.path is not None:
+            # Only validate when path is a plain string (PathLike handled via string)
+            # Use string representation for traversal check
+            validate_resource_path(str(self.path), field_name="path")
+        validate_metadata_depth(self.metadata, field_name="metadata")
+        validate_metadata_depth(self.provenance, field_name="provenance")
         # Break external references
         object.__setattr__(self, "provenance", dict(self.provenance))
         object.__setattr__(self, "quality_flags", list(self.quality_flags))

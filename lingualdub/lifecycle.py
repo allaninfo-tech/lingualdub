@@ -19,6 +19,7 @@ Responsibilities per stage:
 from __future__ import annotations
 
 import atexit
+import contextlib
 import logging
 from collections import deque
 from collections.abc import Callable
@@ -27,6 +28,13 @@ from enum import Enum
 from lingualdub.exceptions import InitializationError, LifecycleError
 
 logger = logging.getLogger(__name__)
+
+try:
+    from lingualdub.observability.logging import get_logger as _obs_get_logger
+
+    _struct_logger = _obs_get_logger(__name__)
+except Exception:
+    _struct_logger = logger  # type: ignore[assignment]
 
 
 class LifecycleState(str, Enum):
@@ -100,6 +108,23 @@ class FrameworkLifecycle:
             )
         self._state = target
         self._history.append(target)
+        # Structured log for lifecycle event (PRO-001) — suppress during interpreter shutdown
+        try:
+            import sys as _sys
+
+            if not _sys.is_finalizing():
+                _struct_logger.info(
+                    "lifecycle.transition",
+                    extra={
+                        "run_id": "-",
+                        "pipeline_name": "-",
+                        "stage_name": target.value,
+                        "language": "-",
+                        "duration_ms": 0,
+                    },
+                )
+        except Exception:
+            pass
 
     def ensure(self, *allowed: LifecycleState) -> None:
         """Raise LifecycleError if current state not in allowed."""
@@ -326,11 +351,33 @@ class FrameworkLifecycle:
             LifecycleError: If dependencies are missing or circular.
             InitializationError: If any hook raises.
         """
+        with contextlib.suppress(Exception):
+            _struct_logger.info(
+                "lifecycle.startup",
+                extra={
+                    "run_id": "-",
+                    "pipeline_name": "-",
+                    "stage_name": "startup",
+                    "language": "-",
+                    "duration_ms": 0,
+                },
+            )
         order = self._resolve_startup_order()
         for name in order:
             hook, _ = self._startup_hooks[name]
             try:
                 hook()
+                with contextlib.suppress(Exception):
+                    _struct_logger.info(
+                        "lifecycle.startup.hook",
+                        extra={
+                            "run_id": "-",
+                            "pipeline_name": "-",
+                            "stage_name": name,
+                            "language": "-",
+                            "duration_ms": 0,
+                        },
+                    )
             except InitializationError:
                 # Already correct type — re-raise without wrapping
                 raise

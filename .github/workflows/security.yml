@@ -1,0 +1,40 @@
+name: Security Audit
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    name: pip-audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies with dev extras
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run pip-audit strict
+        run: |
+          pip-audit --strict
+          echo "pip-audit passed — no critical/high CVEs found"
+
+      - name: Verify security docs exist
+        run: |
+          test -f docs/security.md || (echo "docs/security.md missing" && exit 1)
+          grep -q "pip-audit" docs/security.md || (echo "docs/security.md must document pip-audit policy" && exit 1)

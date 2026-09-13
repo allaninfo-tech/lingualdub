@@ -8,7 +8,7 @@ A composable, registry-based framework for building, adapting, composing,
 and evaluating speech-AI systems for low-resource languages.
 """
 
-from lingualdub.config import FrameworkConfig, load_config
+from lingualdub.config import FrameworkConfig, SecurityConfig, load_config
 from lingualdub.core.component import Component, ComponentTask, FailureMode
 from lingualdub.core.language import Language
 from lingualdub.core.pipeline import Pipeline
@@ -63,6 +63,24 @@ from lingualdub.middleware import (
     MiddlewareRegistry,
     TimingMiddleware,
 )
+from lingualdub.observability.logging import configure_logging, get_logger
+from lingualdub.observability.metrics import (
+    CaptureMetricsBackend,
+    MetricsBackend,
+    NoOpMetricsBackend,
+    PrometheusMetricsBackend,
+    get_metrics_backend,
+    set_metrics_backend,
+)
+from lingualdub.observability.redaction import RedactionFilter
+from lingualdub.observability.tracing import (
+    CaptureTracingBackend,
+    NoOpTracingBackend,
+    OpenTelemetryTracingBackend,
+    TracingBackend,
+    get_tracing_backend,
+    set_tracing_backend,
+)
 from lingualdub.pipeline.config_loader import ConfigLoader
 from lingualdub.pipeline.executor import PipelineExecutionError, PipelineExecutor
 from lingualdub.registry.manifest import ManifestError, ManifestScanner
@@ -82,6 +100,11 @@ from lingualdub.utils.resource_manager import (
     ChecksumError,
     ResourceManager,
     ResourceNotFoundError,
+)
+from lingualdub.utils.validation import (
+    validate_metadata_depth,
+    validate_resource_path,
+    validate_segment_text_length,
 )
 
 __version__ = "0.1.0"
@@ -113,7 +136,28 @@ __all__ = [
     "TimestampInterval",
     # Configuration
     "FrameworkConfig",
+    "SecurityConfig",
     "load_config",
+    # Observability — logging/tracing/metrics
+    "configure_logging",
+    "get_logger",
+    "RedactionFilter",
+    "MetricsBackend",
+    "NoOpMetricsBackend",
+    "PrometheusMetricsBackend",
+    "CaptureMetricsBackend",
+    "get_metrics_backend",
+    "set_metrics_backend",
+    "TracingBackend",
+    "NoOpTracingBackend",
+    "OpenTelemetryTracingBackend",
+    "CaptureTracingBackend",
+    "get_tracing_backend",
+    "set_tracing_backend",
+    # Validation helpers (PRO-004)
+    "validate_resource_path",
+    "validate_metadata_depth",
+    "validate_segment_text_length",
     # Lifecycle
     "FrameworkLifecycle",
     "LifecycleState",

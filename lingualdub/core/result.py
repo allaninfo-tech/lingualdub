@@ -143,6 +143,11 @@ class Result:
                 f"Field 'metadata' must be a dict, got {type(self.metadata).__name__}: {self.metadata!r}.",
                 field="metadata",
             )
+        # Security limits (PRO-004)
+        from lingualdub.utils.validation import validate_metadata_depth
+
+        validate_metadata_depth(self.provenance, field_name="provenance")
+        validate_metadata_depth(self.metadata, field_name="metadata")
         # Break external mutable references by copying
         object.__setattr__(self, "segments", list(self.segments))
         object.__setattr__(self, "warnings", list(self.warnings))

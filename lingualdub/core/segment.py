@@ -132,6 +132,15 @@ class Segment:
                     f"Field 'confidence' must be finite in [0, 1], got {self.confidence!r}.",
                     field="confidence",
                 )
+        # Security limits (PRO-004)
+        from lingualdub.utils.validation import (
+            validate_metadata_depth,
+            validate_segment_text_length,
+        )
+
+        validate_segment_text_length(self.text, field_name="text")
+        validate_metadata_depth(self.metadata, field_name="metadata")
+        validate_metadata_depth(self.provenance, field_name="provenance")
         # Freeze dict fields shallowly by copying and preventing mutation via object.__setattr__
         # Use copy to break external reference sharing
         object.__setattr__(self, "provenance", dict(self.provenance))

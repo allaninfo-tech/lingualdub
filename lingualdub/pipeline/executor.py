@@ -15,7 +15,9 @@ initial implementation. Non-linear DAG execution is a planned extension.
 
 from __future__ import annotations
 
+import contextlib
 import logging
+import time
 from typing import Any
 
 from lingualdub.core.component import FailureMode
@@ -28,6 +30,27 @@ from lingualdub.exceptions import StageExecutionError as _BaseStageExecutionErro
 from lingualdub.utils.provenance import make_provenance
 
 logger = logging.getLogger(__name__)
+
+try:
+    from lingualdub.observability.logging import get_logger as _get_struct_logger
+
+    struct_logger = _get_struct_logger(__name__)
+except Exception:
+    struct_logger = logger  # type: ignore[assignment]
+
+try:
+    from lingualdub.observability.metrics import get_metrics_backend
+
+    _metrics = get_metrics_backend()
+except Exception:
+    _metrics = None  # type: ignore[assignment]
+
+try:
+    from lingualdub.observability.tracing import get_tracing_backend
+
+    _tracing = get_tracing_backend()
+except Exception:
+    _tracing = None  # type: ignore[assignment]
 
 
 class PipelineExecutionError(_BaseStageExecutionError):
@@ -157,6 +180,53 @@ class PipelineExecutor:
             target_language=self.pipeline.target_language,
             provenance=dict(base_provenance),
         )
+        # Observability setup (PRO-001/002/003)
+        pipeline_name = self.pipeline.name or repr(self.pipeline)
+        run_id = str(base_provenance.get("run_id", "-"))
+        # Tracing root span
+        _trace_backend = None
+        _root_span: str | None = None
+        _trace_id: str | None = None
+        try:
+            from lingualdub.observability.tracing import get_tracing_backend
+
+            _trace_backend = get_tracing_backend()
+            if _trace_backend is not None:
+                try:
+                    _root_span = _trace_backend.start_span(
+                        f"pipeline:{pipeline_name}",
+                        attributes={"pipeline": pipeline_name, "run_id": run_id},
+                    )
+                    _trace_id = _trace_backend.get_trace_id() or run_id
+                except Exception:
+                    _trace_backend = None
+        except Exception:
+            _trace_backend = None
+        # Metrics
+        _metrics_backend = None
+        try:
+            from lingualdub.observability.metrics import get_metrics_backend
+
+            _metrics_backend = get_metrics_backend()
+            if _metrics_backend is not None:
+                _metrics_backend.counter(
+                    "lingualdub_pipeline_executions_total", 1, {"pipeline": pipeline_name}
+                )
+        except Exception:
+            _metrics_backend = None
+        # Structured log: pipeline start
+        with contextlib.suppress(Exception):
+            struct_logger.info(
+                "pipeline.start",
+                extra={
+                    "run_id": run_id,
+                    "pipeline_name": pipeline_name,
+                    "stage_name": "-",
+                    "language": self.pipeline.source_language,
+                    "duration_ms": 0,
+                },
+            )
+        pipeline_start = time.time()
 
         for stage in self.pipeline.stages:
             # Resolve failure mode: stage-level (Component.on_failure) wins if
@@ -164,6 +234,35 @@ class PipelineExecutor:
             stage_fm = getattr(stage, "on_failure", None)
             failure_mode = stage_fm if stage_fm is not None else self.pipeline.on_stage_failure
             logger.info("Running stage: %s (failure_mode=%s)", stage.name, failure_mode.value)
+            # Structured stage entry
+            stage_start = time.time()
+            _stage_span: str | None = None
+            if _trace_backend is not None and _root_span is not None:
+                try:
+                    _stage_span = _trace_backend.start_span(
+                        f"stage:{stage.name}",
+                        parent_id=_root_span,
+                        attributes={
+                            "stage": stage.name,
+                            "pipeline": pipeline_name,
+                            "run_id": run_id,
+                        },
+                    )
+                except Exception:
+                    _stage_span = None
+            with contextlib.suppress(Exception):
+                struct_logger.info(
+                    "stage.start",
+                    extra={
+                        "run_id": run_id,
+                        "pipeline_name": pipeline_name,
+                        "stage_name": stage.name,
+                        "language": getattr(stage, "supported_languages", ["-"])[0]
+                        if getattr(stage, "supported_languages", None)
+                        else self.pipeline.source_language,
+                        "duration_ms": 0,
+                    },
+                )
 
             try:
                 if (
@@ -213,11 +312,100 @@ class PipelineExecutor:
                         f"Stage {stage.name!r} must return a Result, got {type(current).__name__}: {current!r}.",
                         component=stage.name,
                     )
+                # Stage success observability
+                try:
+                    _dur_ms = (time.time() - stage_start) * 1000
+                    if _metrics_backend is not None:
+                        _metrics_backend.histogram(
+                            "lingualdub_stage_duration_ms",
+                            _dur_ms,
+                            {"pipeline": pipeline_name, "stage": stage.name},
+                        )
+                    if _trace_backend is not None and _stage_span is not None:
+                        _trace_backend.end_span(
+                            _stage_span, status="ok", attributes={"duration_ms": _dur_ms}
+                        )
+                    struct_logger.info(
+                        "stage.end",
+                        extra={
+                            "run_id": run_id,
+                            "pipeline_name": pipeline_name,
+                            "stage_name": stage.name,
+                            "language": getattr(
+                                stage, "supported_languages", [self.pipeline.source_language]
+                            )[0]
+                            if getattr(stage, "supported_languages", None)
+                            else self.pipeline.source_language,
+                            "duration_ms": _dur_ms,
+                        },
+                    )
+                except Exception:
+                    pass
             except PipelineExecutionError:
                 # Don't wrap per-segment ABORT again
+                # Error metrics/tracing for per-segment abort
+                try:
+                    _dur_ms = (time.time() - stage_start) * 1000
+                    if _metrics_backend is not None:
+                        _metrics_backend.counter(
+                            "lingualdub_pipeline_errors_total",
+                            1,
+                            {"pipeline": pipeline_name, "stage": stage.name, "type": "abort"},
+                        )
+                        _metrics_backend.histogram(
+                            "lingualdub_stage_duration_ms",
+                            _dur_ms,
+                            {"pipeline": pipeline_name, "stage": stage.name},
+                        )
+                    if _trace_backend is not None and _stage_span is not None:
+                        _trace_backend.end_span(
+                            _stage_span, status="error", attributes={"duration_ms": _dur_ms}
+                        )
+                except Exception:
+                    pass
                 raise
             except Exception as exc:
                 logger.warning("Stage %r failed: %s", stage.name, exc)
+                # Error observability
+                try:
+                    _dur_ms = (time.time() - stage_start) * 1000
+                    if _metrics_backend is not None:
+                        _metrics_backend.counter(
+                            "lingualdub_pipeline_errors_total",
+                            1,
+                            {
+                                "pipeline": pipeline_name,
+                                "stage": stage.name,
+                                "type": type(exc).__name__,
+                            },
+                        )
+                        _metrics_backend.histogram(
+                            "lingualdub_stage_duration_ms",
+                            _dur_ms,
+                            {"pipeline": pipeline_name, "stage": stage.name},
+                        )
+                    if _trace_backend is not None and _stage_span is not None:
+                        _trace_backend.end_span(
+                            _stage_span,
+                            status="error",
+                            attributes={"duration_ms": _dur_ms, "error": str(exc)},
+                        )
+                    struct_logger.info(
+                        "stage.error",
+                        extra={
+                            "run_id": run_id,
+                            "pipeline_name": pipeline_name,
+                            "stage_name": stage.name,
+                            "language": getattr(
+                                stage, "supported_languages", [self.pipeline.source_language]
+                            )[0]
+                            if getattr(stage, "supported_languages", None)
+                            else self.pipeline.source_language,
+                            "duration_ms": _dur_ms,
+                        },
+                    )
+                except Exception:
+                    pass
 
                 if failure_mode == FailureMode.ABORT:
                     result = result.mark_failed(f"Stage {stage.name!r} aborted: {exc}")
@@ -281,6 +469,44 @@ class PipelineExecutor:
                             f"Pipeline failed at stage {stage.name!r} degrade(): {degrade_exc}"
                         ) from degrade_exc
 
+        # Pipeline end observability (PRO-001/002/003)
+        try:
+            _pipeline_dur = (time.time() - pipeline_start) * 1000
+            if _trace_backend is not None and _root_span is not None:
+                try:
+                    _trace_backend.end_span(
+                        _root_span, status="ok", attributes={"duration_ms": _pipeline_dur}
+                    )
+                    _trace_id = _trace_backend.get_trace_id() or run_id
+                    # Propagate trace/span IDs into provenance
+                    result = result.replace(
+                        provenance={
+                            **result.provenance,
+                            "trace_id": _trace_id,
+                            "span_id": _root_span,
+                        }
+                    )
+                except Exception:
+                    pass
+            if _metrics_backend is not None:
+                _metrics_backend.histogram(
+                    "lingualdub_pipeline_duration_ms", _pipeline_dur, {"pipeline": pipeline_name}
+                )
+                # Pool utilization gauge (if pool exists, best-effort)
+                with contextlib.suppress(Exception):
+                    from lingualdub.resources.pool import ResourcePool  # noqa: F401
+            struct_logger.info(
+                "pipeline.end",
+                extra={
+                    "run_id": run_id,
+                    "pipeline_name": pipeline_name,
+                    "stage_name": "-",
+                    "language": self.pipeline.target_language or self.pipeline.source_language,
+                    "duration_ms": _pipeline_dur,
+                },
+            )
+        except Exception:
+            pass
         return result
 
     def _run_per_segment_stage(

@@ -31,7 +31,7 @@ from lingualdub.core.component import FailureMode
 from lingualdub.exceptions import ConfigurationValidationError
 from lingualdub.registry.registry import ConflictPolicy
 
-__all__ = ["FrameworkConfig", "load_config"]
+__all__ = ["FrameworkConfig", "SecurityConfig", "load_config"]
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -41,12 +41,31 @@ _ALLOWED_LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "WARN", "ERROR", "CRITICAL"}
 # Normalise WARN -> WARNING
 _LOG_LEVEL_ALIASES: dict[str, str] = {"WARN": "WARNING"}
 
+_ALLOWED_LOG_FORMATS = {"json", "text"}
+_ALLOWED_METRICS_BACKENDS = {"noop", "prometheus", "statsd", "custom"}
+
+_DEFAULT_SENSITIVE_FIELDS = [
+    "api_key",
+    "access_token",
+    "speaker_reference",
+    "voice_path",
+    "consent_record",
+    "email",
+]
+
 _ENV_MAP: dict[str, str] = {
     "LINGUALDUB_LOG_LEVEL": "log_level",
+    "LINGUALDUB_LOG_FORMAT": "log_format",
     "LINGUALDUB_DEFAULT_FAILURE_MODE": "default_failure_mode",
     "LINGUALDUB_REGISTRY_CONFLICT_POLICY": "registry_conflict_policy",
     "LINGUALDUB_CACHE_DIR": "cache_dir",
     "LINGUALDUB_CONSENT_ENFORCEMENT": "consent_enforcement",
+    "LINGUALDUB_CACHE_ENABLED": "cache_enabled",
+    "LINGUALDUB_LOG_REDACTION_ENABLED": "log_redaction_enabled",
+    "LINGUALDUB_METRICS_BACKEND": "metrics_backend",
+    "LINGUALDUB_MAX_SEGMENT_LENGTH": "max_segment_length",
+    "LINGUALDUB_MAX_METADATA_DEPTH": "max_metadata_depth",
+    "LINGUALDUB_PATH_TRAVERSAL_CHECK_ENABLED": "path_traversal_check_enabled",
 }
 
 _TRUTHY = {"1", "true", "yes", "on", "enabled"}
@@ -188,6 +207,173 @@ def _coerce_log_level(value: Any, field_name: str) -> str:
     return _LOG_LEVEL_ALIASES.get(cleaned, cleaned)
 
 
+def _coerce_log_format(value: Any, field_name: str) -> str:
+    if not isinstance(value, str):
+        raise ConfigurationValidationError(
+            f"Field {field_name!r} must be a string, got {type(value).__name__}: {value!r}.",
+            field=field_name,
+        )
+    cleaned = value.strip().lower()
+    if not cleaned:
+        raise ConfigurationValidationError(
+            f"Field {field_name!r} must be a non-empty string.",
+            field=field_name,
+        )
+    if cleaned not in _ALLOWED_LOG_FORMATS:
+        raise ConfigurationValidationError(
+            f"Invalid {field_name!r} {value!r}: must be one of {sorted(_ALLOWED_LOG_FORMATS)}.",
+            field=field_name,
+        )
+    return cleaned
+
+
+def _coerce_metrics_backend(value: Any, field_name: str) -> str:
+    if not isinstance(value, str):
+        raise ConfigurationValidationError(
+            f"Field {field_name!r} must be a string, got {type(value).__name__}: {value!r}.",
+            field=field_name,
+        )
+    cleaned = value.strip().lower()
+    if not cleaned:
+        raise ConfigurationValidationError(
+            f"Field {field_name!r} must be a non-empty string.",
+            field=field_name,
+        )
+    if cleaned not in _ALLOWED_METRICS_BACKENDS:
+        raise ConfigurationValidationError(
+            f"Invalid {field_name!r} {value!r}: must be one of {sorted(_ALLOWED_METRICS_BACKENDS)}.",
+            field=field_name,
+        )
+    return cleaned
+
+
+def _coerce_positive_int(value: Any, field_name: str) -> int:
+    if isinstance(value, bool):
+        raise ConfigurationValidationError(
+            f"Field {field_name!r} must be a positive int, got bool: {value!r}.",
+            field=field_name,
+        )
+    if isinstance(value, int):
+        if value <= 0:
+            raise ConfigurationValidationError(
+                f"Field {field_name!r} must be > 0, got {value!r}.",
+                field=field_name,
+            )
+        return value
+    if isinstance(value, str):
+        if not value.strip():
+            raise ConfigurationValidationError(
+                f"Field {field_name!r} must be a non-empty positive int string.",
+                field=field_name,
+            )
+        try:
+            iv = int(value.strip())
+        except ValueError:
+            raise ConfigurationValidationError(
+                f"Field {field_name!r} must be a positive int, got {value!r}.",
+                field=field_name,
+            ) from None
+        if iv <= 0:
+            raise ConfigurationValidationError(
+                f"Field {field_name!r} must be > 0, got {iv!r}.",
+                field=field_name,
+            )
+        return iv
+    raise ConfigurationValidationError(
+        f"Field {field_name!r} must be a positive int, got {type(value).__name__}: {value!r}.",
+        field=field_name,
+    )
+
+
+def _coerce_metadata_depth(value: Any, field_name: str) -> int:
+    if isinstance(value, bool):
+        raise ConfigurationValidationError(
+            f"Field {field_name!r} must be a non-negative int, got bool: {value!r}.",
+            field=field_name,
+        )
+    if isinstance(value, int):
+        if value < 0:
+            raise ConfigurationValidationError(
+                f"Field {field_name!r} must be >= 0, got {value!r}.",
+                field=field_name,
+            )
+        return value
+    if isinstance(value, str):
+        if not value.strip():
+            raise ConfigurationValidationError(
+                f"Field {field_name!r} must be a non-empty int string.",
+                field=field_name,
+            )
+        try:
+            iv = int(value.strip())
+        except ValueError:
+            raise ConfigurationValidationError(
+                f"Field {field_name!r} must be an int, got {value!r}.",
+                field=field_name,
+            ) from None
+        if iv < 0:
+            raise ConfigurationValidationError(
+                f"Field {field_name!r} must be >= 0, got {iv!r}.",
+                field=field_name,
+            )
+        return iv
+    raise ConfigurationValidationError(
+        f"Field {field_name!r} must be an int, got {type(value).__name__}: {value!r}.",
+        field=field_name,
+    )
+
+
+def _coerce_sensitive_fields(value: Any, field_name: str) -> list[str]:
+    if isinstance(value, str):
+        # Comma-separated string from env var
+        if not value.strip():
+            return []
+        parts = [p.strip() for p in value.split(",")]
+        value = [p for p in parts if p]
+    if not isinstance(value, list):
+        raise ConfigurationValidationError(
+            f"Field {field_name!r} must be a list of strings, got {type(value).__name__}: {value!r}.",
+            field=field_name,
+        )
+    for i, item in enumerate(value):
+        if not isinstance(item, str):
+            raise ConfigurationValidationError(
+                f"Field {field_name!r}[{i}] must be a string, got {type(item).__name__}: {item!r}.",
+                field=f"{field_name}[{i}]",
+            )
+        if not item.strip():
+            raise ConfigurationValidationError(
+                f"Field {field_name!r}[{i}] must be non-empty.",
+                field=f"{field_name}[{i}]",
+            )
+    return list(value)
+
+
+# ---------------------------------------------------------------------------
+# SecurityConfig
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SecurityConfig:
+    """Security-related limits and toggles (PRO-004).
+
+    Attributes:
+        max_segment_length: Maximum allowed characters for ``Segment.text``.
+        max_metadata_depth: Maximum nesting depth for ``metadata`` dicts.
+        path_traversal_check_enabled: Whether to enforce path traversal checks.
+    """
+
+    max_segment_length: int = 5000
+    max_metadata_depth: int = 10
+    path_traversal_check_enabled: bool = True
+
+    def validate(self) -> None:
+        _coerce_positive_int(self.max_segment_length, "max_segment_length")
+        _coerce_metadata_depth(self.max_metadata_depth, "max_metadata_depth")
+        _parse_bool(self.path_traversal_check_enabled, "path_traversal_check_enabled")
+
+
 # ---------------------------------------------------------------------------
 # FrameworkConfig
 # ---------------------------------------------------------------------------
@@ -201,6 +387,7 @@ class FrameworkConfig:
     Attributes:
         log_level: Logging verbosity. One of ``DEBUG``, ``INFO``, ``WARNING``,
             ``ERROR``, ``CRITICAL`` (``WARN`` is accepted as alias for ``WARNING``).
+        log_format: Log output format — ``json`` (structured) or ``text``.
         default_failure_mode: Default pipeline failure handling when a stage
             does not declare its own ``on_failure``. One of ``FailureMode`` values.
         registry_conflict_policy: How the :class:`Registry` handles duplicate
@@ -211,13 +398,32 @@ class FrameworkConfig:
         consent_enforcement: When ``True`` (default), voice-related components
             require ``provenance.consent_basis``. When ``False``, consent checks
             are disabled (useful for non-voice benchmarks).
+        cache_enabled: When ``False``, disables framework caches for
+            ``Pipeline._validate_stage_compatibility`` and ``MiddlewareChain``
+            (PEV-005).
+        log_redaction_enabled: When ``True`` (default), sensitive field values
+            are replaced with ``[REDACTED]`` in logs.
+        sensitive_fields: List of field names considered sensitive for
+            redaction. Extensible by user (PRO-005).
+        metrics_backend: Metrics backend name — ``noop`` (default), ``prometheus``, etc.
+        max_segment_length: Maximum allowed ``Segment.text`` length (PRO-004).
+        max_metadata_depth: Maximum nesting depth for metadata dicts (PRO-004).
+        path_traversal_check_enabled: Whether to enforce path traversal validation (PRO-004).
     """
 
     log_level: str = "INFO"
+    log_format: str = "json"
     default_failure_mode: FailureMode = FailureMode.ABORT
     registry_conflict_policy: ConflictPolicy = ConflictPolicy.NAMESPACED
     cache_dir: Path = field(default_factory=lambda: Path.home() / ".cache" / "lingualdub")
     consent_enforcement: bool = True
+    cache_enabled: bool = True
+    log_redaction_enabled: bool = True
+    sensitive_fields: list[str] = field(default_factory=lambda: list(_DEFAULT_SENSITIVE_FIELDS))
+    metrics_backend: str = "noop"
+    max_segment_length: int = 5000
+    max_metadata_depth: int = 10
+    path_traversal_check_enabled: bool = True
 
     # internal — not part of constructor after init
     _frozen: bool = field(default=False, init=False, repr=False, compare=False)
@@ -233,6 +439,15 @@ class FrameworkConfig:
         if self.__dict__.get("_frozen", False):
             raise FrozenInstanceError(f"cannot delete field {name!r} of frozen FrameworkConfig")
         super().__delattr__(name)
+
+    @property
+    def security_config(self) -> SecurityConfig:
+        """Return a :class:`SecurityConfig` view of security-related fields."""
+        return SecurityConfig(
+            max_segment_length=self.max_segment_length,
+            max_metadata_depth=self.max_metadata_depth,
+            path_traversal_check_enabled=self.path_traversal_check_enabled,
+        )
 
     def validate(self) -> None:
         """
@@ -275,6 +490,10 @@ class FrameworkConfig:
         coerced_log = _coerce_log_level(self.log_level, "log_level")  # type: ignore[arg-type]
         _set_or_check("log_level", coerced_log)
 
+        # log_format
+        coerced_fmt = _coerce_log_format(self.log_format, "log_format")  # type: ignore[arg-type]
+        _set_or_check("log_format", coerced_fmt)
+
         # default_failure_mode
         coerced_fm = _coerce_failure_mode(self.default_failure_mode, "default_failure_mode")  # type: ignore[arg-type]
         _set_or_check("default_failure_mode", coerced_fm)
@@ -294,6 +513,37 @@ class FrameworkConfig:
         coerced_consent = _parse_bool(self.consent_enforcement, "consent_enforcement")  # type: ignore[arg-type]
         _set_or_check("consent_enforcement", coerced_consent)
 
+        # cache_enabled
+        coerced_cache_enabled = _parse_bool(self.cache_enabled, "cache_enabled")  # type: ignore[arg-type]
+        _set_or_check("cache_enabled", coerced_cache_enabled)
+
+        # log_redaction_enabled
+        coerced_redact = _parse_bool(self.log_redaction_enabled, "log_redaction_enabled")  # type: ignore[arg-type]
+        _set_or_check("log_redaction_enabled", coerced_redact)
+
+        # sensitive_fields
+        coerced_sensitive = _coerce_sensitive_fields(self.sensitive_fields, "sensitive_fields")  # type: ignore[arg-type]
+        _set_or_check("sensitive_fields", coerced_sensitive)
+
+        # metrics_backend
+        coerced_metrics = _coerce_metrics_backend(self.metrics_backend, "metrics_backend")  # type: ignore[arg-type]
+        _set_or_check("metrics_backend", coerced_metrics)
+
+        # max_segment_length
+        coerced_seg = _coerce_positive_int(self.max_segment_length, "max_segment_length")  # type: ignore[arg-type]
+        _set_or_check("max_segment_length", coerced_seg)
+
+        # max_metadata_depth
+        coerced_depth = _coerce_metadata_depth(self.max_metadata_depth, "max_metadata_depth")  # type: ignore[arg-type]
+        _set_or_check("max_metadata_depth", coerced_depth)
+
+        # path_traversal_check_enabled
+        coerced_path_check = _parse_bool(
+            self.path_traversal_check_enabled,
+            "path_traversal_check_enabled",  # type: ignore[arg-type]
+        )
+        _set_or_check("path_traversal_check_enabled", coerced_path_check)
+
         # Freeze — use object.__setattr__ to bypass our own guard
         if not is_frozen:
             object.__setattr__(self, "_frozen", True)
@@ -307,6 +557,7 @@ class FrameworkConfig:
         """Return a JSON-serialisable dict of the config (excluding internal state)."""
         return {
             "log_level": self.log_level,
+            "log_format": self.log_format,
             "default_failure_mode": self.default_failure_mode.value
             if isinstance(self.default_failure_mode, FailureMode)
             else self.default_failure_mode,
@@ -315,6 +566,13 @@ class FrameworkConfig:
             else self.registry_conflict_policy,
             "cache_dir": str(self.cache_dir),
             "consent_enforcement": self.consent_enforcement,
+            "cache_enabled": self.cache_enabled,
+            "log_redaction_enabled": self.log_redaction_enabled,
+            "sensitive_fields": list(self.sensitive_fields),
+            "metrics_backend": self.metrics_backend,
+            "max_segment_length": self.max_segment_length,
+            "max_metadata_depth": self.max_metadata_depth,
+            "path_traversal_check_enabled": self.path_traversal_check_enabled,
         }
 
 
@@ -361,7 +619,12 @@ def load_config(overrides: dict[str, Any] | None = None) -> FrameworkConfig:
             # for others, keep raw string and let validate coerce/validate.
             # Use object.__setattr__ bypass is not needed here because cfg not frozen.
             # But we assign via setattr to keep normal path.
-            setattr(cfg, field_name, raw)
+            # Special handling for sensitive_fields (comma-separated)
+            if field_name == "sensitive_fields":
+                # env var as comma-separated
+                setattr(cfg, field_name, raw)
+            else:
+                setattr(cfg, field_name, raw)
 
     # 3. explicit overrides
     if overrides is not None:
