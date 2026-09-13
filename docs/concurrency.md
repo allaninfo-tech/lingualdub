@@ -35,6 +35,7 @@ import asyncio
 from lingualdub.async_utils import run_pipeline_async
 from lingualdub.pipeline.executor import PipelineExecutor
 
+
 async def handle_request(audio_resource):
     executor = PipelineExecutor(pipeline)  # may be created per-request or shared
     result = await run_pipeline_async(executor, audio_resource)
@@ -49,6 +50,7 @@ Internally `run_pipeline_async` is `await asyncio.to_thread(executor.run, input)
 from lingualdub.async_utils import AsyncPipelineExecutor
 
 aexec = AsyncPipelineExecutor(PipelineExecutor(pipeline))
+
 
 async def handle(request):
     result = await aexec.run(request.resource)
@@ -73,6 +75,7 @@ results = await asyncio.gather(
 ```python
 import time, asyncio
 from lingualdub.async_utils import run_pipeline_async
+
 
 async def test_not_blocks_loop():
     loop = asyncio.get_running_loop()

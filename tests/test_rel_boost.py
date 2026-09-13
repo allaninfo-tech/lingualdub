@@ -3,16 +3,22 @@
 
 """Coverage boost for REL-005/002/004/001/003 — not a spec test, just to ensure overall coverage passes."""
 
-import asyncio
 import tempfile
 from pathlib import Path
 
 import pytest
 
+from lingualdub.async_utils import AsyncPipelineExecutor, run_pipeline_async
 from lingualdub.core.resource import Resource, ResourceKind, ResourceOwnership
 from lingualdub.core.result import ResultStatus
 from lingualdub.registry.registry import Registry
-from lingualdub.testing.builders import LanguageBuilder, ResourceBuilder, ResultBuilder, SegmentBuilder
+from lingualdub.resources.pool import ResourcePool
+from lingualdub.testing.builders import (
+    LanguageBuilder,
+    ResourceBuilder,
+    ResultBuilder,
+    SegmentBuilder,
+)
 from lingualdub.testing.clock import FakeClock
 from lingualdub.testing.fakes import FakeAlignment, FakeASR, FakeEvaluator, FakeTranslation, FakeTTS
 from lingualdub.testing.matchers import (
@@ -25,18 +31,65 @@ from lingualdub.testing.matchers import (
     assert_result_partial,
 )
 from lingualdub.testing.pipeline import PipelineTestHarness
-from lingualdub.resources.pool import ResourcePool
-from lingualdub.async_utils import AsyncPipelineExecutor, run_pipeline_async
 
 
 def test_builders_all():
-    lb = LanguageBuilder().with_code("yor").with_name("Yoruba").with_family("Niger-Congo").with_resource_profile("speech-moderate").with_supported_tasks(["asr"]).with_related_languages([]).with_resources([]).with_compatible_components([]).with_metadata({}).build()
+    lb = (
+        LanguageBuilder()
+        .with_code("yor")
+        .with_name("Yoruba")
+        .with_family("Niger-Congo")
+        .with_resource_profile("speech-moderate")
+        .with_supported_tasks(["asr"])
+        .with_related_languages([])
+        .with_resources([])
+        .with_compatible_components([])
+        .with_metadata({})
+        .build()
+    )
     assert lb.code == "yor"
-    rb = ResourceBuilder().with_id("id1").with_kind(ResourceKind.TEXT).with_language("eng").with_version("1.0.1").with_provenance({"source":"x"}).with_quality_flags([]).with_compatible_components([]).with_path(None).with_metadata({}).with_ownership(ResourceOwnership.FRAMEWORK_OWNED).build()
+    rb = (
+        ResourceBuilder()
+        .with_id("id1")
+        .with_kind(ResourceKind.TEXT)
+        .with_language("eng")
+        .with_version("1.0.1")
+        .with_provenance({"source": "x"})
+        .with_quality_flags([])
+        .with_compatible_components([])
+        .with_path(None)
+        .with_metadata({})
+        .with_ownership(ResourceOwnership.FRAMEWORK_OWNED)
+        .build()
+    )
     assert rb.ownership == ResourceOwnership.FRAMEWORK_OWNED
-    seg = SegmentBuilder().with_start(0.5).with_end(1.5).with_text("hi").with_language("eng").with_speaker("spk").with_confidence(0.8).with_source_language("lug").with_provenance({}).with_metadata({}).build()
+    seg = (
+        SegmentBuilder()
+        .with_start(0.5)
+        .with_end(1.5)
+        .with_text("hi")
+        .with_language("eng")
+        .with_speaker("spk")
+        .with_confidence(0.8)
+        .with_source_language("lug")
+        .with_provenance({})
+        .with_metadata({})
+        .build()
+    )
     assert seg.text == "hi"
-    res = ResultBuilder().with_segments([seg]).with_source_language("eng").with_target_language("lug").with_status(ResultStatus.COMPLETE).with_warnings([]).with_provenance({"run_id":"x"}).with_artifacts([]).with_metadata({}).add_segment(seg).build(status=ResultStatus.COMPLETE)
+    res = (
+        ResultBuilder()
+        .with_segments([seg])
+        .with_source_language("eng")
+        .with_target_language("lug")
+        .with_status(ResultStatus.COMPLETE)
+        .with_warnings([])
+        .with_provenance({"run_id": "x"})
+        .with_artifacts([])
+        .with_metadata({})
+        .add_segment(seg)
+        .build(status=ResultStatus.COMPLETE)
+    )
     assert len(res.segments) == 2
 
 
@@ -117,8 +170,8 @@ def test_harness(tmp_path):
     harness.assert_complete(result2)
     # build_pipeline explicit
     from lingualdub.core.component import Component, ComponentTask, FailureMode
-    from lingualdub.core.result import Result
     from lingualdub.core.resource import Resource as Res
+    from lingualdub.core.result import Result
 
     class Dummy(Component):
         name = "dummy_test"
@@ -128,6 +181,7 @@ def test_harness(tmp_path):
         requires = []
         provides = ["transcription"]
         on_failure = FailureMode.ABORT
+
         def run(self, inp: Result | Res) -> Result:
             return Result(source_language="lug")
 
@@ -169,6 +223,8 @@ def test_clock():
 
 
 def test_pool_basic():
+    from lingualdub.exceptions import ResourceError
+
     pool = ResourcePool(factory=lambda name: object(), max_size=2, min_idle=1)
     assert pool.metrics()["total"] == 1  # min_idle warmed
     a = pool.acquire("m")
@@ -177,7 +233,7 @@ def test_pool_basic():
     assert pool.active == 2
     assert pool.idle == 0
     # timeout 0 should fail
-    with pytest.raises(Exception):
+    with pytest.raises(ResourceError):
         pool.acquire("m", timeout_s=0)
     pool.release(a)
     assert pool.idle == 1
@@ -221,9 +277,9 @@ def test_async_utils():
 
     from lingualdub.core.component import Component, ComponentTask, FailureMode
     from lingualdub.core.pipeline import Pipeline
-    from lingualdub.pipeline.executor import PipelineExecutor
-    from lingualdub.core.result import Result
     from lingualdub.core.resource import Resource
+    from lingualdub.core.result import Result
+    from lingualdub.pipeline.executor import PipelineExecutor
 
     class Quick(Component):
         name = "quick"
@@ -233,6 +289,7 @@ def test_async_utils():
         requires = []
         provides = []
         on_failure = FailureMode.ABORT
+
         def run(self, inp: Result | Resource) -> Result:
             return Result(source_language="lug")
 
@@ -248,13 +305,13 @@ def test_async_utils():
         out2 = await aexec.run(res)
         assert out2.status == ResultStatus.COMPLETE
         try:
-            AsyncPipelineExecutor(None)
-            assert False, "should raise"
+            AsyncPipelineExecutor(None)  # type: ignore[arg-type]
+            raise AssertionError("should raise")
         except ValueError:
             pass
         try:
             AsyncPipelineExecutor(object())
-            assert False, "should raise"
+            raise AssertionError("should raise")
         except ValueError:
             pass
 
@@ -270,11 +327,18 @@ def test_resource_ownership():
     container = DependencyContainer()
     container.register(
         "r",
-        lambda: Resource(id="t", kind=ResourceKind.CHECKPOINT, language="eng", version="1.0.0", ownership=ResourceOwnership.FRAMEWORK_OWNED, path=tmp),
+        lambda: Resource(
+            id="t",
+            kind=ResourceKind.CHECKPOINT,
+            language="eng",
+            version="1.0.0",
+            ownership=ResourceOwnership.FRAMEWORK_OWNED,
+            path=tmp,
+        ),
         lifetime=Lifetime.SCOPED,
     )
     with container.create_scope() as scope:
-        r = scope.resolve("r")
+        scope.resolve("r")
         assert Path(tmp).exists()
     assert not Path(tmp).exists()
     # USER_OWNED not cleaned
@@ -283,16 +347,29 @@ def test_resource_ownership():
     container2 = DependencyContainer()
     container2.register(
         "r2",
-        lambda: Resource(id="t2", kind=ResourceKind.CHECKPOINT, language="eng", version="1.0.0", ownership=ResourceOwnership.USER_OWNED, path=tmp2),
+        lambda: Resource(
+            id="t2",
+            kind=ResourceKind.CHECKPOINT,
+            language="eng",
+            version="1.0.0",
+            ownership=ResourceOwnership.USER_OWNED,
+            path=tmp2,
+        ),
         lifetime=Lifetime.SCOPED,
     )
     with container2.create_scope() as scope:
-        r2 = scope.resolve("r2")
+        scope.resolve("r2")
         assert Path(tmp2).exists()
     assert Path(tmp2).exists()
     Path(tmp2).unlink(missing_ok=True)
     # serialization
-    r3 = Resource(id="x", kind=ResourceKind.SPEECH, language="lug", version="1.0.0", ownership=ResourceOwnership.SHARED)
+    r3 = Resource(
+        id="x",
+        kind=ResourceKind.SPEECH,
+        language="lug",
+        version="1.0.0",
+        ownership=ResourceOwnership.SHARED,
+    )
     d = r3.to_dict()
     assert d["ownership"] == "shared"
     r4 = Resource.from_dict(d)

@@ -67,6 +67,7 @@ from lingualdub.pipeline.config_loader import ConfigLoader
 from lingualdub.pipeline.executor import PipelineExecutionError, PipelineExecutor
 from lingualdub.registry.manifest import ManifestError, ManifestScanner
 from lingualdub.registry.registry import ConflictPolicy, Registry, RegistryError
+from lingualdub.resources.pool import PooledResource, ResourcePool
 from lingualdub.types import (
     AudioTensor,
     LanguageCode,
@@ -77,7 +78,6 @@ from lingualdub.types import (
 )
 from lingualdub.utils.comparison import ProvenanceMismatchError, compare_runs
 from lingualdub.utils.provenance import make_provenance, make_run_id
-from lingualdub.resources.pool import PooledResource, ResourcePool
 from lingualdub.utils.resource_manager import (
     ChecksumError,
     ResourceManager,

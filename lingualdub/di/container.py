@@ -102,7 +102,10 @@ class DependencyScope:
                 from lingualdub.core.resource import ResourceOwnership
 
                 ownership = getattr(inst, "ownership", None)
-                if isinstance(ownership, ResourceOwnership) and ownership != ResourceOwnership.FRAMEWORK_OWNED:
+                if (
+                    isinstance(ownership, ResourceOwnership)
+                    and ownership != ResourceOwnership.FRAMEWORK_OWNED
+                ):
                     # USER_OWNED / SHARED — framework does not own cleanup
                     continue
             except Exception:

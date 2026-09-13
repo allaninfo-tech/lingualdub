@@ -21,8 +21,8 @@ or monkeypatch ``time.monotonic`` via ``clock.install()`` (best-effort).
 from __future__ import annotations
 
 import contextlib
-import time
 from datetime import datetime, timezone
+from typing import Any
 
 __all__ = ["FakeClock"]
 
@@ -65,7 +65,9 @@ class FakeClock:
     def advance(self, seconds: float) -> None:
         """Advance clock by ``seconds`` (may be fractional)."""
         if not isinstance(seconds, (int, float)) or isinstance(seconds, bool):
-            raise ValueError(f"advance seconds must be a number, got {type(seconds).__name__}: {seconds!r}.")
+            raise ValueError(
+                f"advance seconds must be a number, got {type(seconds).__name__}: {seconds!r}."
+            )
         if seconds < 0:
             raise ValueError(f"advance seconds must be >= 0, got {seconds!r}.")
         self._time += float(seconds)

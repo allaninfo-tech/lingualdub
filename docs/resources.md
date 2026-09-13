@@ -15,14 +15,26 @@ This document defines ownership semantics for `lingualdub.core.resource.Resource
 ```python
 from lingualdub.core.resource import ResourceOwnership, Resource
 
-r = Resource(id="tmp_ckpt", kind=ResourceKind.CHECKPOINT, language="eng",
-             version="1.0.0", provenance={}, ownership=ResourceOwnership.FRAMEWORK_OWNED,
-             path="/tmp/cache/model.bin")
+r = Resource(
+    id="tmp_ckpt",
+    kind=ResourceKind.CHECKPOINT,
+    language="eng",
+    version="1.0.0",
+    provenance={},
+    ownership=ResourceOwnership.FRAMEWORK_OWNED,
+    path="/tmp/cache/model.bin",
+)
 r.close()  # deletes file
 
-r2 = Resource(id="user_audio", kind=ResourceKind.SPEECH, language="lug",
-              version="1.0.0", provenance={}, ownership=ResourceOwnership.USER_OWNED,
-              path="data/samples/sample_lug.wav")
+r2 = Resource(
+    id="user_audio",
+    kind=ResourceKind.SPEECH,
+    language="lug",
+    version="1.0.0",
+    provenance={},
+    ownership=ResourceOwnership.USER_OWNED,
+    path="data/samples/sample_lug.wav",
+)
 r2.close()  # no-op
 ```
 

@@ -16,8 +16,8 @@ they integrate with ``pytest`` assertion rewriting.
 
 from __future__ import annotations
 
-from lingualdub.core.result import Result, ResultStatus
 from lingualdub.core.resource import Resource
+from lingualdub.core.result import Result, ResultStatus
 from lingualdub.core.segment import Segment
 
 __all__ = [
@@ -50,7 +50,9 @@ def assert_result_failed(result: Result) -> None:
     if not isinstance(result, Result):
         raise AssertionError(f"Expected Result, got {type(result).__name__}: {result!r}.")
     if result.status != ResultStatus.FAILED:
-        raise AssertionError(f"Expected ResultStatus.FAILED, got {result.status.value!r}\n  warnings: {result.warnings!r}")
+        raise AssertionError(
+            f"Expected ResultStatus.FAILED, got {result.status.value!r}\n  warnings: {result.warnings!r}"
+        )
     if result.is_usable:
         raise AssertionError("Expected is_usable False for FAILED result, got True.")
 
@@ -60,7 +62,9 @@ def assert_result_partial(result: Result) -> None:
     if not isinstance(result, Result):
         raise AssertionError(f"Expected Result, got {type(result).__name__}: {result!r}.")
     if result.status != ResultStatus.PARTIAL:
-        raise AssertionError(f"Expected ResultStatus.PARTIAL, got {result.status.value!r}\n  warnings: {result.warnings!r}")
+        raise AssertionError(
+            f"Expected ResultStatus.PARTIAL, got {result.status.value!r}\n  warnings: {result.warnings!r}"
+        )
 
 
 def assert_result_degraded(result: Result) -> None:
@@ -68,7 +72,9 @@ def assert_result_degraded(result: Result) -> None:
     if not isinstance(result, Result):
         raise AssertionError(f"Expected Result, got {type(result).__name__}: {result!r}.")
     if result.status != ResultStatus.DEGRADED:
-        raise AssertionError(f"Expected ResultStatus.DEGRADED, got {result.status.value!r}\n  warnings: {result.warnings!r}")
+        raise AssertionError(
+            f"Expected ResultStatus.DEGRADED, got {result.status.value!r}\n  warnings: {result.warnings!r}"
+        )
 
 
 def assert_result_has_segment(result: Result, text: str, language: str | None = None) -> Segment:

@@ -28,19 +28,40 @@ Builders produce valid instances with sensible defaults; override only what matt
 from lingualdub.testing.builders import SegmentBuilder, ResultBuilder
 from lingualdub.core.result import ResultStatus
 
-seg = SegmentBuilder().with_text("Oli otya").with_language("lug").with_start(0.0).with_end(1.4).build()
-result = ResultBuilder().with_segments([seg]).with_source_language("lug").with_status(ResultStatus.COMPLETE).build()
+seg = (
+    SegmentBuilder()
+    .with_text("Oli otya")
+    .with_language("lug")
+    .with_start(0.0)
+    .with_end(1.4)
+    .build()
+)
+result = (
+    ResultBuilder()
+    .with_segments([seg])
+    .with_source_language("lug")
+    .with_status(ResultStatus.COMPLETE)
+    .build()
+)
 
 # Resource with FRAMEWORK_OWNED for scoped-cleanup tests
 from lingualdub.testing.builders import ResourceBuilder
 from lingualdub.core.resource import ResourceOwnership
-r = ResourceBuilder().with_id("tmp").with_ownership(ResourceOwnership.FRAMEWORK_OWNED).with_path("/tmp/x.bin").build()
+
+r = (
+    ResourceBuilder()
+    .with_id("tmp")
+    .with_ownership(ResourceOwnership.FRAMEWORK_OWNED)
+    .with_path("/tmp/x.bin")
+    .build()
+)
 ```
 
 ### LanguageBuilder
 
 ```python
 from lingualdub.testing.builders import LanguageBuilder
+
 lang = LanguageBuilder().with_code("nyn").with_name("Runyankole").build()
 ```
 
@@ -102,11 +123,14 @@ assert_result_complete(result)
 Or from declarative config:
 
 ```python
-result = harness.run_with_config({
-    "source_language": "lug",
-    "target_language": "eng",
-    "stages": ["fake_asr", "fake_translator", "fake_tts"]
-}, ResourceBuilder().build())
+result = harness.run_with_config(
+    {
+        "source_language": "lug",
+        "target_language": "eng",
+        "stages": ["fake_asr", "fake_translator", "fake_tts"],
+    },
+    ResourceBuilder().build(),
+)
 ```
 
 `PipelineTestHarness` owns a private `Registry`; `with_components` registers both for direct `run` and for `run_with_config`.
@@ -129,6 +153,7 @@ assert clock.sleeps == [0.5]
 # Monkeypatch time.time/monotonic:
 with clock:
     import time
+
     assert time.time() == 2.0
     clock.advance(10)
     assert time.monotonic() == 12.0

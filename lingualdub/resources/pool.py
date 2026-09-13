@@ -16,8 +16,9 @@ import collections
 import logging
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from lingualdub.exceptions import ResourceError
 
@@ -102,11 +103,11 @@ class ResourcePool:
         max_size: int = 5,
         min_idle: int = 0,
     ) -> None:
-        from lingualdub.utils.validation import require_positive_number
 
-        if max_size is not None:
-            if not isinstance(max_size, int) or isinstance(max_size, bool) or max_size <= 0:
-                raise ValueError(f"max_size must be a positive int, got {max_size!r}.")
+        if max_size is not None and (
+            not isinstance(max_size, int) or isinstance(max_size, bool) or max_size <= 0
+        ):
+            raise ValueError(f"max_size must be a positive int, got {max_size!r}.")
         if not isinstance(min_idle, int) or isinstance(min_idle, bool) or min_idle < 0:
             raise ValueError(f"min_idle must be a non-negative int, got {min_idle!r}.")
         if min_idle > max_size:
@@ -149,7 +150,11 @@ class ResourcePool:
 
         try:
             sig = inspect.signature(self.factory)
-            params = [p for p in sig.parameters.values() if p.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)]
+            params = [
+                p
+                for p in sig.parameters.values()
+                if p.kind not in (inspect.Parameter.VAR_POSITIONAL, inspect.Parameter.VAR_KEYWORD)
+            ]
             # Remove 'self' for bound methods? inspect already handles.
             if len(params) == 0:
                 return self.factory()  # type: ignore[call-arg]
@@ -177,7 +182,10 @@ class ResourcePool:
         """
         if self._idle:
             return self._idle.popleft()
-        if self._total_created < self.max_size or (len(self._active_wrappers) + len(self._idle)) < self.max_size:
+        if (
+            self._total_created < self.max_size
+            or (len(self._active_wrappers) + len(self._idle)) < self.max_size
+        ):
             # Capacity available — create
             raw = self._create_resource(name)
             self._total_created += 1
@@ -224,7 +232,9 @@ class ResourcePool:
                     # Defensive: if somehow raw already active, it would mean bug — but check
                     if rid in self._active:
                         # This should not happen if reuse logic correct, but guard
-                        logger.warning("ResourcePool: duplicate active id %r, creating fresh instance", rid)
+                        logger.warning(
+                            "ResourcePool: duplicate active id %r, creating fresh instance", rid
+                        )
                         raw = self._create_resource(name)
                         self._total_created += 1
                         wrapper = PooledResource(resource=raw, name=name, _pool=self)

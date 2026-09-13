@@ -77,7 +77,11 @@ def test_contracts_match_snapshot():
         # Check that defaults keys match (not exact repr of factories)
         try:
             sig = inspect.signature(cls)
-            actual_defaults = {n for n, p in sig.parameters.items() if p.default is not inspect.Parameter.empty and n not in ("self", "cls")}
+            actual_defaults = {
+                n
+                for n, p in sig.parameters.items()
+                if p.default is not inspect.Parameter.empty and n not in ("self", "cls")
+            }
             exp_defaults = set(expected.get("defaults", {}).keys())
             if actual_defaults != exp_defaults:
                 raise AssertionError(
@@ -94,9 +98,11 @@ def test_contracts_match_snapshot():
                 method = key[len("method_") :].rsplit("_params", 1)[0]
                 obj = getattr(cls, method, None)
                 if obj is None or not callable(obj):
-                    raise AssertionError(f"Expected method {cls.__name__}.{method} missing (snapshot has {key!r})")
+                    raise AssertionError(
+                        f"Expected method {cls.__name__}.{method} missing (snapshot has {key!r})"
+                    )
                 sig = inspect.signature(obj)
-                actual_m = [n for n in sig.parameters.keys() if n not in ("self", "cls")]
+                actual_m = [n for n in sig.parameters if n not in ("self", "cls")]
                 if actual_m != exp_m_params:
                     raise AssertionError(
                         f"Method {cls.__name__}.{method} params mismatch.\n"
@@ -113,7 +119,9 @@ def test_contract_renaming_is_detected_example():
     snapshot = _load_snapshot()
     res_params = snapshot.get("Resource", {}).get("params", [])
     assert "language" in res_params, "Snapshot should contain 'language' for Resource"
-    assert "lang_code" not in res_params, "Snapshot must not contain renamed 'lang_code' — renaming would break contract"
+    assert "lang_code" not in res_params, (
+        "Snapshot must not contain renamed 'lang_code' — renaming would break contract"
+    )
     # Also verify live code still has 'language'
     from lingualdub.core.resource import Resource
 

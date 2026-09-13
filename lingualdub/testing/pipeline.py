@@ -81,7 +81,12 @@ class PipelineTestHarness:
             self._components.append(comp)
             # Also register in private registry for config-based tests
             try:
-                self.registry.register("component", comp.name, comp.__class__, version=getattr(comp, "version", "0.0.1"))
+                self.registry.register(
+                    "component",
+                    comp.name,
+                    comp.__class__,
+                    version=getattr(comp, "version", "0.0.1"),
+                )
                 # Also try instance registration fallback — store instance under same key if class fails protocol check
                 # We store the instance so ConfigLoader can instantiate? ConfigLoader expects class.
                 # For direct run we keep _components; for config we need class mapping.
@@ -124,7 +129,9 @@ class PipelineTestHarness:
 
         use_stages = stages if stages is not None else list(self._components)
         if not use_stages:
-            raise ValueError("PipelineTestHarness has no components; call with_components(...) first or pass stages explicitly.")
+            raise ValueError(
+                "PipelineTestHarness has no components; call with_components(...) first or pass stages explicitly."
+            )
         src = source_language if source_language is not None else self.source_language
         tgt = target_language if target_language is not None else self.target_language
         fm = FailureMode.ABORT
@@ -179,10 +186,12 @@ class PipelineTestHarness:
         for comp in self._components:
             key = getattr(comp, "name", None)
             if key and key not in [k for k, _ in self.registry.list("component")]:
-                try:
-                    self.registry.register("component", key, comp, version=getattr(comp, "version", "0.0.1"))
-                except Exception:
-                    pass
+                import contextlib
+
+                with contextlib.suppress(Exception):
+                    self.registry.register(
+                        "component", key, comp, version=getattr(comp, "version", "0.0.1")
+                    )
         loader = ConfigLoader(self.registry)
         pipeline = loader.load_dict(config)
         executor = PipelineExecutor(pipeline)
@@ -191,7 +200,9 @@ class PipelineTestHarness:
     def assert_complete(self, result: Result) -> Result:
         """Assert result is COMPLETE and return it for chaining."""
         if result.status != ResultStatus.COMPLETE:
-            raise AssertionError(f"Expected COMPLETE, got {result.status.value!r} warnings={result.warnings!r}")
+            raise AssertionError(
+                f"Expected COMPLETE, got {result.status.value!r} warnings={result.warnings!r}"
+            )
         return result
 
     def __repr__(self) -> str:

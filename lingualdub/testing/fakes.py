@@ -49,7 +49,11 @@ class FakeASR(Component):
     def run(self, input: Result | Resource) -> Result:
         # Accept either Resource or Result; produce deterministic segment
         seg = Segment(start=0.0, end=2.0, text=self._text, language=self._language, confidence=0.99)
-        source_lang = getattr(input, "language", None) or getattr(input, "source_language", None) or self._language
+        source_lang = (
+            getattr(input, "language", None)
+            or getattr(input, "source_language", None)
+            or self._language
+        )
         # If input was Resource, use its language; if Result, use source_language
         if isinstance(input, Resource):
             source_lang = input.language
@@ -58,7 +62,9 @@ class FakeASR(Component):
         return Result(
             segments=[seg],
             source_language=source_lang,  # type: ignore[arg-type]
-            provenance=make_provenance(pipeline_name="fake_asr", component_versions={self.name: self.version}),
+            provenance=make_provenance(
+                pipeline_name="fake_asr", component_versions={self.name: self.version}
+            ),
             metadata={"model": "fake_asr"},
         )
 
@@ -69,7 +75,9 @@ class FakeASR(Component):
             source_language=self._language,
             status=ResultStatus.DEGRADED,
             warnings=["Degraded: FakeASR degraded path"],
-            provenance=make_provenance(pipeline_name="fake_asr_degraded", component_versions={self.name: self.version}),
+            provenance=make_provenance(
+                pipeline_name="fake_asr_degraded", component_versions={self.name: self.version}
+            ),
         )
 
 
@@ -101,7 +109,9 @@ class FakeTranslation(Component):
             segments=segments,
             source_language=input.source_language,
             target_language="eng",
-            provenance=make_provenance(pipeline_name="fake_translator", component_versions={self.name: self.version}),
+            provenance=make_provenance(
+                pipeline_name="fake_translator", component_versions={self.name: self.version}
+            ),
             metadata={"model": "fake_translator"},
         )
 
@@ -129,7 +139,9 @@ class FakeTTS(Component):
             segments=list(input.segments),
             source_language=input.source_language,
             target_language=input.target_language or "eng",
-            provenance=make_provenance(pipeline_name="fake_tts", component_versions={self.name: self.version}),
+            provenance=make_provenance(
+                pipeline_name="fake_tts", component_versions={self.name: self.version}
+            ),
             artifacts=artifacts,
             metadata={"model": "fake_tts", "synthesized": True},
         )
@@ -187,7 +199,9 @@ class FakeAlignment(Component):
             segments=segments,
             source_language=input.source_language,
             target_language=input.target_language,
-            provenance=make_provenance(pipeline_name="fake_aligner", component_versions={self.name: self.version}),
+            provenance=make_provenance(
+                pipeline_name="fake_aligner", component_versions={self.name: self.version}
+            ),
         )
 
 
@@ -212,7 +226,9 @@ class FakeEvaluator(Component):
             return Result(
                 segments=[],
                 source_language="lug",
-                provenance=make_provenance(pipeline_name="fake_evaluator", component_versions={self.name: self.version}),
+                provenance=make_provenance(
+                    pipeline_name="fake_evaluator", component_versions={self.name: self.version}
+                ),
                 metadata={"metrics": {"wer": 0.12, "cer": 0.05, "bleu": 42.0}},
             )
         # Eval against result

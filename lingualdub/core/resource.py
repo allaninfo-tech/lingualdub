@@ -217,7 +217,10 @@ class Resource:
                 import logging
 
                 logging.getLogger(__name__).debug(
-                    "Failed to cleanup FRAMEWORK_OWNED resource %r at %r", self.id, self.path, exc_info=True
+                    "Failed to cleanup FRAMEWORK_OWNED resource %r at %r",
+                    self.id,
+                    self.path,
+                    exc_info=True,
                 )
         object.__setattr__(self, "_closed", True)
 
@@ -387,7 +390,9 @@ class Resource:
         raw_ownership = data.get("ownership", ResourceOwnership.USER_OWNED.value)
         if raw_ownership is None:
             raise SerializationError(
-                "Field 'ownership' must be a string, got None.", field="ownership", code="RES_DESER_003"
+                "Field 'ownership' must be a string, got None.",
+                field="ownership",
+                code="RES_DESER_003",
             )
         if not isinstance(raw_ownership, str):
             raise SerializationError(
