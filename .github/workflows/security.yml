@@ -27,14 +27,12 @@ jobs:
       - name: Install dependencies with dev extras
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          pip install -e ".[dev]"
-          python -m pip install --upgrade pip-audit setuptools
+          pip install ".[dev]"
+          python -m pip install --upgrade pip-audit
 
       - name: Run pip-audit strict
         run: |
-          # Upgrade setuptools to fixed version if needed (PYSEC-2026-3447)
-          python -m pip install --upgrade "setuptools>=83.0.0" || true
-          pip-audit --strict --skip-editable || pip-audit --strict --skip-editable --ignore-vuln PYSEC-2026-3447
+          pip-audit --strict --skip-editable
           echo "pip-audit passed — no critical/high CVEs found"
 
       - name: Verify security docs exist
