@@ -13,7 +13,7 @@ from lingualdub.core.component import Component, ComponentTask, FailureMode
 from lingualdub.core.language import Language
 from lingualdub.core.pipeline import Pipeline
 from lingualdub.core.protocols import ComponentProtocol, EvaluatorProtocol, RegistrableProtocol
-from lingualdub.core.resource import Resource, ResourceKind
+from lingualdub.core.resource import Resource, ResourceKind, ResourceOwnership
 from lingualdub.core.result import Result, ResultStatus
 from lingualdub.core.segment import Segment
 from lingualdub.di import (
@@ -77,6 +77,7 @@ from lingualdub.types import (
 )
 from lingualdub.utils.comparison import ProvenanceMismatchError, compare_runs
 from lingualdub.utils.provenance import make_provenance, make_run_id
+from lingualdub.resources.pool import PooledResource, ResourcePool
 from lingualdub.utils.resource_manager import (
     ChecksumError,
     ResourceManager,
@@ -91,6 +92,7 @@ __all__ = [
     "Language",
     "Resource",
     "ResourceKind",
+    "ResourceOwnership",
     "Component",
     "ComponentTask",
     "FailureMode",
@@ -154,6 +156,8 @@ __all__ = [
     "ResourceManager",
     "ChecksumError",
     "ResourceNotFoundError",
+    "ResourcePool",
+    "PooledResource",
     "make_run_id",
     "make_provenance",
     "compare_runs",

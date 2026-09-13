@@ -116,6 +116,9 @@ The top-level `lingualdub` package exposes the following stable symbols:
 | `ResourceManager` | Class | Local asset manager verifying sha256 checksums and managing downloads |
 | `ChecksumError` | Exception | Raised when a resource file's checksum fails verification |
 | `ResourceNotFoundError` | Exception | Raised when a requested resource is not available locally or remotely |
+| `ResourceOwnership` | Enum | Ownership semantics (`FRAMEWORK_OWNED`, `USER_OWNED`, `SHARED`) — see `docs/resources.md` |
+| `ResourcePool` | Class | Pool managing creation, reuse, and cleanup of expensive resources (`acquire`/`release`, `max_size`/`min_idle`, `total`/`idle`/`active`) |
+| `PooledResource` | Class | Wrapper around a pooled instance (context manager, `resource`, `name`, `release`) |
 | `make_run_id` | Function | Generates a collision-resistant timestamped run ID |
 | `make_provenance` | Function | Assembles a structured provenance record for pipeline execution |
 | `compare_runs` | Function | Compares two execution runs across evaluation metrics |
@@ -215,6 +218,18 @@ Individual task packages provide base component classes and reference implementa
 - `LUGANDA_ENG_PARALLEL_EVAL_SET`
 - `LUGANDA_ENG_CODESWITCH_EVAL_SET`
 - `get_evaluation_resource()`
+- `ResourcePool` / `PooledResource` — pooled resource management (REL-002)
+
+### `lingualdub.testing` (REL-005)
+- `LanguageBuilder` / `ResourceBuilder` / `SegmentBuilder` / `ResultBuilder` — fluent builders
+- `FakeASR` / `FakeTranslation` / `FakeTTS` / `FakeAlignment` / `FakeEvaluator` — deterministic fakes
+- `assert_result_complete` / `assert_result_failed` / `assert_result_has_segment` / `assert_result_has_language` — matchers
+- `PipelineTestHarness` — end-to-end harness (`run`, `run_with_config`)
+- `FakeClock` — deterministic clock (`advance`, `sleep`, `install`)
+
+### `lingualdub.async_utils` (REL-004)
+- `run_pipeline_async(executor, input)` — `await` pipeline without blocking loop
+- `AsyncPipelineExecutor(executor).run(input)` — async wrapper
 
 ---
 

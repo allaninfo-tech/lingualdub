@@ -1,0 +1,228 @@
+{
+  "Language": {
+    "module": "lingualdub.core.language",
+    "params": [
+      "code",
+      "name",
+      "family",
+      "resource_profile",
+      "supported_tasks",
+      "related_languages",
+      "resources",
+      "compatible_components",
+      "metadata"
+    ],
+    "defaults": {
+      "supported_tasks": "<factory>",
+      "related_languages": "<factory>",
+      "resources": "<factory>",
+      "compatible_components": "<factory>",
+      "metadata": "<factory>"
+    },
+    "method_to_dict_params": [],
+    "method_from_dict_params": [
+      "data"
+    ]
+  },
+  "Resource": {
+    "module": "lingualdub.core.resource",
+    "params": [
+      "id",
+      "kind",
+      "language",
+      "version",
+      "provenance",
+      "quality_flags",
+      "compatible_components",
+      "path",
+      "metadata",
+      "ownership"
+    ],
+    "defaults": {
+      "provenance": "<factory>",
+      "quality_flags": "<factory>",
+      "compatible_components": "<factory>",
+      "path": "None",
+      "metadata": "<factory>",
+      "ownership": "<ResourceOwnership.USER_OWNED: 'user_owned'>"
+    },
+    "method_to_dict_params": [],
+    "method_from_dict_params": [
+      "data"
+    ]
+  },
+  "Segment": {
+    "module": "lingualdub.core.segment",
+    "params": [
+      "start",
+      "end",
+      "text",
+      "language",
+      "speaker",
+      "confidence",
+      "source_language",
+      "provenance",
+      "metadata"
+    ],
+    "defaults": {
+      "speaker": "None",
+      "confidence": "None",
+      "source_language": "None",
+      "provenance": "<factory>",
+      "metadata": "<factory>"
+    },
+    "method_to_dict_params": [],
+    "method_from_dict_params": [
+      "data"
+    ]
+  },
+  "Result": {
+    "module": "lingualdub.core.result",
+    "params": [
+      "segments",
+      "source_language",
+      "target_language",
+      "status",
+      "warnings",
+      "provenance",
+      "artifacts",
+      "metadata"
+    ],
+    "defaults": {
+      "segments": "<factory>",
+      "source_language": "None",
+      "target_language": "None",
+      "status": "<ResultStatus.COMPLETE: 'complete'>",
+      "warnings": "<factory>",
+      "provenance": "<factory>",
+      "artifacts": "<factory>",
+      "metadata": "<factory>"
+    },
+    "method_to_dict_params": [],
+    "method_from_dict_params": [
+      "data"
+    ]
+  },
+  "Pipeline": {
+    "module": "lingualdub.core.pipeline",
+    "params": [
+      "stages",
+      "source_language",
+      "target_language",
+      "per_segment_language",
+      "on_stage_failure",
+      "name",
+      "description",
+      "metadata"
+    ],
+    "defaults": {
+      "target_language": "None",
+      "per_segment_language": "False",
+      "on_stage_failure": "<FailureMode.ABORT: 'abort'>",
+      "name": "None",
+      "description": "None",
+      "metadata": "<factory>"
+    },
+    "method_to_dict_params": [],
+    "method_from_dict_params": [
+      "data",
+      "resolved_stages"
+    ]
+  },
+  "Component": {
+    "module": "lingualdub.core.component",
+    "params": [
+      "args",
+      "kwargs"
+    ],
+    "defaults": {},
+    "method_run_params": [
+      "input"
+    ],
+    "method_register_params": [
+      "subclass"
+    ]
+  },
+  "Registry": {
+    "module": "lingualdub.registry.registry",
+    "params": [
+      "conflict_policy"
+    ],
+    "defaults": {
+      "conflict_policy": "<ConflictPolicy.NAMESPACED: 'namespaced'>"
+    },
+    "method_resolve_params": [
+      "kind",
+      "key",
+      "version"
+    ],
+    "method_register_params": [
+      "kind",
+      "key",
+      "impl",
+      "version",
+      "metadata"
+    ]
+  },
+  "FrameworkConfig": {
+    "module": "lingualdub.config",
+    "params": [
+      "log_level",
+      "default_failure_mode",
+      "registry_conflict_policy",
+      "cache_dir",
+      "consent_enforcement"
+    ],
+    "defaults": {
+      "log_level": "'INFO'",
+      "default_failure_mode": "<FailureMode.ABORT: 'abort'>",
+      "registry_conflict_policy": "<ConflictPolicy.NAMESPACED: 'namespaced'>",
+      "cache_dir": "<factory>",
+      "consent_enforcement": "True"
+    },
+    "method_to_dict_params": []
+  },
+  "FrameworkLifecycle": {
+    "module": "lingualdub.lifecycle",
+    "params": [],
+    "defaults": {}
+  },
+  "DependencyContainer": {
+    "module": "lingualdub.di.container",
+    "params": [],
+    "defaults": {},
+    "method_resolve_params": [
+      "name"
+    ],
+    "method_register_params": [
+      "name",
+      "implementation_or_factory",
+      "lifetime",
+      "override"
+    ]
+  },
+  "PipelineExecutor": {
+    "module": "lingualdub.pipeline.executor",
+    "params": [
+      "pipeline",
+      "middleware_chain",
+      "middleware_registry"
+    ],
+    "defaults": {
+      "middleware_chain": "None",
+      "middleware_registry": "None"
+    },
+    "method_run_params": [
+      "input"
+    ]
+  },
+  "ResourceManager": {
+    "module": "lingualdub.utils.resource_manager",
+    "params": [
+      "cache_dir"
+    ],
+    "defaults": {
+      "cache_dir": "None"
+    }
+  }
+}

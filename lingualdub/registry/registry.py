@@ -8,11 +8,27 @@ The Registry holds all registered Language, Resource, and Component objects,
 resolved by (kind, key, version). It scans extension manifests at startup
 and applies a conflict resolution policy when multiple extensions register
 the same (kind, key) pair.
+
+Thread-safety
+-------------
+The Registry is safe for concurrent reads from multiple threads. All write
+operations (``register``) and read operations (``resolve``, ``list``) are
+protected by a single ``threading.RLock`` so callers may register new
+components while pipeline threads are resolving existing ones. Iteration
+over the store is atomic under the lock; callers receive a snapshot copy.
+Plugins may therefore safely call ``register`` during startup while other
+threads call ``resolve``/``list``. The ``conflict_policy`` attribute is
+also guarded by the same lock.
+
+For maximal throughput, the lock is re-entrant (``RLock``) so a thread
+holding the lock may re-enter ``resolve`` from within a ``register``
+callback.
 """
 
 from __future__ import annotations
 
 import builtins
+import threading
 from collections import defaultdict
 from enum import Enum
 from typing import Any
@@ -72,6 +88,7 @@ class Registry:
         self._store: dict[str, dict[str, list[tuple[str, Any, dict]]]] = defaultdict(
             lambda: defaultdict(list)
         )
+        self._lock = threading.RLock()
 
     def register(
         self,
@@ -105,46 +122,47 @@ class Registry:
         metadata = metadata or {}
         # Copy metadata to break external refs
         metadata = dict(metadata)
-        entries = self._store[kind][key]
+        with self._lock:
+            entries = self._store[kind][key]
 
-        if entries and self.conflict_policy == ConflictPolicy.EXPLICIT:
-            raise RegistryError(
-                f"Conflict: ({kind!r}, {key!r}) is already registered and "
-                f"conflict_policy is EXPLICIT. Use an override to replace it."
-            )
+            if entries and self.conflict_policy == ConflictPolicy.EXPLICIT:
+                raise RegistryError(
+                    f"Conflict: ({kind!r}, {key!r}) is already registered and "
+                    f"conflict_policy is EXPLICIT. Use an override to replace it."
+                )
 
-        if entries and self.conflict_policy == ConflictPolicy.HIGHEST_VERSION:
-            # Compare against highest stored version, not just last inserted
-            max_version = max((v for v, _, _ in entries), key=_version_tuple)
-            if _version_tuple(version) > _version_tuple(max_version):
-                entries.clear()
-            elif _version_tuple(version) == _version_tuple(max_version):
-                # Same version but possibly different impl — keep both for history but don't discard silently
-                # If exact version string already exists, reject duplicate silently with warning
-                if any(v == version for v, _, _ in entries):
+            if entries and self.conflict_policy == ConflictPolicy.HIGHEST_VERSION:
+                # Compare against highest stored version, not just last inserted
+                max_version = max((v for v, _, _ in entries), key=_version_tuple)
+                if _version_tuple(version) > _version_tuple(max_version):
+                    entries.clear()
+                elif _version_tuple(version) == _version_tuple(max_version):
+                    # Same version but possibly different impl — keep both for history but don't discard silently
+                    # If exact version string already exists, reject duplicate silently with warning
+                    if any(v == version for v, _, _ in entries):
+                        import logging
+
+                        logging.getLogger(__name__).warning(
+                            "Duplicate registration for (%r, %r) version %r discarded (HIGHEST_VERSION)",
+                            kind,
+                            key,
+                            version,
+                        )
+                        return
+                else:
+                    # New version is not higher — discard it, keep existing.
                     import logging
 
-                    logging.getLogger(__name__).warning(
-                        "Duplicate registration for (%r, %r) version %r discarded (HIGHEST_VERSION)",
+                    logging.getLogger(__name__).debug(
+                        "Registration for (%r, %r) version %r discarded, keeping %r (HIGHEST_VERSION)",
                         kind,
                         key,
                         version,
+                        max_version,
                     )
                     return
-            else:
-                # New version is not higher — discard it, keep existing.
-                import logging
 
-                logging.getLogger(__name__).debug(
-                    "Registration for (%r, %r) version %r discarded, keeping %r (HIGHEST_VERSION)",
-                    kind,
-                    key,
-                    version,
-                    max_version,
-                )
-                return
-
-        entries.append((version, impl, metadata))
+            entries.append((version, impl, metadata))
 
     def resolve(
         self, kind: str, key: str, version: str | None = None
@@ -163,24 +181,25 @@ class Registry:
         Raises:
             RegistryError: If no matching registration is found.
         """
-        entries = self._store.get(kind, {}).get(key)
-        if not entries:
-            raise RegistryError(f"No registration found for ({kind!r}, {key!r}).")
+        with self._lock:
+            entries = self._store.get(kind, {}).get(key)
+            if not entries:
+                raise RegistryError(f"No registration found for ({kind!r}, {key!r}).")
 
-        if version is None:
-            # Return the highest version (not insertion-latest) for HIGHEST_VERSION policy
-            if self.conflict_policy == ConflictPolicy.HIGHEST_VERSION:
-                best = max(entries, key=lambda x: _version_tuple(x[0]))
-                return best[1]
-            return entries[-1][1]
+            if version is None:
+                # Return the highest version (not insertion-latest) for HIGHEST_VERSION policy
+                if self.conflict_policy == ConflictPolicy.HIGHEST_VERSION:
+                    best = max(entries, key=lambda x: _version_tuple(x[0]))
+                    return best[1]
+                return entries[-1][1]
 
-        for v, impl, _ in entries:
-            if v == version:
-                return impl
+            for v, impl, _ in entries:
+                if v == version:
+                    return impl
 
-        raise RegistryError(
-            f"No registration found for ({kind!r}, {key!r}) at version {version!r}."
-        )
+            raise RegistryError(
+                f"No registration found for ({kind!r}, {key!r}) at version {version!r}."
+            )
 
     def list(self, kind: str) -> builtins.list[tuple[str, str]]:
         """
@@ -189,15 +208,16 @@ class Registry:
         Returns:
             A list of (key, latest_version) tuples.
         """
-        result = []
-        for key, entries in self._store.get(kind, {}).items():
-            if entries:
-                if self.conflict_policy == ConflictPolicy.HIGHEST_VERSION:
-                    best_version = max((v for v, _, _ in entries), key=_version_tuple)
-                    result.append((key, best_version))
-                else:
-                    result.append((key, entries[-1][0]))
-        return sorted(result)
+        with self._lock:
+            result = []
+            for key, entries in list(self._store.get(kind, {}).items()):
+                if entries:
+                    if self.conflict_policy == ConflictPolicy.HIGHEST_VERSION:
+                        best_version = max((v for v, _, _ in entries), key=_version_tuple)
+                        result.append((key, best_version))
+                    else:
+                        result.append((key, entries[-1][0]))
+            return sorted(result)
 
     def __repr__(self) -> str:
         summary = {kind: list(keys.keys()) for kind, keys in self._store.items()}

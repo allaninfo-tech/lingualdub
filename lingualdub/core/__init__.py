@@ -12,13 +12,15 @@ Segment representation that connects them.
 from lingualdub.core.component import Component, ComponentTask, FailureMode
 from lingualdub.core.language import Language
 from lingualdub.core.pipeline import Pipeline
-from lingualdub.core.resource import Resource
+from lingualdub.core.resource import Resource, ResourceKind, ResourceOwnership
 from lingualdub.core.result import Result, ResultStatus
 from lingualdub.core.segment import Segment
 
 __all__ = [
     "Language",
     "Resource",
+    "ResourceKind",
+    "ResourceOwnership",
     "Component",
     "ComponentTask",
     "FailureMode",

@@ -23,6 +23,24 @@ from lingualdub.utils.validation import (
 )
 
 
+class ResourceOwnership(str, Enum):
+    """Ownership semantics for framework resources.
+
+    FRAMEWORK_OWNED — created and owned by the framework; framework is
+        responsible for cleanup (e.g. temporary downloaded model weights,
+        pipeline artifacts). Cleaned up deterministically on scoped
+        teardown.
+    USER_OWNED — provided and owned by the caller; framework must never
+        delete or mutate the underlying asset.
+    SHARED — reference-counted or shared across scopes callers; cleanup
+        requires coordination, framework does not auto-delete.
+    """
+
+    FRAMEWORK_OWNED = "framework_owned"
+    USER_OWNED = "user_owned"
+    SHARED = "shared"
+
+
 class ResourceKind(str, Enum):
     """Enumeration of supported resource types."""
 
@@ -67,6 +85,7 @@ class Resource:
     compatible_components: list[str] = field(default_factory=list)
     path: PathLike | None = None
     metadata: MetadataDict = field(default_factory=dict)
+    ownership: ResourceOwnership = ResourceOwnership.USER_OWNED
 
     def __post_init__(self) -> None:
         import os as _os
@@ -133,11 +152,32 @@ class Resource:
                 f"Field 'metadata' must be a dict, got {type(self.metadata).__name__}: {self.metadata!r}.",
                 field="metadata",
             )
+        # Validate ownership
+        if isinstance(self.ownership, str) and not isinstance(self.ownership, ResourceOwnership):
+            try:
+                coerced = ResourceOwnership(self.ownership)
+                object.__setattr__(self, "ownership", coerced)
+            except ValueError:
+                from lingualdub.exceptions import ConfigurationValidationError
+
+                raise ConfigurationValidationError(
+                    f"Field 'ownership' must be a ResourceOwnership, got {self.ownership!r}.",
+                    field="ownership",
+                ) from None
+        elif not isinstance(self.ownership, ResourceOwnership):
+            from lingualdub.exceptions import ConfigurationValidationError
+
+            raise ConfigurationValidationError(
+                f"Field 'ownership' must be a ResourceOwnership, got {type(self.ownership).__name__}: {self.ownership!r}.",
+                field="ownership",
+            )
         # Break external references
         object.__setattr__(self, "provenance", dict(self.provenance))
         object.__setattr__(self, "quality_flags", list(self.quality_flags))
         object.__setattr__(self, "compatible_components", list(self.compatible_components))
         object.__setattr__(self, "metadata", dict(self.metadata))
+        # Track closed state for cleanup verification (not part of equality)
+        object.__setattr__(self, "_closed", False)
 
     @property
     def has_consent(self) -> bool:
@@ -148,6 +188,43 @@ class Resource:
         """
         val = self.provenance.get("consent_basis")
         return isinstance(val, str) and bool(val.strip())
+
+    def close(self) -> None:
+        """Cleanup FRAMEWORK_OWNED resources deterministically.
+
+        Only ``FRAMEWORK_OWNED`` resources are actively cleaned up by the
+        framework (see ``docs/resources.md``). ``USER_OWNED`` and ``SHARED``
+        resources are no-ops — the caller retains ownership. This method is
+        invoked automatically when a ``SCOPED`` resource is torn down via
+        :class:`lingualdub.di.DependencyScope`.
+
+        Idempotent: subsequent calls are no-ops.
+        """
+        if getattr(self, "_closed", False):
+            return
+        if self.ownership != ResourceOwnership.FRAMEWORK_OWNED:
+            return
+        # FRAMEWORK_OWNED cleanup: remove underlying file if it exists
+        if self.path is not None:
+            try:
+                from pathlib import Path as _Path
+
+                p = _Path(str(self.path))
+                if p.exists() and p.is_file():
+                    p.unlink()
+            except Exception:
+                # Best-effort — log but do not raise during teardown
+                import logging
+
+                logging.getLogger(__name__).debug(
+                    "Failed to cleanup FRAMEWORK_OWNED resource %r at %r", self.id, self.path, exc_info=True
+                )
+        object.__setattr__(self, "_closed", True)
+
+    @property
+    def is_closed(self) -> bool:
+        """Whether :meth:`close` has been invoked for FRAMEWORK_OWNED."""
+        return bool(getattr(self, "_closed", False))
 
     def to_dict(self) -> dict:
         """Serialize this Resource to a JSON-compatible dictionary.
@@ -170,6 +247,7 @@ class Resource:
             "compatible_components": list(self.compatible_components),
             "path": path_val,
             "metadata": copy.deepcopy(self.metadata),
+            "ownership": self.ownership.value,
         }
 
     @classmethod
@@ -203,6 +281,7 @@ class Resource:
             "compatible_components",
             "path",
             "metadata",
+            "ownership",
         }
         for key in ("id", "kind", "language", "version"):
             if key not in data:
@@ -304,6 +383,26 @@ class Resource:
         else:
             norm_path = raw_path  # type: ignore[assignment]
 
+        # ownership validation (optional, defaults to USER_OWNED for backward compat)
+        raw_ownership = data.get("ownership", ResourceOwnership.USER_OWNED.value)
+        if raw_ownership is None:
+            raise SerializationError(
+                "Field 'ownership' must be a string, got None.", field="ownership", code="RES_DESER_003"
+            )
+        if not isinstance(raw_ownership, str):
+            raise SerializationError(
+                f"Field 'ownership' must be a string, got {type(raw_ownership).__name__}: {raw_ownership!r}.",
+                field="ownership",
+                code="RES_DESER_003",
+            )
+        valid_ownerships = [e.value for e in ResourceOwnership]
+        if raw_ownership not in valid_ownerships:
+            raise SerializationError(
+                f"Field 'ownership' must be one of {valid_ownerships!r}, got {raw_ownership!r}.",
+                field="ownership",
+                code="RES_DESER_003",
+            )
+
         prov_val = data.get("provenance")
         if prov_val is None and "provenance" not in data:
             prov_val = {}
@@ -318,6 +417,7 @@ class Resource:
             compatible_components=_list_or_default("compatible_components"),
             path=norm_path,  # type: ignore[arg-type]
             metadata=merged_metadata,
+            ownership=ResourceOwnership(raw_ownership),
         )
 
     def __repr__(self) -> str:

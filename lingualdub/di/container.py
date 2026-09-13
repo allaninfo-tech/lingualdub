@@ -93,7 +93,20 @@ class DependencyScope:
 
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Any:
         # Best-effort close of scoped instances that implement close()
+        # Ownership-aware: only FRAMEWORK_OWNED resources are auto-cleaned;
+        # USER_OWNED/SHARED and non-Resource scoped objects are still closed
+        # via their own close() which internally respects ownership.
         for name, inst in list(self._instances.items()):
+            # Ownership-aware skip for Resource instances
+            try:
+                from lingualdub.core.resource import ResourceOwnership
+
+                ownership = getattr(inst, "ownership", None)
+                if isinstance(ownership, ResourceOwnership) and ownership != ResourceOwnership.FRAMEWORK_OWNED:
+                    # USER_OWNED / SHARED — framework does not own cleanup
+                    continue
+            except Exception:
+                pass
             close = getattr(inst, "close", None)
             if callable(close):
                 try:

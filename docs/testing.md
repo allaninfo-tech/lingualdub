@@ -1,29 +1,147 @@
-# Testing Guide — Lifecycle Utilities (LCY-004)
+# Testing Guide
 
-This document describes how to test against the LingualDub lifecycle using the
-official testing utilities in `lingualdub.testing.lifecycle`.
+This document describes the official testing utilities in `lingualdub.testing` (LCY-004, EXE-007, REL-005).
 
 ## Overview
 
-Lifecycle tests are fragile when they share global state. The testing utilities
-provide isolated, deterministic helpers so each test gets a fresh framework
-instance and can assert on state transitions without interference.
+`lingualdub.testing` provides isolated, deterministic helpers so tests get fresh framework instances without shared global state:
 
-- `TestFramework` — isolated `FrameworkLifecycle` per test (context manager, auto-teardown)
-- `LifecycleCapture` — records all state transitions in order
-- `assert_lifecycle_sequence` — assertion helper
+- `TestFramework` / `LifecycleCapture` / `assert_lifecycle_sequence` — lifecycle isolation (LCY-004)
+- `TestContainer` / `FakeRegistry` / `FakeResourceManager` / `FakeLanguage` / `assert_resolved_as` — DI fakes (EXE-007)
+- `LanguageBuilder` / `ResourceBuilder` / `SegmentBuilder` / `ResultBuilder` — fluent builders for domain objects (REL-005)
+- `FakeASR` / `FakeTranslation` / `FakeTTS` / `FakeAlignment` / `FakeEvaluator` — deterministic fakes satisfying `ComponentProtocol` (REL-005)
+- `assert_result_complete` / `assert_result_failed` / `assert_result_has_segment` / `assert_result_has_language` / `assert_resource_valid` — matchers (REL-005)
+- `PipelineTestHarness` — end-to-end pipeline runner (REL-005)
+- `FakeClock` — deterministic clock (REL-005)
 
-All three are re-exported from `lingualdub.testing`:
+All are re-exported from `lingualdub.testing`:
 
 ```python
-from lingualdub.testing import TestFramework, LifecycleCapture, assert_lifecycle_sequence
-from lingualdub.testing.lifecycle import TestFramework  # also works
+from lingualdub.testing import PipelineTestHarness, ResultBuilder, FakeASR, assert_result_complete
 ```
 
-## TestFramework
+## Builders
 
-Context manager that creates a fresh `FrameworkLifecycle` for each test and
-tears it down (`shutdown() → STOPPED`) on exit, even if the test raises.
+Builders produce valid instances with sensible defaults; override only what matters:
+
+```python
+from lingualdub.testing.builders import SegmentBuilder, ResultBuilder
+from lingualdub.core.result import ResultStatus
+
+seg = SegmentBuilder().with_text("Oli otya").with_language("lug").with_start(0.0).with_end(1.4).build()
+result = ResultBuilder().with_segments([seg]).with_source_language("lug").with_status(ResultStatus.COMPLETE).build()
+
+# Resource with FRAMEWORK_OWNED for scoped-cleanup tests
+from lingualdub.testing.builders import ResourceBuilder
+from lingualdub.core.resource import ResourceOwnership
+r = ResourceBuilder().with_id("tmp").with_ownership(ResourceOwnership.FRAMEWORK_OWNED).with_path("/tmp/x.bin").build()
+```
+
+### LanguageBuilder
+
+```python
+from lingualdub.testing.builders import LanguageBuilder
+lang = LanguageBuilder().with_code("nyn").with_name("Runyankole").build()
+```
+
+## Fakes
+
+Each fake is a concrete `Component` satisfying the protocol for DI tests:
+
+```python
+from lingualdub.testing.fakes import FakeASR, FakeTranslation, FakeTTS
+
+asr = FakeASR(text="hello world", language="lug")
+result = asr.run(resource)  # deterministic, no ML
+assert result.segments[0].text == "hello world"
+assert result.segments[0].language == "lug"
+```
+
+| Fake | Task | Requires | Provides |
+|---|---|---|---|
+| `FakeASR` | ASR | [] | transcription, word_timestamps |
+| `FakeTranslation` | TRANSLATION | transcription | translation |
+| `FakeTTS` | TTS | translation | audio |
+| `FakeAlignment` | ALIGNMENT | transcription | aligned_timestamps |
+| `FakeEvaluator` | EVAL | [] | metrics |
+
+All support `degrade()` where applicable and are `runtime_checkable` for `isinstance(obj, ComponentProtocol)`.
+
+## Matchers
+
+```python
+from lingualdub.testing.matchers import assert_result_complete, assert_result_has_segment
+
+assert_result_complete(result)
+seg = assert_result_has_segment(result, "hello", language="lug")
+```
+
+- `assert_result_complete(result)` — status COMPLETE and usable
+- `assert_result_failed(result)` — status FAILED and not usable
+- `assert_result_partial(result)` / `assert_result_degraded(result)`
+- `assert_result_has_segment(result, text, language=None)` — returns matching segment or raises
+- `assert_result_has_language(result, language)`
+- `assert_resource_valid(resource)` — validates via round-trip
+
+## PipelineTestHarness
+
+Run a pipeline in under 20 lines without manual registry wiring:
+
+```python
+from lingualdub.testing.pipeline import PipelineTestHarness
+from lingualdub.testing.fakes import FakeASR, FakeTranslation, FakeTTS
+from lingualdub.testing.builders import ResourceBuilder
+from lingualdub.testing.matchers import assert_result_complete
+
+harness = PipelineTestHarness(source_language="lug", target_language="eng")
+harness.with_components(FakeASR(), FakeTranslation(), FakeTTS())
+result = harness.run(ResourceBuilder().build())
+assert_result_complete(result)
+```
+
+Or from declarative config:
+
+```python
+result = harness.run_with_config({
+    "source_language": "lug",
+    "target_language": "eng",
+    "stages": ["fake_asr", "fake_translator", "fake_tts"]
+}, ResourceBuilder().build())
+```
+
+`PipelineTestHarness` owns a private `Registry`; `with_components` registers both for direct `run` and for `run_with_config`.
+
+## FakeClock
+
+Deterministic time control:
+
+```python
+from lingualdub.testing.clock import FakeClock
+
+clock = FakeClock(start=0.0)
+assert clock.time() == 0.0
+clock.advance(1.5)
+assert clock.now() == 1.5
+clock.sleep(0.5)
+assert clock.time() == 2.0
+assert clock.sleeps == [0.5]
+
+# Monkeypatch time.time/monotonic:
+with clock:
+    import time
+    assert time.time() == 2.0
+    clock.advance(10)
+    assert time.monotonic() == 12.0
+# auto-restored outside context
+```
+
+## Lifecycle Utilities (LCY-004)
+
+See lifecycle section below (original LCY-004 docs preserved).
+
+### TestFramework
+
+Context manager that creates a fresh `FrameworkLifecycle` for each test and tears it down (`shutdown() → STOPPED`) on exit, even if the test raises.
 
 ```python
 from lingualdub.testing.lifecycle import TestFramework, assert_lifecycle_sequence
@@ -32,151 +150,34 @@ from lingualdub.lifecycle import LifecycleState
 
 def test_startup_flow():
     with TestFramework() as fw:
-        # fw.lifecycle is isolated — no sharing with other tests
-        # fw.capture is a LifecycleCapture attached to fw.lifecycle
         assert fw.lifecycle.state == LifecycleState.UNINITIALIZED
-
         fw.lifecycle.transition(LifecycleState.CONFIGURING)
         fw.lifecycle.transition(LifecycleState.CONFIGURED)
-        fw.lifecycle.transition(LifecycleState.INITIALIZING)
-        fw.lifecycle.transition(LifecycleState.READY)
-
-        assert fw.state == LifecycleState.READY  # shortcut to lifecycle.state
         assert_lifecycle_sequence(
             fw.capture,
-            [
-                LifecycleState.UNINITIALIZED,
-                LifecycleState.CONFIGURING,
-                LifecycleState.CONFIGURED,
-                LifecycleState.INITIALIZING,
-                LifecycleState.READY,
-            ],
+            [LifecycleState.UNINITIALIZED, LifecycleState.CONFIGURING, LifecycleState.CONFIGURED],
         )
-    # After exit, fw.lifecycle is STOPPED (deterministic teardown)
     assert fw.lifecycle.state == LifecycleState.STOPPED
 ```
 
-### Isolation
+### LifecycleCapture
 
-Two concurrent `TestFramework` contexts do not share state (hooks, history, capture):
+Helper that records every state transition in order, including forced transitions performed by `shutdown()` for partial-init handling.
 
-```python
-def test_isolation():
-    with TestFramework() as fw1:
-        with TestFramework() as fw2:
-            assert fw1.lifecycle is not fw2.lifecycle
-            fw1.lifecycle.transition(LifecycleState.CONFIGURING)
-            fw2.lifecycle.transition(LifecycleState.CONFIGURING)
-            fw2.lifecycle.transition(LifecycleState.CONFIGURED)
+### assert_lifecycle_sequence
 
-            assert len(fw1.history) == 2
-            assert len(fw2.history) == 3
-            assert fw1.capture.sequence != fw2.capture.sequence
-```
+Assertion helper with detailed diff on mismatch.
 
-### Partial Initialization
+## Coverage
 
-`TestFramework` handles partial initialization — calling `shutdown()` before
-`startup()` completes is safe and deterministic:
-
-```python
-def test_partial_init():
-    with TestFramework() as fw:
-        fw.lifecycle.transition(LifecycleState.CONFIGURING)
-        # exit without completing init — teardown still reaches STOPPED
-    assert fw.lifecycle.state == LifecycleState.STOPPED
-```
-
-### Direct Usage Without Context Manager
-
-`TestFramework` can also be used manually, but the context manager ensures
-teardown:
-
-```python
-fw = TestFramework()
-try:
-    fw.lifecycle.transition(LifecycleState.CONFIGURING)
-finally:
-    fw.lifecycle.shutdown()
-```
-
-## LifecycleCapture
-
-Helper that records every state transition in order, including forced
-transitions performed by `shutdown()` for partial-init handling.
-
-```python
-from lingualdub.lifecycle import FrameworkLifecycle, LifecycleState
-from lingualdub.testing.lifecycle import LifecycleCapture, assert_lifecycle_sequence
-
-lc = FrameworkLifecycle()
-capture = LifecycleCapture(lc)
-
-lc.transition(LifecycleState.CONFIGURING)
-lc.transition(LifecycleState.CONFIGURED)
-
-assert capture.sequence == [
-    LifecycleState.UNINITIALIZED,
-    LifecycleState.CONFIGURING,
-    LifecycleState.CONFIGURED,
-]
-# capture.history is an alias for sequence
-```
-
-`LifecycleCapture` wraps `transition`, `shutdown`, and `_handle_atexit` to
-capture both normal and forced transitions. Use `capture.clear()` to reset
-(keeps current history as seed) or `capture.detach()` to restore original
-methods.
-
-Passing a `FrameworkLifecycle` directly to `assert_lifecycle_sequence` also
-works — it will read `lifecycle.history`.
-
-## assert_lifecycle_sequence
-
-Assertion helper with detailed diff on mismatch:
-
-```python
-from lingualdub.testing.lifecycle import LifecycleCapture, assert_lifecycle_sequence
-
-# All of these forms work:
-assert_lifecycle_sequence(capture, [LifecycleState.UNINITIALIZED, LifecycleState.CONFIGURING])
-assert_lifecycle_sequence(fw.capture, expected)
-assert_lifecycle_sequence(lifecycle, expected)  # reads lifecycle.history
-assert_lifecycle_sequence([LifecycleState.UNINITIALIZED], expected)  # raw list
-```
-
-On failure, raises `AssertionError` with:
-
-```
-Lifecycle sequence mismatch.
-  Expected: uninitialized → configuring → configured
-  Actual:   uninitialized → ready
-```
-
-## Integration with Startup/Shutdown Hooks
-
-`TestFramework` provides isolated hook registries:
-
-```python
-def test_hooks_isolated():
-    with TestFramework() as fw1:
-        fw1.lifecycle.register_startup_hook("a", lambda: None)
-        with TestFramework() as fw2:
-            assert fw2.lifecycle.list_startup_hooks() == []  # not shared
-            assert fw1.lifecycle.list_startup_hooks() == ["a"]
-```
-
-Shutdown hooks are torn down in reverse order via `lifecycle.shutdown()` during
-`TestFramework` exit.
-
-## Parallel Execution
-
-Tests using `TestFramework` are safe to run in parallel (`pytest -n auto` or
-`pytest-xdist`) because no global state is shared. Each context owns its
-lifecycle, capture, and hook registries.
+`lingualdub/testing/` itself has 100% branch coverage targeted — builders/fakes/matchers/harness/clock are each unit-tested in `tests/testing/`.
 
 ## See Also
 
-- `lingualdub/lifecycle.py` — `FrameworkLifecycle`, `LifecycleState`, `startup_hook`, `shutdown_hook`
-- `lingualdub/testing/lifecycle.py` — implementation of `TestFramework`, `LifecycleCapture`, `assert_lifecycle_sequence`
-- `tests/lifecycle/test_lifecycle_state.py` — state machine tests
+- `lingualdub/testing/builders.py`
+- `lingualdub/testing/fakes.py`
+- `lingualdub/testing/matchers.py`
+- `lingualdub/testing/pipeline.py`
+- `lingualdub/testing/clock.py`
+- `lingualdub/lifecycle.py` — `FrameworkLifecycle`, `LifecycleState`
+- `tests/lifecycle/test_lifecycle_state.py`
