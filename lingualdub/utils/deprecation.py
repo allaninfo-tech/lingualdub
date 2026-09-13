@@ -75,15 +75,16 @@ def deprecated(
 
         if isinstance(obj, type):
             # Class deprecation — wrap __init__ to warn on instantiation
-            original_init = obj.__init__  # type: ignore[assignment]
+            original_init = obj.__init__  # type: ignore[assignment,misc]
 
             @functools.wraps(original_init)  # type: ignore[arg-type]
             def warned_init(self: Any, *args: Any, **kwargs: Any) -> None:
                 msg = _format_message(symbol, reason, replacement, since)
                 warnings.warn(msg, DeprecationWarning, stacklevel=2)
-                return original_init(self, *args, **kwargs)  # type: ignore[misc]
+                original_init(self, *args, **kwargs)  # type: ignore[misc]
+                return None
 
-            obj.__init__ = warned_init  # type: ignore[method-assign]
+            obj.__init__ = warned_init  # type: ignore[method-assign,misc]
             # Also set a marker for testing
             try:
                 obj._lingualdub_deprecated = True  # type: ignore[attr-defined]

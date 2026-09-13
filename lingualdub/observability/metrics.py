@@ -105,9 +105,9 @@ class PrometheusMetricsBackend:
 
     def __init__(self) -> None:
         self._enabled = False
-        self._counters: dict[str, Any] = {}
-        self._histograms: dict[str, Any] = {}
-        self._gauges: dict[str, Any] = {}
+        self._counters: dict[Any, Any] = {}
+        self._histograms: dict[Any, Any] = {}
+        self._gauges: dict[Any, Any] = {}
         try:
             import prometheus_client  # type: ignore
 
