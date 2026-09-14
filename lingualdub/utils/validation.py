@@ -35,6 +35,24 @@ DEFAULT_MAX_SEGMENT_LENGTH = 5000
 DEFAULT_MAX_RESOURCE_PATH_LENGTH = 4096
 DEFAULT_MAX_METADATA_DEPTH = 10
 
+
+def _effective_security_limits() -> tuple[int, int, bool]:
+    """Return effective (max_segment_length, max_metadata_depth, path_traversal_enabled) from global SecurityConfig if available."""
+    try:
+        from lingualdub.config import get_security_config
+
+        cfg = get_security_config()
+        if cfg is not None:
+            return (
+                cfg.max_segment_length,
+                cfg.max_metadata_depth,
+                cfg.path_traversal_check_enabled,
+            )
+    except Exception:
+        pass
+    return (DEFAULT_MAX_SEGMENT_LENGTH, DEFAULT_MAX_METADATA_DEPTH, True)
+
+
 # ---------------------------------------------------------------------------
 # Generic helpers
 # ---------------------------------------------------------------------------
@@ -193,7 +211,7 @@ def validate_resource_path(path: Any, field_name: str = "path") -> str:
 
     Checks:
     - must be a non-empty string
-    - length <= ``DEFAULT_MAX_RESOURCE_PATH_LENGTH``
+    - length <= ``DEFAULT_MAX_RESOURCE_PATH_LENGTH`` (or effective SecurityConfig)
     - must not contain ``..`` components, null bytes, or URL-encoded traversal
     - must not be absolute outside safe workspace unless explicitly allowed
     - rejects ``~`` expansion and absolute paths when traversal check enabled
@@ -203,6 +221,8 @@ def validate_resource_path(path: Any, field_name: str = "path") -> str:
         ConfigurationValidationError: If path is empty, too long, or wrong type.
     """
     from lingualdub.exceptions import ResourceError
+
+    eff_seg, eff_depth, eff_trav = _effective_security_limits()
 
     if not isinstance(path, str):
         raise ConfigurationValidationError(
@@ -219,7 +239,9 @@ def validate_resource_path(path: Any, field_name: str = "path") -> str:
             f"Field {field_name!r} exceeds max length {DEFAULT_MAX_RESOURCE_PATH_LENGTH}: {len(path)} > {DEFAULT_MAX_RESOURCE_PATH_LENGTH}.",
             field=field_name,
         )
-    # Traversal detection
+    # Traversal detection — skip if disabled via SecurityConfig
+    if not eff_trav:
+        return path
     if ".." in path.split("/"):
         raise ResourceError(
             f"Path traversal detected for {field_name!r}: {path!r} contains '..'.",
@@ -263,13 +285,17 @@ def validate_resource_path(path: Any, field_name: str = "path") -> str:
 
 
 def validate_metadata_depth(
-    value: Any, max_depth: int = DEFAULT_MAX_METADATA_DEPTH, field_name: str = "metadata"
+    value: Any, max_depth: int | None = None, field_name: str = "metadata"
 ) -> None:
     """Validate nesting depth of a metadata dict (PRO-004).
 
+    If ``max_depth`` is ``None``, uses effective SecurityConfig (or default 10).
     Raises:
         ConfigurationValidationError: If depth exceeds ``max_depth`` or value is not a dict.
     """
+    if max_depth is None:
+        _, eff_depth, _ = _effective_security_limits()
+        max_depth = eff_depth
     if not isinstance(value, dict):
         raise ConfigurationValidationError(
             f"Field {field_name!r} must be a dict, got {type(value).__name__}: {value!r}.",
@@ -292,9 +318,15 @@ def validate_metadata_depth(
 
 
 def validate_segment_text_length(
-    text: Any, max_length: int = DEFAULT_MAX_SEGMENT_LENGTH, field_name: str = "text"
+    text: Any, max_length: int | None = None, field_name: str = "text"
 ) -> str:
-    """Validate segment text length against security limit (PRO-004)."""
+    """Validate segment text length against security limit (PRO-004).
+
+    If ``max_length`` is ``None``, uses effective SecurityConfig (or default 5000).
+    """
+    if max_length is None:
+        eff_seg, _, _ = _effective_security_limits()
+        max_length = eff_seg
     if not isinstance(text, str):
         raise ConfigurationValidationError(
             f"Field {field_name!r} must be a string, got {type(text).__name__}: {text!r}.",

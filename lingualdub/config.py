@@ -37,6 +37,14 @@ __all__ = ["FrameworkConfig", "SecurityConfig", "load_config", "is_cache_enabled
 # Global cache enabled flag for PEV-005 — updated on validate/load_config
 _global_cache_enabled: bool = True
 
+# Global security config for PRO-004 — updated on validate/load_config
+_global_security_config: SecurityConfig | None = None
+
+
+def get_security_config() -> SecurityConfig | None:
+    """Return effective global :class:`SecurityConfig` if validated, else ``None``."""
+    return _global_security_config
+
 
 def is_cache_enabled() -> bool:
     """Return whether framework caches are enabled (PEV-005).
@@ -560,10 +568,12 @@ class FrameworkConfig:
         # Freeze — use object.__setattr__ to bypass our own guard
         if not is_frozen:
             object.__setattr__(self, "_frozen", True)
-        # Update global cache flag (PEV-005)
-        global _global_cache_enabled
+        # Update global cache flag (PEV-005) and security config (PRO-004)
+        global _global_cache_enabled, _global_security_config
         with contextlib.suppress(Exception):
             _global_cache_enabled = bool(self.cache_enabled)
+        with contextlib.suppress(Exception):
+            _global_security_config = self.security_config
 
     @property
     def is_frozen(self) -> bool:

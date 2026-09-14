@@ -148,15 +148,29 @@ class OpenTelemetryTracingBackend:
         if not self._enabled or self._tracer is None:
             return uuid.uuid4().hex[:16]
         try:
-            # Simplified: create span without explicit parent handling
-            span = self._tracer.start_span(name, attributes=attributes)  # type: ignore[attr-defined]
+            # Handle parent via context if provided
+            ctx = None
+            if parent_id is not None and parent_id in self._spans:
+                try:
+                    from opentelemetry import context as ot_ctx  # type: ignore
+                    from opentelemetry import trace as ot_trace  # type: ignore
+
+                    parent_span = self._spans.get(parent_id)
+                    if parent_span is not None:
+                        ctx = ot_trace.set_span_in_context(parent_span, ot_ctx.get_current())  # type: ignore[attr-defined]
+                except Exception:
+                    ctx = None
+            if ctx is not None:
+                span = self._tracer.start_span(name, context=ctx, attributes=attributes)  # type: ignore[attr-defined]
+            else:
+                span = self._tracer.start_span(name, attributes=attributes)  # type: ignore[attr-defined]
             span_id = uuid.uuid4().hex[:16]
             # Store span object for end
             self._spans[span_id] = span
             # Try to get trace id from span context
             try:
-                ctx = span.get_span_context()  # type: ignore[attr-defined]
-                self._trace_id = format(ctx.trace_id, "032x")  # type: ignore[attr-defined]
+                sctx = span.get_span_context()  # type: ignore[attr-defined]
+                self._trace_id = format(sctx.trace_id, "032x")  # type: ignore[attr-defined]
             except Exception:
                 self._trace_id = uuid.uuid4().hex
             return span_id

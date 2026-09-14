@@ -110,7 +110,9 @@ The top-level `lingualdub` package exposes the following stable symbols:
 | `MetricsBackend` | Protocol | Metrics protocol (`counter`/`histogram`/`gauge`) |
 | `NoOpMetricsBackend` | Class | No-op metrics backend (default, zero overhead) |
 | `PrometheusMetricsBackend` | Class | Prometheus metrics backend |
+| `StatsdMetricsBackend` | Class | StatsD metrics backend (requires `statsd`) |
 | `CaptureMetricsBackend` | Class | In-memory capture backend for tests |
+| `configure_metrics` | Function | Configure global metrics backend from `FrameworkConfig` |
 | `get_metrics_backend` / `set_metrics_backend` | Functions | Global metrics backend access |
 | `TracingBackend` | Protocol | Tracing protocol (`start_span`/`end_span`) |
 | `NoOpTracingBackend` | Class | No-op tracing backend |

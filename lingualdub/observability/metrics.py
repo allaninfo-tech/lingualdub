@@ -20,8 +20,11 @@ __all__ = [
     "MetricsBackend",
     "NoOpMetricsBackend",
     "PrometheusMetricsBackend",
+    "StatsdMetricsBackend",
+    "CaptureMetricsBackend",
     "get_metrics_backend",
     "set_metrics_backend",
+    "configure_metrics",
 ]
 
 # ---------------------------------------------------------------------------
@@ -232,6 +235,60 @@ def set_metrics_backend(backend: MetricsBackend) -> None:
     _global_backend = backend
 
 
+class StatsdMetricsBackend(NoOpMetricsBackend):
+    """StatsD backend — requires ``statsd`` package. Falls back to NoOp with warning if unavailable."""
+
+    def __init__(
+        self, host: str = "localhost", port: int = 8125, prefix: str = "lingualdub"
+    ) -> None:
+        self._enabled = False
+        self._client = None
+        self._prefix = prefix
+        try:
+            import statsd  # type: ignore
+
+            self._client = statsd.StatsClient(host, port, prefix=prefix)  # type: ignore[attr-defined]
+            self._enabled = True
+        except ImportError:
+            logger.warning(
+                "statsd package not installed, StatsdMetricsBackend disabled — using NoOp. Install with `pip install statsd`."
+            )
+            self._enabled = False
+
+    def counter(self, name: str, value: float = 1, labels: dict[str, str] | None = None) -> None:
+        if not self._enabled or self._client is None:
+            return
+        try:
+            key = f"{name}"
+            if labels:
+                key += "." + ".".join(f"{k}_{v}" for k, v in sorted(labels.items()))
+            self._client.incr(key, int(value))  # type: ignore[attr-defined]
+        except Exception:
+            logger.debug("StatsD counter failed for %r", name, exc_info=True)
+
+    def histogram(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
+        if not self._enabled or self._client is None:
+            return
+        try:
+            key = f"{name}"
+            if labels:
+                key += "." + ".".join(f"{k}_{v}" for k, v in sorted(labels.items()))
+            self._client.timing(key, int(value))  # type: ignore[attr-defined]
+        except Exception:
+            logger.debug("StatsD histogram failed for %r", name, exc_info=True)
+
+    def gauge(self, name: str, value: float, labels: dict[str, str] | None = None) -> None:
+        if not self._enabled or self._client is None:
+            return
+        try:
+            key = f"{name}"
+            if labels:
+                key += "." + ".".join(f"{k}_{v}" for k, v in sorted(labels.items()))
+            self._client.gauge(key, value)  # type: ignore[attr-defined]
+        except Exception:
+            logger.debug("StatsD gauge failed for %r", name, exc_info=True)
+
+
 def configure_metrics(config: Any | None = None) -> None:
     """Configure global metrics backend from FrameworkConfig."""
     backend_name = "noop"
@@ -243,5 +300,15 @@ def configure_metrics(config: Any | None = None) -> None:
     backend_name = str(backend_name).lower()
     if backend_name == "prometheus":
         set_metrics_backend(PrometheusMetricsBackend())
+    elif backend_name == "statsd":
+        set_metrics_backend(StatsdMetricsBackend())
+    elif backend_name == "custom":
+        logger.warning(
+            "metrics_backend='custom' requires manual set_metrics_backend() — using NoOp until configured."
+        )
+        set_metrics_backend(NoOpMetricsBackend())
+    elif backend_name == "noop":
+        set_metrics_backend(NoOpMetricsBackend())
     else:
+        logger.warning("Unknown metrics_backend %r — using NoOp.", backend_name)
         set_metrics_backend(NoOpMetricsBackend())

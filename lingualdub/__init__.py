@@ -69,6 +69,8 @@ from lingualdub.observability.metrics import (
     MetricsBackend,
     NoOpMetricsBackend,
     PrometheusMetricsBackend,
+    StatsdMetricsBackend,
+    configure_metrics,
     get_metrics_backend,
     set_metrics_backend,
 )
@@ -145,7 +147,9 @@ __all__ = [
     "MetricsBackend",
     "NoOpMetricsBackend",
     "PrometheusMetricsBackend",
+    "StatsdMetricsBackend",
     "CaptureMetricsBackend",
+    "configure_metrics",
     "get_metrics_backend",
     "set_metrics_backend",
     "TracingBackend",
