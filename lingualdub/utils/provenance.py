@@ -49,7 +49,7 @@ def make_provenance(
     """
     clashes = _RESERVED_KEYS.intersection(extra.keys())
     if clashes:
-        raise ValueError(
+        raise ValueError(  # justified: provenance clash — extra shadows reserved keys
             f"extra keys {sorted(clashes)} shadow reserved provenance keys {_RESERVED_KEYS}"
         )
     return {

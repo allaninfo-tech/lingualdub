@@ -35,7 +35,9 @@ from enum import Enum
 from typing import Any
 
 from lingualdub.core.protocols import ComponentProtocol, RegistrableProtocol
+from lingualdub.exceptions import RegistrationConflictError as _BaseRegistrationConflictError
 from lingualdub.exceptions import RegistryError as _BaseRegistryError
+from lingualdub.exceptions import ResolutionError as _BaseResolutionError
 
 
 def _version_tuple(version_str: str) -> tuple:
@@ -75,8 +77,10 @@ class ConflictPolicy(str, Enum):
     EXPLICIT = "explicit"
 
 
-class RegistryError(_BaseRegistryError):
-    """Raised when a registry operation cannot be completed."""
+# Canonical re-export — single source of truth remains ``lingualdub.exceptions``
+RegistryError = _BaseRegistryError
+RegistrationConflictError = _BaseRegistrationConflictError
+ResolutionError = _BaseResolutionError
 
 
 class Registry:
@@ -204,9 +208,9 @@ class Registry:
         Raises:
             RegistryError: If no matching registration is found.
         """
-        # PEV-005 cache check (only for version=None lookups and when enabled)
-        if version is None and _is_cache_enabled():
-            cache_key = (kind, key, None)
+        # PEV-005 cache check (versioned and unversioned when enabled)
+        if _is_cache_enabled():
+            cache_key = (kind, key, version)
             with self._lock:
                 if cache_key in self._resolve_cache:
                     return self._resolve_cache[cache_key]

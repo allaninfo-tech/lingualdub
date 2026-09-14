@@ -250,9 +250,9 @@ def validate_resource_path(path: Any, field_name: str = "path") -> str:
     # The fundamental guarantee is ``..`` is rejected; absolute ``/etc/passwd`` with no .. is still suspicious but we treat it as traversal for hardening.
     # To satisfy spec example ``../../../etc/passwd`` already caught above; we also reject absolute /etc/passwd as traversal for defense.
     if path.startswith("/") and not path.startswith("/tmp"):
-        # Check if outside workspace: if absolute and not tmp, flag as potential traversal if contains etc/passwd style
-        # We keep lenient but log warning; for now we raise only if path_traversal_check expects it.
-        # To meet test expectation for ``../../../etc/passwd`` we already raised; for pure absolute we allow but can be configured.
+        # Absolute paths outside /tmp are allowed if they do not contain traversal (``..`` already rejected above).
+        # Strict hardening would reject /etc/passwd but legitimate resource paths like /data/lug.wav
+        # are used in tests and production. Keep permissive and rely on ``..``/null/encoded checks.
         pass
     return path
 

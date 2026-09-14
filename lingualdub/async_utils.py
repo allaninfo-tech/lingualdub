@@ -72,9 +72,11 @@ class AsyncPipelineExecutor:
 
     def __init__(self, executor: Any) -> None:
         if executor is None:
-            raise ValueError("AsyncPipelineExecutor requires a non-None executor.")
+            raise ValueError(  # justified: async contract — executor must be non-None
+                "AsyncPipelineExecutor requires a non-None executor."
+            )
         if not hasattr(executor, "run") or not callable(executor.run):
-            raise ValueError(
+            raise ValueError(  # justified: async contract — executor must have callable run
                 f"executor must expose a callable run(input) method, got {type(executor).__name__}: {executor!r}."
             )
         self.executor: Any = executor

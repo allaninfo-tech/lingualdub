@@ -457,9 +457,15 @@ class PipelineExecutor:
                         # Now add the degrade marker for this stage's failure
                         result = result.mark_degraded(f"Stage {stage.name!r} ran degraded: {exc}")
                     except NotImplementedError:
-                        result = result.mark_partial(
-                            f"Stage {stage.name!r} has no degrade() path; skipped: {exc}"
-                        )
+                        # Avoid regressing DEGRADED -> PARTIAL (strict monotonic). Keep max severity.
+                        if result.status in (ResultStatus.DEGRADED, ResultStatus.FAILED):
+                            result = result.add_warning(
+                                f"Partial: Stage {stage.name!r} has no degrade() path; skipped: {exc}"
+                            )
+                        else:
+                            result = result.mark_partial(
+                                f"Stage {stage.name!r} has no degrade() path; skipped: {exc}"
+                            )
                         current = result
                     except Exception as degrade_exc:
                         result = result.mark_failed(

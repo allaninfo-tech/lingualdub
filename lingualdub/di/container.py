@@ -221,11 +221,13 @@ class DependencyContainer:
 
         require_non_empty_string(name, "name")
         if not isinstance(lifetime, Lifetime):
-            raise ValueError(
+            raise ValueError(  # justified: DI registration contract — lifetime must be Lifetime enum
                 f"lifetime must be a Lifetime, got {type(lifetime).__name__}: {lifetime!r}."
             )
         if implementation_or_factory is None:
-            raise ValueError(f"implementation_or_factory for {name!r} must not be None.")
+            raise ValueError(  # justified: DI registration requires non-None factory
+                f"implementation_or_factory for {name!r} must not be None."
+            )
         # ``implementation_or_factory`` may be a class, function, or any callable.
         # We allow any non-None value; construction failures are reported at
         # resolve time as ResolutionError, per EXE-003.
@@ -274,7 +276,9 @@ class DependencyContainer:
 
         require_non_empty_string(name, "name")
         if instance is None:
-            raise ValueError(f"register_instance for {name!r} requires a non-None instance.")
+            raise ValueError(  # justified: DI register_instance requires non-None instance
+                f"register_instance for {name!r} requires a non-None instance."
+            )
 
         with self._lock:
             if name in self._registrations and not override:
@@ -626,7 +630,9 @@ class DependencyContainer:
 
         require_non_empty_string(name, "name")
         if fake_instance is None:
-            raise ValueError(f"fake_instance for {name!r} must not be None.")
+            raise ValueError(  # justified: test override requires non-None fake
+                f"fake_instance for {name!r} must not be None."
+            )
         with self._lock:
             if name not in self._registrations:
                 raise ResolutionError(

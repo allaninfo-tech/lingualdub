@@ -4,7 +4,12 @@
 """Dependency injection package — contracts and container."""
 
 from lingualdub.di.container import DependencyContainer, DependencyScope
-from lingualdub.di.contracts import _MISSING, Dependency, DependencyDescriptor, Lifetime
+from lingualdub.di.contracts import (
+    _MISSING,  # noqa: F401 — internal sentinel, importable but not public
+    Dependency,
+    DependencyDescriptor,
+    Lifetime,
+)
 
 __all__ = [
     "DependencyContainer",
@@ -12,5 +17,4 @@ __all__ = [
     "DependencyDescriptor",
     "Lifetime",
     "Dependency",
-    "_MISSING",
 ]

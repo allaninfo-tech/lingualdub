@@ -129,7 +129,7 @@ class PipelineTestHarness:
 
         use_stages = stages if stages is not None else list(self._components)
         if not use_stages:
-            raise ValueError(
+            raise ValueError(  # justified: test harness — no components configured
                 "PipelineTestHarness has no components; call with_components(...) first or pass stages explicitly."
             )
         src = source_language if source_language is not None else self.source_language

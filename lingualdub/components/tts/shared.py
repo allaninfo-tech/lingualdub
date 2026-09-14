@@ -41,7 +41,9 @@ def write_dummy_wav(
 ) -> None:
     """Generate a clean synthetic WAV file using Python standard library."""
     if duration_sec < 0:
-        raise ValueError(f"duration_sec must be >=0, got {duration_sec!r}")
+        raise ValueError(  # justified: component input validation — duration must be >=0
+            f"duration_sec must be >=0, got {duration_sec!r}"
+        )
     if duration_sec == 0:
         duration_sec = 0.1
     filepath.parent.mkdir(parents=True, exist_ok=True)

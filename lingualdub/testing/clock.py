@@ -43,7 +43,9 @@ class FakeClock:
 
     def __init__(self, start: float = 0.0) -> None:
         if not isinstance(start, (int, float)) or isinstance(start, bool):
-            raise ValueError(f"start must be a number, got {type(start).__name__}: {start!r}.")
+            raise ValueError(  # justified: test clock — start must be numeric
+                f"start must be a number, got {type(start).__name__}: {start!r}."
+            )
         self._time: float = float(start)
         self._sleeps: list[float] = []  # record of sleep calls for assertions
         self._installed: bool = False
@@ -65,11 +67,13 @@ class FakeClock:
     def advance(self, seconds: float) -> None:
         """Advance clock by ``seconds`` (may be fractional)."""
         if not isinstance(seconds, (int, float)) or isinstance(seconds, bool):
-            raise ValueError(
+            raise ValueError(  # justified: test clock — seconds must be numeric
                 f"advance seconds must be a number, got {type(seconds).__name__}: {seconds!r}."
             )
         if seconds < 0:
-            raise ValueError(f"advance seconds must be >= 0, got {seconds!r}.")
+            raise ValueError(  # justified: test clock — advance must be >= 0
+                f"advance seconds must be >= 0, got {seconds!r}."
+            )
         self._time += float(seconds)
 
     def sleep(self, seconds: float) -> None:

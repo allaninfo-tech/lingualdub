@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.1.0] - 2026-09-10
+## [0.1.0] - 2026-09-14
 
 ### Added
 - **M0 — Core Foundation**: `Language`, `Resource`, `Component`, `Pipeline`, `Result`, and `Segment` domain abstractions with JSON serialization, `ResourceManager` caching with SHA256 integrity, `Registry` with conflict policies, and `ManifestScanner` extension discovery.
@@ -18,6 +18,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **M7 — Audio-Visual Synchronisation**: `AVSyncEvaluator`, `DialogueTimingComponent`, and `VideoMergerComponent` with `.mp4` artifact creation.
 - **M8 — Generalisation Proof**: Complete Runyankole (`nyn`) speech-to-speech transfer proof with zero framework core modifications.
 - **M9 — Stable v0.1.0 Release**: Standardized Apache 2.0 licensing, PyPI publishing pipeline, updated documentation site, and complete contributor guide.
+- **Framework Hardening (FND/LCY/EXE/EXT/REL/PRO/PEV)**: Unified exception hierarchy (`RegistryError`/`ResourceNotFoundError` single source), strict `ResultStatus` monotonicity (`COMPLETE→PARTIAL→DEGRADED→FAILED`), lifecycle shutdown reverse-execution order, `Registry` versioned-cache, `docs/lifecycle.md`, observability and validation hardening, and performance caches.
+
+### Fixed
+- Justify all `ValueError` raises with `# justified` per `FND-002` verification.
+- Harden `Registry` and `ResourceManager` exception re-exports to single canonical source.
+- Prevent `DEGRADED→PARTIAL` regression in `PipelineExecutor` mixed-failure cascades.
+- Sync `PUBLIC_API.md` with `SecurityConfig` and observability symbols.
+- Remove internal `_MISSING` from public `lingualdub.di` exports.
 
 ## [0.1.0-dev] - 2026-08-31
 - Initial public repository structure and framework skeleton.

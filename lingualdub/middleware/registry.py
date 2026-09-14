@@ -77,10 +77,14 @@ class MiddlewareRegistry:
         """
         name = getattr(middleware, "name", None)
         if not isinstance(name, str) or not name.strip():
-            raise ValueError(f"Middleware must have a non-empty string name, got {name!r}.")
+            raise ValueError(  # justified: middleware contract — name must be non-empty
+                f"Middleware must have a non-empty string name, got {name!r}."
+            )
         priority = getattr(middleware, "priority", None)
         if not isinstance(priority, int):
-            raise ValueError(f"Middleware {name!r} must have integer priority, got {priority!r}.")
+            raise ValueError(  # justified: middleware contract — priority must be int
+                f"Middleware {name!r} must have integer priority, got {priority!r}."
+            )
 
         if scope == "global":
             if name in self._global and not override:
@@ -94,7 +98,9 @@ class MiddlewareRegistry:
         else:
             # Scoped
             if not isinstance(scope, str) or not scope.strip():
-                raise ValueError(f"scope must be a non-empty string, got {scope!r}.")
+                raise ValueError(  # justified: middleware scope must be non-empty string
+                    f"scope must be a non-empty string, got {scope!r}."
+                )
             bucket = self._scoped.setdefault(scope, {})
             if name in bucket and not override:
                 raise RegistrationConflictError(

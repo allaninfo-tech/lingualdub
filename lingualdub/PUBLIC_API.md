@@ -58,6 +58,7 @@ The top-level `lingualdub` package exposes the following stable symbols:
 | Symbol | Type | Description |
 |---|---|---|
 | `FrameworkConfig` | Class | Centralised, validated, immutable framework configuration |
+| `SecurityConfig` | Class | Security limits (`max_segment_length`, `max_metadata_depth`, `path_traversal_check_enabled`) |
 | `load_config` | Function | Factory that builds a validated `FrameworkConfig` from defaults → env vars → overrides |
 
 ### Lifecycle
@@ -99,6 +100,30 @@ The top-level `lingualdub` package exposes the following stable symbols:
 | `LoggingMiddleware` | Class | Built-in: logs start/end/error (priority 10) |
 | `TimingMiddleware` | Class | Built-in: adds `execution_time_ms` to `Result.metadata` (priority 20) |
 | `ConsentMiddleware` | Class | Built-in: raises `ConsentViolationError` if consent absent (priority 5) |
+
+### Observability (`lingualdub.observability`)
+| Symbol | Type | Description |
+|---|---|---|
+| `configure_logging` | Function | Configure structured logging (`json`/`text`) with redaction |
+| `get_logger` | Function | Return structured logger for a module |
+| `RedactionFilter` | Class | Logging filter that replaces sensitive fields with `[REDACTED]` |
+| `MetricsBackend` | Protocol | Metrics protocol (`counter`/`histogram`/`gauge`) |
+| `NoOpMetricsBackend` | Class | No-op metrics backend (default, zero overhead) |
+| `PrometheusMetricsBackend` | Class | Prometheus metrics backend |
+| `CaptureMetricsBackend` | Class | In-memory capture backend for tests |
+| `get_metrics_backend` / `set_metrics_backend` | Functions | Global metrics backend access |
+| `TracingBackend` | Protocol | Tracing protocol (`start_span`/`end_span`) |
+| `NoOpTracingBackend` | Class | No-op tracing backend |
+| `OpenTelemetryTracingBackend` | Class | OpenTelemetry tracing backend |
+| `CaptureTracingBackend` | Class | In-memory capture backend for tests |
+| `get_tracing_backend` / `set_tracing_backend` | Functions | Global tracing backend access |
+
+### Validation (`lingualdub.utils.validation` via top-level)
+| Symbol | Type | Description |
+|---|---|---|
+| `validate_resource_path` | Function | Validate file path against traversal, null bytes, and length |
+| `validate_metadata_depth` | Function | Validate metadata dict nesting depth |
+| `validate_segment_text_length` | Function | Validate `Segment.text` length limit |
 
 ### Centralized Types (`lingualdub.types`)
 | Symbol | Type | Description |

@@ -97,7 +97,9 @@ class FakeTranslation(Component):
 
     def run(self, input: Result | Resource) -> Result:
         if isinstance(input, Resource):
-            raise ValueError("FakeTranslation expects Result input with transcription segments")
+            raise ValueError(  # justified: fake misuse — wrong input shape
+                "FakeTranslation expects Result input with transcription segments"
+            )
         # Simple "translation": append " (translated)" and flip language to eng
         segments: list[Segment] = []
         for seg in input.segments:
@@ -132,7 +134,9 @@ class FakeTTS(Component):
 
     def run(self, input: Result | Resource) -> Result:
         if isinstance(input, Resource):
-            raise ValueError("FakeTTS expects Result with translation segments")
+            raise ValueError(  # justified: fake misuse — wrong input shape
+                "FakeTTS expects Result with translation segments"
+            )
         # Produce dummy artifacts
         artifacts = [f"/tmp/fake_tts_{i}.wav" for i, _ in enumerate(input.segments)]
         return Result(
@@ -181,7 +185,9 @@ class FakeAlignment(Component):
 
     def run(self, input: Result | Resource) -> Result:
         if isinstance(input, Resource):
-            raise ValueError("FakeAlignment expects Result")
+            raise ValueError(  # justified: fake misuse — wrong input shape
+                "FakeAlignment expects Result"
+            )
         segments: list[Segment] = []
         for seg in input.segments:
             # Add word_timestamps to metadata deterministically

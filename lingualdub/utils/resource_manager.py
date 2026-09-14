@@ -21,6 +21,11 @@ from pathlib import Path
 from lingualdub.exceptions import ResourceLoadError as _BaseResourceLoadError
 from lingualdub.exceptions import ResourceNotFoundError as _BaseResourceNotFoundError
 
+# Re-export canonical exceptions so ``from lingualdub.utils.resource_manager import ResourceNotFoundError``
+# is identical to ``from lingualdub.exceptions import ResourceNotFoundError``.
+# Keep alias names for backward compat while consolidating hierarchy.
+
+
 DEFAULT_CACHE_DIR = Path.home() / ".cache" / "lingualdub"
 ENV_CACHE_DIR = "LINGUALDUB_CACHE_DIR"
 
@@ -39,9 +44,11 @@ def _resolve_cache_dir_from_env() -> str | None:
 class ChecksumError(_BaseResourceLoadError):
     """Raised when a downloaded or cached file does not match its expected SHA256 checksum."""
 
+    pass
 
-class ResourceNotFoundError(_BaseResourceNotFoundError):
-    """Raised when a required resource is not available locally and cannot be downloaded."""
+
+# Canonical re-export — single source of truth remains ``lingualdub.exceptions``
+ResourceNotFoundError = _BaseResourceNotFoundError
 
 
 class ResourceManager:

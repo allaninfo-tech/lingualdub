@@ -28,6 +28,13 @@ from enum import Enum
 
 from lingualdub.exceptions import InitializationError, LifecycleError
 
+__all__ = [
+    "LifecycleState",
+    "FrameworkLifecycle",
+    "startup_hook",
+    "shutdown_hook",
+]
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -77,6 +84,8 @@ class FrameworkLifecycle:
         # Shutdown hook registry: name -> callable (LIFO teardown)
         self._shutdown_hooks: dict[str, Callable[[], None]] = {}
         self._shutdown_hook_order: list[str] = []
+        # Tracks actual startup execution order for correct reverse teardown (G23 fix)
+        self._startup_execution_order: list[str] = []
         # Ensure atexit calls shutdown() for deterministic teardown
         # Register once per instance; suppress duplicate registration on re-init
         try:
@@ -365,10 +374,13 @@ class FrameworkLifecycle:
                 },
             )
         order = self._resolve_startup_order()
+        # reset execution order for this run
+        self._startup_execution_order.clear()
         for name in order:
             hook, _ = self._startup_hooks[name]
             try:
                 hook()
+                self._startup_execution_order.append(name)
                 with contextlib.suppress(Exception):
                     _struct_logger.info(
                         "lifecycle.startup.hook",
@@ -491,8 +503,16 @@ class FrameworkLifecycle:
 
         No exception is raised for hook failures; all hooks are attempted.
         """
-        # Reverse registration order = reverse startup order when paired
-        for name in reversed(self._shutdown_hook_order):
+        # Reverse startup execution order when available, else reverse registration order
+        if self._startup_execution_order:
+            shutdown_order = list(reversed(self._startup_execution_order))
+            # include any shutdown-only hooks not in startup order
+            for n in reversed(self._shutdown_hook_order):
+                if n not in shutdown_order:
+                    shutdown_order.append(n)
+        else:
+            shutdown_order = list(reversed(self._shutdown_hook_order))
+        for name in shutdown_order:
             hook = self._shutdown_hooks[name]
             try:
                 hook()

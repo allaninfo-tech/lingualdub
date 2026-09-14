@@ -107,11 +107,17 @@ class ResourcePool:
         if max_size is not None and (
             not isinstance(max_size, int) or isinstance(max_size, bool) or max_size <= 0
         ):
-            raise ValueError(f"max_size must be a positive int, got {max_size!r}.")
+            raise ValueError(  # justified: pool config — max_size must be positive int
+                f"max_size must be a positive int, got {max_size!r}."
+            )
         if not isinstance(min_idle, int) or isinstance(min_idle, bool) or min_idle < 0:
-            raise ValueError(f"min_idle must be a non-negative int, got {min_idle!r}.")
+            raise ValueError(  # justified: pool config — min_idle must be non-negative
+                f"min_idle must be a non-negative int, got {min_idle!r}."
+            )
         if min_idle > max_size:
-            raise ValueError(f"min_idle ({min_idle}) must be <= max_size ({max_size}).")
+            raise ValueError(  # justified: pool invariant — min_idle <= max_size
+                f"min_idle ({min_idle}) must be <= max_size ({max_size})."
+            )
 
         self.factory: Callable[..., Any] | None = factory
         self.max_size: int = max_size
@@ -216,9 +222,13 @@ class ResourcePool:
         require_non_empty_string(name, "name")
         if timeout_s is not None:
             if not isinstance(timeout_s, (int, float)) or isinstance(timeout_s, bool):
-                raise ValueError(f"timeout_s must be a number or None, got {timeout_s!r}.")
+                raise ValueError(  # justified: pool acquire — timeout_s must be numeric
+                    f"timeout_s must be a number or None, got {timeout_s!r}."
+                )
             if timeout_s < 0:
-                raise ValueError(f"timeout_s must be >= 0, got {timeout_s!r}.")
+                raise ValueError(  # justified: pool acquire — timeout_s must be >= 0
+                    f"timeout_s must be >= 0, got {timeout_s!r}."
+                )
 
         # Fast path + blocking path under condition lock
         start = time.monotonic()

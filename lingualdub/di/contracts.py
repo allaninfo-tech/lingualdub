@@ -99,11 +99,11 @@ class DependencyDescriptor:
         # bad names is reserved for validation layer; here we raise ValueError
         # for descriptor misuse and let container raise LingualDubError).
         if not isinstance(self.name, str) or not self.name.strip():
-            raise ValueError(
+            raise ValueError(  # justified: descriptor misuse — invalid descriptor field, not a config/lifecycle domain error
                 f"DependencyDescriptor name must be a non-empty string, got {self.name!r}."
             )
         if not isinstance(self.lifetime, Lifetime):
-            raise ValueError(
+            raise ValueError(  # justified: descriptor misuse — invalid enum, not a framework config error
                 f"DependencyDescriptor lifetime must be a Lifetime, got {type(self.lifetime).__name__}: {self.lifetime!r}."
             )
 
