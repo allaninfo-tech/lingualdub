@@ -75,7 +75,7 @@ docs = [
 ]
 models = [
     "torch>=2.0.0,<3.0.0",
-    "transformers>=4.38.0,<5.0.0",
+    "transformers>=4.38.0,<6.0.0",
     "torchaudio>=2.0.0,<3.0.0",
     "scipy>=1.10.0,<2.0.0",
     "soundfile>=0.12.0",
@@ -100,7 +100,7 @@ dev = [
 ]
 all = [
     "torch>=2.0.0,<3.0.0",
-    "transformers>=4.38.0,<5.0.0",
+    "transformers>=4.38.0,<6.0.0",
     "torchaudio>=2.0.0,<3.0.0",
     "scipy>=1.10.0,<2.0.0",
     "soundfile>=0.12.0",
