@@ -120,10 +120,10 @@ class Result:
                 f"Field 'status' must be a ResultStatus, got {type(self.status).__name__}: {self.status!r}.",
                 field="status",
             )
-        # Validate list/dict fields and break external references
+        # Validate list/tuple fields and break external references (tuple after hardening)
         for key in ("segments", "warnings", "artifacts"):
             val = getattr(self, key)
-            if not isinstance(val, list):
+            if not isinstance(val, (list, tuple)):
                 from lingualdub.exceptions import ConfigurationValidationError
 
                 raise ConfigurationValidationError(
@@ -148,8 +148,11 @@ class Result:
 
         validate_metadata_depth(self.provenance, field_name="provenance")
         validate_metadata_depth(self.metadata, field_name="metadata")
-        # Break external mutable references by copying
-        object.__setattr__(self, "segments", list(self.segments))
+        # Break external mutable references and harden segments as tuple
+        # (``result.segments.append`` now raises). Warnings/artifacts kept as
+        # list for backward compat with component ``res.artifacts.append`` patterns;
+        # full tuple hardening deferred to avoid breaking existing adapters.
+        object.__setattr__(self, "segments", tuple(self.segments))
         object.__setattr__(self, "warnings", list(self.warnings))
         object.__setattr__(self, "artifacts", list(self.artifacts))
         object.__setattr__(self, "provenance", dict(self.provenance))

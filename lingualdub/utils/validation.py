@@ -249,11 +249,16 @@ def validate_resource_path(path: Any, field_name: str = "path") -> str:
     # For strict security, reject any absolute path that is not under temp/cache if traversal check enabled; but to avoid breaking tests with absolute tmp paths, we allow /tmp.
     # The fundamental guarantee is ``..`` is rejected; absolute ``/etc/passwd`` with no .. is still suspicious but we treat it as traversal for hardening.
     # To satisfy spec example ``../../../etc/passwd`` already caught above; we also reject absolute /etc/passwd as traversal for defense.
-    if path.startswith("/") and not path.startswith("/tmp"):
-        # Absolute paths outside /tmp are allowed if they do not contain traversal (``..`` already rejected above).
-        # Strict hardening would reject /etc/passwd but legitimate resource paths like /data/lug.wav
-        # are used in tests and production. Keep permissive and rely on ``..``/null/encoded checks.
-        pass
+    if path.startswith("/"):
+        # Allow /tmp and workspace-relative absolutes; hard-block sensitive roots (/etc, /proc, /sys, /root)
+        # while keeping /data/lug.wav permitted for existing resource fixtures.
+        sensitive_roots = ("/etc", "/proc", "/sys", "/root")
+        if any(path == r or path.startswith(r + "/") for r in sensitive_roots):
+            raise ResourceError(
+                f"Path traversal detected for {field_name!r}: absolute path {path!r} under sensitive root.",
+                code="PATH_TRAVERSAL_001",
+            )
+        # Otherwise absolute paths like /data/lug.wav or /tmp/... are allowed (``..`` already rejected).
     return path
 
 

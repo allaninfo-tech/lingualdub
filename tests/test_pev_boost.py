@@ -174,20 +174,26 @@ def test_middleware_caching():
     reg.register(mw)
     chain1 = reg.build_chain("pipeline_x")
     chain2 = reg.build_chain("pipeline_x")
-    # When cache enabled, should be same object (cached)
+    # When cache enabled, should be equal content but defensive copies (isolation)
     load_config({"cache_enabled": True})
-    assert chain1 is chain2
-    # After mutation, cache invalidated => new object
+    assert chain1.middlewares == chain2.middlewares
+    assert chain1 is not chain2  # defensive copy — same content, not same instance
+    # Mutation of returned chain must not pollute cache
+    chain1.middlewares.append(mw)
+    chain_cached = reg.build_chain("pipeline_x")
+    assert len(chain_cached.middlewares) == 1
+    # After registration mutation, cache invalidated => new content
     mw2 = Mw()
     mw2.name = "test_mw2"
     reg.register(mw2)
     chain3 = reg.build_chain("pipeline_x")
-    assert chain3 is not chain1
+    assert len(chain3.middlewares) == 2
     # Disable cache
     load_config({"cache_enabled": False})
     chain4 = reg.build_chain("pipeline_x")
     chain5 = reg.build_chain("pipeline_x")
     assert chain4 is not chain5  # not cached
+    assert chain4.middlewares == chain5.middlewares
     load_config({"cache_enabled": True})
 
 

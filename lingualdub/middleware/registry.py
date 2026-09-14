@@ -186,7 +186,9 @@ class MiddlewareRegistry:
             New ``MiddlewareChain``.
         """
         if _is_cache_enabled() and pipeline_name in self._build_cache:
-            return self._build_cache[pipeline_name]
+            cached = self._build_cache[pipeline_name]
+            # Defensive copy — callers must not mutate the cached chain via .add()
+            return MiddlewareChain(list(cached.middlewares))
         if pipeline_name is None:
             mws = self.list_middleware(scope=None)
         else:
@@ -194,6 +196,8 @@ class MiddlewareRegistry:
         chain = MiddlewareChain(mws)
         if _is_cache_enabled():
             self._build_cache[pipeline_name] = chain
+            # Return copy so caller mutation does not pollute cache
+            return MiddlewareChain(list(chain.middlewares))
         return chain
 
     # Alias for spec compatibility: spec says MiddlewareChain.build(pipeline_name)

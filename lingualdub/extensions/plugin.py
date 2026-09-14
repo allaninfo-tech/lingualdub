@@ -424,9 +424,29 @@ class PluginRegistry:
                 continue
 
             plugin.state = PluginState.INITIALIZING  # type: ignore[union-attr]
+            # Snapshot container registrations for rollback on failure (isolation)
+            pre_keys: set[str] = set()
+            if container is not None and hasattr(container, "list_registered"):
+                try:
+                    pre_keys = set(container.list_registered())  # type: ignore[operator]
+                except Exception:
+                    pre_keys = set()
             try:
                 plugin.on_startup(container)
             except InitializationError:
+                # Rollback any registrations made by failed plugin
+                if container is not None and hasattr(container, "list_registered"):
+                    try:
+                        post_keys = set(container.list_registered())  # type: ignore[operator]
+                        for k in post_keys - pre_keys:
+                            # Best-effort removal from internal store
+                            try:
+                                container._registrations.pop(k, None)  # type: ignore[attr-defined]
+                                container._singletons.pop(k, None)  # type: ignore[attr-defined]
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
                 plugin.state = PluginState.FAILED  # type: ignore[union-attr]
                 failed.add(name)
                 if self.fail_fast:
@@ -438,6 +458,18 @@ class PluginRegistry:
                 )
                 continue
             except Exception as exc:
+                # Rollback any registrations made by failed plugin
+                if container is not None and hasattr(container, "list_registered"):
+                    try:
+                        post_keys = set(container.list_registered())  # type: ignore[operator]
+                        for k in post_keys - pre_keys:
+                            try:
+                                container._registrations.pop(k, None)  # type: ignore[attr-defined]
+                                container._singletons.pop(k, None)  # type: ignore[attr-defined]
+                            except Exception:
+                                pass
+                    except Exception:
+                        pass
                 plugin.state = PluginState.FAILED  # type: ignore[union-attr]
                 failed.add(name)
                 wrapped = InitializationError(
